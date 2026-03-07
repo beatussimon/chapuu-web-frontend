@@ -33,20 +33,18 @@ export default function MenuBuilder() {
     };
 
     useEffect(() => {
-        apiClient.get('/stores/')
+        apiClient.get('/stores/my_store/')
             .then(res => {
-                if (res.data.length > 0) {
-                    const sid = res.data[0].id;
+                if (res.data && res.data.id) {
+                    const sid = res.data.id;
                     setStoreId(sid);
                     fetchData(sid);
-                } else {
-                    setLoading(false);
-                    toast.error("You don't have an active store to manage.");
                 }
             })
             .catch(err => {
-                console.error(err);
                 setLoading(false);
+                toast.error("You don't have an active store to manage.");
+                console.error("Failed to load store for MenuBuilder:", err);
             });
     }, []);
 

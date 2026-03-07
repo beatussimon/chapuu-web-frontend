@@ -16,10 +16,31 @@ export default function StoreSelection() {
     const navigate = useNavigate();
 
     useEffect(() => {
+        if (typeParam === 'RESTAURANT' || typeParam === 'SHOP') {
+            setFilter(typeParam);
+        } else {
+            setFilter('ALL');
+        }
+    }, [typeParam]);
+
+    useEffect(() => {
         const fetchStores = async () => {
             try {
                 const response = await apiClient.get('/stores/');
-                setStores(response.data);
+                // Fetch reviews for all stores concurrently
+                const storesWithReviews = await Promise.all(response.data.map(async (store) => {
+                    try {
+                        const reviewsRes = await apiClient.get(`/stores/${store.id}/reviews/`);
+                        const reviews = reviewsRes.data;
+                        const avgRating = reviews.length > 0
+                            ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
+                            : 'New';
+                        return { ...store, reviewCount: reviews.length, avgRating };
+                    } catch (e) {
+                        return { ...store, reviewCount: 0, avgRating: 'New' };
+                    }
+                }));
+                setStores(storesWithReviews);
             } catch (error) {
                 toast.error('Failed to load stores');
                 console.error(error);
@@ -46,23 +67,25 @@ export default function StoreSelection() {
             </div>
 
             {/* Filter Tabs */}
-            <div className="flex gap-2 mb-8">
-                {[{ key: 'ALL', label: 'All', icon: <Store size={16} /> },
-                { key: 'RESTAURANT', label: 'Restaurants', icon: <Utensils size={16} /> },
-                { key: 'SHOP', label: 'Shops', icon: <ShoppingBag size={16} /> }
-                ].map(tab => (
-                    <button
-                        key={tab.key}
-                        onClick={() => setFilter(tab.key)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${filter === tab.key
-                            ? 'bg-primary-500 text-dark-950 shadow-lg shadow-primary-500/20'
-                            : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
-                            }`}
-                    >
-                        {tab.icon} {tab.label}
-                    </button>
-                ))}
-            </div>
+            {!typeParam && (
+                <div className="flex gap-2 mb-8">
+                    {[{ key: 'ALL', label: 'All', icon: <Store size={16} /> },
+                    { key: 'RESTAURANT', label: 'Restaurants', icon: <Utensils size={16} /> },
+                    { key: 'SHOP', label: 'Shops', icon: <ShoppingBag size={16} /> }
+                    ].map(tab => (
+                        <button
+                            key={tab.key}
+                            onClick={() => setFilter(tab.key)}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${filter === tab.key
+                                ? 'bg-primary-500 text-dark-950 shadow-lg shadow-primary-500/20'
+                                : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                                }`}
+                        >
+                            {tab.icon} {tab.label}
+                        </button>
+                    ))}
+                </div>
+            )}
 
             {loading ? (
                 <div className="flex justify-center py-20">
@@ -75,7 +98,7 @@ export default function StoreSelection() {
                     <p className="text-slate-400">Please check back later.</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     {filteredStores.map((store, index) => (
                         <motion.div
                             key={store.id}
@@ -102,9 +125,17 @@ export default function StoreSelection() {
                             </div>
 
                             <div className="p-6">
-                                <h3 className="text-xl font-bold text-white mb-2 group-hover:text-primary-400 transition-colors">
-                                    {store.name}
-                                </h3>
+                                <div className="flex justify-between items-start mb-2">
+                                    <h3 className="text-xl font-bold text-white group-hover:text-primary-400 transition-colors line-clamp-1">
+                                        {store.name}
+                                    </h3>
+                                    {/* Rating Badge */}
+                                    <div className="flex items-center gap-1 bg-dark-950 border border-white/10 px-2 py-1 rounded-lg mt-1 shrink-0">
+                                        <span className="text-yellow-500 text-xs">⭐</span>
+                                        <span className="text-xs font-bold text-white">{store.avgRating}</span>
+                                        {store.reviewCount > 0 && <span className="text-[10px] text-slate-500 ml-1">({store.reviewCount})</span>}
+                                    </div>
+                                </div>
                                 <div className="flex flex-col gap-1 text-slate-400 text-sm mb-6">
                                     <div className="flex items-start gap-2">
                                         <MapPin size={16} className="shrink-0 mt-0.5" />

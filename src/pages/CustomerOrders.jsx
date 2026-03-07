@@ -6,15 +6,21 @@ import { ShoppingBag, ArrowRight, ArrowLeft } from 'lucide-react';
 import { useCurrency } from '../utils/useCurrency';
 
 export default function CustomerOrders() {
-    const [orders, setOrders] = useState([]);
+    const [allOrders, setAllOrders] = useState([]);
+    const [displayedOrders, setDisplayedOrders] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [page, setPage] = useState(1);
+    const ITEMS_PER_PAGE = 10;
+
     const navigate = useNavigate();
     const { formatPrice } = useCurrency();
 
     useEffect(() => {
         apiClient.get('/orders/')
             .then(res => {
-                setOrders(res.data);
+                const sorted = res.data.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                setAllOrders(sorted);
+                setDisplayedOrders(sorted.slice(0, ITEMS_PER_PAGE));
                 setLoading(false);
             })
             .catch(err => {
@@ -22,6 +28,23 @@ export default function CustomerOrders() {
                 setLoading(false);
             });
     }, []);
+
+    // Intersection Observer for Infinite Scroll
+    const handleObserver = (entities) => {
+        const target = entities[0];
+        if (target.isIntersecting && displayedOrders.length < allOrders.length) {
+            const nextPage = page + 1;
+            setPage(nextPage);
+            setDisplayedOrders(allOrders.slice(0, nextPage * ITEMS_PER_PAGE));
+        }
+    };
+
+    useEffect(() => {
+        const observer = new IntersectionObserver(handleObserver, { root: null, rootMargin: '20px', threshold: 1.0 });
+        const loaderNode = document.getElementById('scroll-loader');
+        if (loaderNode) observer.observe(loaderNode);
+        return () => { if (loaderNode) observer.unobserve(loaderNode); };
+    }, [displayedOrders, allOrders, page]);
 
     if (loading) {
         return (
@@ -48,7 +71,7 @@ export default function CustomerOrders() {
                 </div>
             </div>
 
-            {orders.length === 0 ? (
+            {displayedOrders.length === 0 ? (
                 <div className="glass-dark border border-white/10 rounded-3xl p-12 text-center shadow-xl">
                     <ShoppingBag size={48} className="mx-auto text-slate-600 mb-4" />
                     <h2 className="text-xl font-bold mb-2">No orders yet</h2>
@@ -59,7 +82,7 @@ export default function CustomerOrders() {
                 </div>
             ) : (
                 <div className="space-y-4">
-                    {orders.map(order => (
+                    {displayedOrders.map(order => (
                         <motion.div
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -106,6 +129,13 @@ export default function CustomerOrders() {
                             </div>
                         </motion.div>
                     ))}
+
+                    {/* Infinite Scroll Trigger */}
+                    {displayedOrders.length < allOrders.length && (
+                        <div id="scroll-loader" className="h-10 mt-4 flex justify-center items-center">
+                            <div className="w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+                        </div>
+                    )}
                 </div>
             )}
         </div>

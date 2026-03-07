@@ -5,7 +5,6 @@ import CustomerDashboard from './pages/CustomerDashboard';
 import SellerDashboard from './pages/SellerDashboard';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
-import LandingPage from './pages/LandingPage';
 import StoreSelection from './pages/StoreSelection';
 import Checkout from './pages/Checkout';
 import OrderConfirmation from './pages/OrderConfirmation';
@@ -22,7 +21,8 @@ import CustomerOrders from './pages/CustomerOrders';
 import DeliveryDashboard from './pages/staff/DeliveryDashboard';
 import PublicDisplay from './pages/PublicDisplay';
 import DiscoverPage from './pages/DiscoverPage';
-import { Utensils, LayoutDashboard, LogOut, ShoppingBag, TerminalSquare, QrCode, Calendar, Package, Shield, Store, Menu, X, Navigation, Tv, BarChart3, Compass, UtensilsCrossed } from 'lucide-react';
+import FAQ from './pages/FAQ';
+import { Utensils, LayoutDashboard, LogOut, ShoppingBag, TerminalSquare, QrCode, Calendar, Package, Shield, Store, Menu, X, Navigation, Tv, BarChart3, Compass, UtensilsCrossed, HelpCircle, ListOrdered, ShoppingCart } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 
 function ProtectedRoute({ children, role }) {
@@ -42,7 +42,7 @@ function NavLink({ to, icon, label, bgClass, textClass, onClick }) {
 }
 
 function TopNavigation() {
-  const { token, userRole, clearAuth } = useAppStore();
+  const { token, userRole, clearAuth, cart } = useAppStore();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -65,13 +65,16 @@ function TopNavigation() {
 
       <div className="flex items-center gap-4">
         {!token ? (
-          <Link to="/login" className="px-5 py-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-sm font-medium transition-all">
-            Login
-          </Link>
+          <>
+            <Link to="/faq" className="px-5 py-2 text-slate-300 hover:text-white text-sm font-medium transition-colors">FAQ</Link>
+            <Link to="/login" className="px-5 py-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-sm font-medium transition-all">
+              Login
+            </Link>
+          </>
         ) : (
           <>
             {/* Desktop Navigation */}
-            <div className="hidden lg:flex items-center gap-4">
+            <div className="hidden lg:flex flex-wrap items-center justify-end gap-2 xl:gap-4 max-w-[75vw]">
               <div className="flex items-center gap-2 text-sm text-slate-400 mr-2">
                 <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
                 {userRole}
@@ -98,11 +101,23 @@ function TopNavigation() {
 
               {userRole === 'CUSTOMER' ? (
                 <>
-                  <Link to="/discover" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary-600/20 text-primary-400 hover:bg-primary-600/30 transition-colors"><Compass size={16} /><span className="text-sm">Discover</span></Link>
+                  <Link to="/" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary-600/20 text-primary-400 hover:bg-primary-600/30 transition-colors"><Compass size={16} /><span className="text-sm">Discover</span></Link>
+                  <Link to="/faq" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 text-slate-300 hover:text-white hover:bg-white/10 transition-colors"><HelpCircle size={16} /><span className="text-sm">FAQ</span></Link>
                   <Link to="/stores?type=RESTAURANT" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-600/20 text-orange-400 hover:bg-orange-600/30 transition-colors"><UtensilsCrossed size={16} /><span className="text-sm">Restaurants</span></Link>
                   <Link to="/stores?type=SHOP" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-purple-600/20 text-purple-400 hover:bg-purple-600/30 transition-colors"><Store size={16} /><span className="text-sm">Shops</span></Link>
-                  <Link to="/orders" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"><ShoppingBag size={16} /><span className="text-sm">My Orders</span></Link>
+                  <Link to="/orders" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"><ListOrdered size={16} /><span className="text-sm">My Orders</span></Link>
                   <Link to="/reserve" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"><Calendar size={16} /><span className="text-sm">Reserve</span></Link>
+
+                  {/* Global Cart Button */}
+                  <Link to="/checkout" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary-500 text-dark-950 font-bold hover:bg-primary-400 transition-colors shadow-lg shadow-primary-500/20 relative">
+                    <ShoppingCart size={16} />
+                    <span className="text-sm">Cart</span>
+                    {cart.length > 0 && (
+                      <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border-2 border-dark-950">
+                        {cart.reduce((s, i) => s + i.quantity, 0)}
+                      </span>
+                    )}
+                  </Link>
                 </>
               ) : null}
 
@@ -155,7 +170,8 @@ function TopNavigation() {
 
           {userRole === 'CUSTOMER' ? (
             <div className="flex flex-col gap-2 mb-2">
-              <NavLink to="/discover" icon={<Compass size={18} />} label="Discover" bgClass="bg-primary-600/10 hover:bg-primary-600/20" textClass="text-primary-400" onClick={closeMenu} />
+              <NavLink to="/" icon={<Compass size={18} />} label="Discover" bgClass="bg-primary-600/10 hover:bg-primary-600/20" textClass="text-primary-400" onClick={closeMenu} />
+              <NavLink to="/faq" icon={<HelpCircle size={18} />} label="FAQ" bgClass="bg-white/5 hover:bg-white/10" textClass="text-slate-200" onClick={closeMenu} />
               <NavLink to="/stores?type=RESTAURANT" icon={<UtensilsCrossed size={18} />} label="Restaurants" bgClass="bg-orange-600/10 hover:bg-orange-600/20" textClass="text-orange-400" onClick={closeMenu} />
               <NavLink to="/stores?type=SHOP" icon={<Store size={18} />} label="Shops" bgClass="bg-purple-600/10 hover:bg-purple-600/20" textClass="text-purple-400" onClick={closeMenu} />
               <NavLink to="/orders" icon={<ShoppingBag size={18} />} label="My Orders" bgClass="bg-white/5 hover:bg-white/10" textClass="text-slate-200" onClick={closeMenu} />
@@ -191,21 +207,21 @@ function App() {
         <main className="flex-1 w-full max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8">
           <Routes>
             {/* Public App Routes */}
-            <Route path="/" element={<LandingPage />} />
+            <Route path="/" element={<DiscoverPage />} />
+            <Route path="/faq" element={<FAQ />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Signup />} />
             <Route path="/tv/:storeId?" element={<PublicDisplay />} />
 
-            {/* Protected Role-Based Routes */}
-            <Route path="/stores" element={<ProtectedRoute role="CUSTOMER"><StoreSelection /></ProtectedRoute>} />
-            <Route path="/menu" element={<ProtectedRoute role="CUSTOMER"><CustomerDashboard /></ProtectedRoute>} />
-            <Route path="/checkout" element={<ProtectedRoute role="CUSTOMER"><Checkout /></ProtectedRoute>} />
-            <Route path="/orders" element={<ProtectedRoute role="CUSTOMER"><CustomerOrders /></ProtectedRoute>} />
-            <Route path="/order/confirmation/:id" element={<ProtectedRoute role="CUSTOMER"><OrderConfirmation /></ProtectedRoute>} />
-            <Route path="/order/track/:id" element={<ProtectedRoute role="CUSTOMER"><OrderTracker /></ProtectedRoute>} />
-            <Route path="/scan" element={<ProtectedRoute role="CUSTOMER"><ScanHandler /></ProtectedRoute>} />
-            <Route path="/reserve" element={<ProtectedRoute role="CUSTOMER"><ReservationForm /></ProtectedRoute>} />
-            <Route path="/discover" element={<ProtectedRoute role="CUSTOMER"><DiscoverPage /></ProtectedRoute>} />
+            {/* Customer Routes (Accessible by any authenticated user) */}
+            <Route path="/stores" element={<ProtectedRoute><StoreSelection /></ProtectedRoute>} />
+            <Route path="/menu" element={<ProtectedRoute><CustomerDashboard /></ProtectedRoute>} />
+            <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
+            <Route path="/orders" element={<ProtectedRoute><CustomerOrders /></ProtectedRoute>} />
+            <Route path="/order/confirmation/:id" element={<ProtectedRoute><OrderConfirmation /></ProtectedRoute>} />
+            <Route path="/order/track/:id" element={<ProtectedRoute><OrderTracker /></ProtectedRoute>} />
+            <Route path="/scan" element={<ProtectedRoute><ScanHandler /></ProtectedRoute>} />
+            <Route path="/reserve" element={<ProtectedRoute><ReservationForm /></ProtectedRoute>} />
             <Route path="/seller" element={<ProtectedRoute><SellerDashboard /></ProtectedRoute>} />
             <Route path="/seller/menu" element={<ProtectedRoute role="SELLER"><MenuBuilder /></ProtectedRoute>} />
             <Route path="/seller/reservations" element={<ProtectedRoute role="SELLER"><ReservationManager /></ProtectedRoute>} />

@@ -40,6 +40,7 @@ export default function OrderTracker() {
         }
         apiClient.post('/reviews/', {
             store: order.store,
+            order: order.id,
             rating: rating,
             comment: comment
         }).then(() => {
@@ -54,7 +55,7 @@ export default function OrderTracker() {
 
     useEffect(() => {
         fetchOrder();
-        const interval = setInterval(fetchOrder, 10000);
+        const interval = setInterval(fetchOrder, 30000);
         return () => clearInterval(interval);
     }, [id]);
 

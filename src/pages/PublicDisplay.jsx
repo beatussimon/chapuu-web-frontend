@@ -49,7 +49,7 @@ export default function PublicDisplay() {
 
     useEffect(() => {
         fetchData();
-        const dataInterval = setInterval(fetchData, 5000); // 5 sec Polling
+        const dataInterval = setInterval(fetchData, 15000); // 15 sec Polling
 
         // Cycle View Logic (10 seconds order board, 10 seconds ad board)
         const viewInterval = setInterval(() => {

@@ -1,31 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, MapPin, TrendingUp, Star, ChefHat, ShoppingBag, ArrowRight, Utensils, X, Sparkles } from 'lucide-react';
+import { Search, MapPin, TrendingUp, Star, ChefHat, ShoppingBag, ArrowRight, Utensils, X, Sparkles, Users, Store } from 'lucide-react';
 import apiClient from '../api/client';
 import { useAppStore } from '../store/useStore';
 import { useCurrency } from '../utils/useCurrency';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
 export default function DiscoverPage() {
     const [stores, setStores] = useState([]);
-    const [trendingProducts, setTrendingProducts] = useState([]);
+    const [stats, setStats] = useState({
+        metrics: { total_stores: 0, total_meals_served: 0 },
+        top_stores: [],
+        trending_items: []
+    });
     const [searchQuery, setSearchQuery] = useState('');
     const [activeFilter, setActiveFilter] = useState('ALL');
     const [loading, setLoading] = useState(true);
-    const { setSelectedStore } = useAppStore();
+    const { setSelectedStore, token, userRole } = useAppStore();
+    const isAuthenticated = !!token;
     const { formatPrice } = useCurrency();
     const navigate = useNavigate();
 
     useEffect(() => {
         Promise.all([
             apiClient.get('/stores/'),
-            apiClient.get('/products/')
-        ]).then(([storesRes, productsRes]) => {
+            apiClient.get('/stats/billboard/')
+        ]).then(([storesRes, statsRes]) => {
             setStores(storesRes.data);
-            // Pick up to 8 products as "trending" (randomized)
-            const shuffled = productsRes.data.sort(() => 0.5 - Math.random());
-            setTrendingProducts(shuffled.slice(0, 8));
+            setStats(statsRes.data);
             setLoading(false);
         }).catch(() => {
             toast.error("Failed to load discover data");
@@ -100,16 +103,64 @@ export default function DiscoverPage() {
         <div className="w-full max-w-7xl mx-auto py-4 space-y-10">
 
             {/* Hero */}
-            <div className="relative glass-dark rounded-3xl border border-white/5 p-8 md:p-12 overflow-hidden">
+            <div className="relative glass-dark rounded-3xl border border-white/5 p-8 md:p-12 overflow-hidden flex flex-col items-center">
                 <div className="absolute top-0 right-0 w-96 h-96 bg-primary-500/10 rounded-full blur-[100px] pointer-events-none"></div>
                 <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/10 rounded-full blur-[80px] pointer-events-none"></div>
 
-                <div className="relative z-10">
-                    <div className="flex items-center gap-3 mb-3">
-                        <Sparkles className="text-primary-400" size={24} />
-                        <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight">Discover</h1>
+                <motion.div
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6 }}
+                    className="z-10 w-full flex flex-col items-center text-center mb-8"
+                >
+                    <div className="inline-flex items-center gap-3 px-5 py-2 rounded-full bg-gradient-to-r from-primary-500/10 to-orange-500/10 border border-primary-500/20 text-primary-400 font-bold text-sm mb-8 shadow-lg shadow-primary-500/5">
+                        <TrendingUp size={18} className="text-orange-500" />
+                        Live Platform Activity
                     </div>
-                    <p className="text-slate-400 mb-6 max-w-lg">Explore restaurants, shops, trending items, and more.</p>
+
+                    {!isAuthenticated ? (
+                        <>
+                            <h1 className="text-5xl md:text-7xl font-black mb-6 leading-tight">
+                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-400 via-orange-500 to-red-500">
+                                    Skip the Wait.<br />Savor the Moment.
+                                </span>
+                            </h1>
+                            <p className="text-lg md:text-xl text-slate-300 mb-8 max-w-2xl font-light mx-auto">
+                                Discover top-rated kitchens, reserve a table, and perfectly time your meal before you even arrive.
+                            </p>
+                            <div className="flex flex-col sm:flex-row gap-4 mb-12 justify-center">
+                                <Link to="/register" className="bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-400 hover:to-primary-500 text-dark-950 font-black px-8 py-4 rounded-full transition-all shadow-xl flex items-center justify-center gap-3 transform hover:-translate-y-1">
+                                    Sign Up & Eat <ArrowRight size={20} />
+                                </Link>
+                                <Link to="/login" className="bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold px-8 py-4 rounded-full transition-all flex items-center justify-center gap-2 backdrop-blur-sm">
+                                    Seller Portal
+                                </Link>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <div className="flex items-center justify-center gap-3 mb-3">
+                                <Sparkles className="text-primary-400" size={32} />
+                                <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight">Discover</h1>
+                            </div>
+                            <p className="text-slate-400 mb-8 max-w-lg mx-auto text-lg">Explore restaurants, shops, trending items, and more.</p>
+                        </>
+                    )}
+
+                    {/* Live Metric Tickers */}
+                    <div className="grid grid-cols-2 gap-6 w-full max-w-xl mx-auto mb-8">
+                        <div className="glass-dark border border-white/10 rounded-3xl p-5 text-center shadow-xl">
+                            <h4 className="text-slate-400 font-bold text-xs mb-1 uppercase tracking-widest">Active Kitchens</h4>
+                            <p className="text-3xl font-black text-white">{loading ? '-' : stats.metrics.total_stores}</p>
+                        </div>
+                        <div className="glass-dark border border-white/10 rounded-3xl p-5 text-center shadow-xl">
+                            <h4 className="text-slate-400 font-bold text-xs mb-1 uppercase tracking-widest">Meals Served</h4>
+                            <p className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-500">{loading ? '-' : stats.metrics.total_meals_served}</p>
+                        </div>
+                    </div>
+                </motion.div>
+
+                <div className="relative z-10 w-full flex flex-col items-center">
 
                     {/* Search */}
                     <div className="relative max-w-xl">
@@ -166,17 +217,113 @@ export default function DiscoverPage() {
                     )}
                 </div>
             ) : (
-                <>
-                    {/* Featured Restaurants */}
+                <div className="flex flex-col gap-12">
+                    {/* Top Restaurants / Trending Kitchens (From stats) */}
+                    {activeFilter === 'ALL' && stats.top_stores && stats.top_stores.length > 0 && (
+                        <div>
+                            <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/10">
+                                <h2 className="text-2xl font-black text-white flex items-center gap-3">
+                                    <Store className="text-primary-500" size={28} />
+                                    Trending Kitchens
+                                </h2>
+                                <button onClick={() => setActiveFilter('RESTAURANT')} className="text-sm text-primary-400 font-bold hover:text-primary-300 transition-colors">View All Directory</button>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {stats.top_stores.map((store, index) => (
+                                    <div key={store.id} onClick={() => {
+                                        const s = stores.find(s => s.id === store.id);
+                                        if (s) handleSelectStore(s);
+                                    }}>
+                                        <motion.div
+                                            whileHover={{ scale: 1.02 }}
+                                            className="glass-dark border border-white/5 hover:border-primary-500/30 rounded-3xl p-4 flex gap-6 items-center transition-all shadow-lg hover:shadow-primary-500/10 cursor-pointer"
+                                        >
+                                            <div className="text-2xl font-black text-slate-700 w-8 text-center">#{index + 1}</div>
+                                            <div className="w-20 h-20 rounded-2xl bg-dark-900 border border-white/10 overflow-hidden shrink-0 flex items-center justify-center">
+                                                {store.image_url ? (
+                                                    <img src={store.image_url} alt={store.name} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <Store size={24} className="text-slate-600" />
+                                                )}
+                                            </div>
+                                            <div className="flex-grow">
+                                                <h3 className="text-xl font-bold text-white mb-1 line-clamp-1">{store.name}</h3>
+                                                <p className="text-slate-400 text-xs mb-2 line-clamp-1">{store.location || 'No location provided'}</p>
+                                                <div className="inline-flex items-center gap-2 px-2 py-1 rounded-lg bg-green-500/10 text-green-400 text-[10px] font-bold border border-green-500/20">
+                                                    <Utensils size={12} /> {store.completed_orders} Orders Completed
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Most Ordered Items / Platform Top Picks (From stats) */}
+                    {activeFilter === 'ALL' && stats.trending_items && stats.trending_items.length > 0 && (
+                        <div>
+                            <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/10">
+                                <h2 className="text-2xl font-black text-white flex items-center gap-3">
+                                    <TrendingUp className="text-orange-500" size={28} />
+                                    Platform Top Picks
+                                </h2>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                {stats.trending_items.map((item, index) => (
+                                    <motion.div
+                                        key={item.id}
+                                        whileHover={{ y: -5 }}
+                                        onClick={() => {
+                                            const s = stores.find(s => s.id === item.store_id);
+                                            // Handle undefined/missing stores gracefully in the UI if possible
+                                            if (s) handleSelectStore(s);
+                                        }}
+                                        className="cursor-pointer glass-dark border border-white/5 rounded-3xl p-4 relative overflow-hidden group hover:border-orange-500/30 transition-all shadow-lg flex flex-col"
+                                    >
+                                        <div className="absolute top-0 right-0 bg-orange-500 text-white text-[10px] font-black px-3 py-1 rounded-bl-xl z-20 shadow-md">
+                                            #{index + 1} Popular
+                                        </div>
+
+                                        <div className="w-full h-32 rounded-xl bg-dark-900 mb-4 overflow-hidden relative">
+                                            {item.image_url ? (
+                                                <img src={item.image_url} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center">
+                                                    <Utensils size={24} className="text-slate-600" />
+                                                </div>
+                                            )}
+                                            <div className="absolute inset-0 bg-gradient-to-t from-dark-950 via-transparent to-transparent"></div>
+                                            <div className="absolute bottom-2 left-3 right-3 flex justify-between items-end">
+                                                <span className="text-[10px] font-bold text-slate-300 truncate w-2/3 shadow-sm">{item.store_name}</span>
+                                                <span className="bg-primary-500 text-dark-950 px-2 py-1 rounded-md text-[10px] font-black shadow-lg">{formatPrice(item.price)}</span>
+                                            </div>
+                                        </div>
+
+                                        <h3 className="text-base font-bold text-white mb-1 line-clamp-1">{item.name}</h3>
+                                        <p className="text-xs text-slate-400 flex items-center gap-1 font-medium mt-auto pt-2 border-t border-white/5">
+                                            <Users size={12} className="text-slate-500" /> Ordered {item.times_ordered} times
+                                        </p>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* All Restaurants Directory */}
                     {restaurants.length > 0 && (activeFilter === 'ALL' || activeFilter === 'RESTAURANT') && (
                         <div>
                             <div className="flex items-center justify-between mb-4">
                                 <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                                    <ChefHat size={22} className="text-primary-400" /> Restaurants
+                                    <ChefHat size={22} className="text-primary-400" /> {activeFilter === 'ALL' ? 'More Restaurants' : 'All Restaurants'}
                                 </h2>
-                                <button onClick={() => { setActiveFilter('RESTAURANT'); }} className="text-sm text-primary-400 hover:text-primary-300 flex items-center gap-1">
-                                    See all <ArrowRight size={14} />
-                                </button>
+                                {activeFilter === 'ALL' && (
+                                    <button onClick={() => setActiveFilter('RESTAURANT')} className="text-sm text-primary-400 hover:text-primary-300 flex items-center gap-1">
+                                        See all directory <ArrowRight size={14} />
+                                    </button>
+                                )}
                             </div>
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                                 {restaurants.slice(0, activeFilter === 'ALL' ? 4 : 100).map(s => <StoreCard key={s.id} store={s} featured />)}
@@ -184,60 +331,25 @@ export default function DiscoverPage() {
                         </div>
                     )}
 
-                    {/* Popular Shops */}
+                    {/* All Shops Directory */}
                     {shops.length > 0 && (activeFilter === 'ALL' || activeFilter === 'SHOP') && (
                         <div>
                             <div className="flex items-center justify-between mb-4">
                                 <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                                    <ShoppingBag size={22} className="text-purple-400" /> Shops
+                                    <ShoppingBag size={22} className="text-purple-400" /> {activeFilter === 'ALL' ? 'More Shops' : 'All Shops'}
                                 </h2>
-                                <button onClick={() => { setActiveFilter('SHOP'); }} className="text-sm text-purple-400 hover:text-purple-300 flex items-center gap-1">
-                                    See all <ArrowRight size={14} />
-                                </button>
+                                {activeFilter === 'ALL' && (
+                                    <button onClick={() => setActiveFilter('SHOP')} className="text-sm text-purple-400 hover:text-purple-300 flex items-center gap-1">
+                                        See all directory <ArrowRight size={14} />
+                                    </button>
+                                )}
                             </div>
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                                 {shops.slice(0, activeFilter === 'ALL' ? 4 : 100).map(s => <StoreCard key={s.id} store={s} />)}
                             </div>
                         </div>
                     )}
-
-                    {/* Trending Items */}
-                    {trendingProducts.length > 0 && activeFilter === 'ALL' && (
-                        <div>
-                            <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                                <TrendingUp size={22} className="text-orange-400" /> Trending Items
-                            </h2>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                {trendingProducts.map(p => (
-                                    <motion.div key={p.id} whileHover={{ y: -3 }} className="glass-dark rounded-2xl border border-white/5 overflow-hidden hover:border-orange-500/20 transition-all cursor-pointer group"
-                                        onClick={() => {
-                                            // Find the store and navigate
-                                            const store = stores.find(s => s.id === p.store);
-                                            if (store) handleSelectStore(store);
-                                        }}
-                                    >
-                                        <div className="relative w-full aspect-square bg-dark-900 overflow-hidden">
-                                            {p.image_url ? (
-                                                <img src={p.image_url} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center">
-                                                    <Utensils size={24} className="text-white/10" />
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div className="p-3">
-                                            <h4 className="font-semibold text-sm text-slate-100 line-clamp-1">{p.name}</h4>
-                                            <div className="flex items-center justify-between mt-2">
-                                                <span className="text-sm font-bold text-primary-400">{formatPrice(p.price)}</span>
-                                                <span className="text-[10px] text-slate-600">{stores.find(s => s.id === p.store)?.name}</span>
-                                            </div>
-                                        </div>
-                                    </motion.div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                </>
+                </div>
             )}
         </div>
     );

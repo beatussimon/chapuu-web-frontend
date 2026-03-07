@@ -49,7 +49,7 @@ export default function AdminDashboard() {
 
     useEffect(() => {
         fetchData();
-        const interval = setInterval(fetchData, 10000);
+        const interval = setInterval(fetchData, 60000);
         return () => clearInterval(interval);
     }, []);
 
@@ -64,13 +64,22 @@ export default function AdminDashboard() {
                 toast.success(`Seller ${newUsername} created successfully!`);
                 setNewUsername('');
                 setNewPassword('');
-                fetchData();
             })
-            .catch(err => toast.error("Failed to create seller user."));
+            .catch(err => {
+                const errorMessage = err.response?.data
+                    ? JSON.stringify(err.response.data)
+                    : err.message;
+                toast.error(`Failed to create seller user: ${errorMessage}`, { duration: 6000 });
+            });
     };
 
     const handleCreateStore = (e) => {
         e.preventDefault();
+
+        if (!newStoreName?.trim() || !newStoreAddress?.trim() || !selectedOwner) {
+            toast.error("Please fill in all required fields (Name, Location, Owner).");
+            return;
+        }
 
         const formData = new FormData();
         formData.append('name', newStoreName);
@@ -82,11 +91,12 @@ export default function AdminDashboard() {
         if (newContactEmail) formData.append('contact_email', newContactEmail);
         if (newStoreImage) formData.append('image', newStoreImage);
 
+        const toastId = toast.loading('Creating store...');
         apiClient.post('/stores/', formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
         })
             .then(res => {
-                toast.success(`Store ${newStoreName} created!`);
+                toast.success(`Store ${newStoreName} created!`, { id: toastId });
                 setNewStoreName('');
                 setNewStoreAddress('');
                 setNewContactPhone('');
@@ -96,7 +106,12 @@ export default function AdminDashboard() {
                 setSelectedOwner('');
                 fetchData();
             })
-            .catch(err => toast.error("Failed to create store."));
+            .catch(err => {
+                const errorMessage = err.response?.data
+                    ? (typeof err.response.data === 'object' ? JSON.stringify(err.response.data) : err.response.data)
+                    : err.message;
+                toast.error(`Failed to create store: ${errorMessage}`, { id: toastId, duration: 6000 });
+            });
     };
 
     const handleUpdateStore = (e) => {

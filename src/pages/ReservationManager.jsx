@@ -16,7 +16,7 @@ export default function ReservationManager() {
 
     useEffect(() => {
         fetchReservations();
-        const interval = setInterval(fetchReservations, 15000);
+        const interval = setInterval(fetchReservations, 30000);
         // Live clock for elapsed time
         const clockInterval = setInterval(() => setNow(new Date()), 10000);
         return () => { clearInterval(interval); clearInterval(clockInterval); };
@@ -128,8 +128,8 @@ export default function ReservationManager() {
                     {res.status === 'ACTIVE' && (
                         <button onClick={() => handleCheckOut(res)}
                             className={`w-full py-2 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 ${overdue
-                                    ? 'bg-red-500 text-white hover:bg-red-400 shadow-lg shadow-red-500/20'
-                                    : 'bg-green-500/10 text-green-500 hover:bg-green-500/20'
+                                ? 'bg-red-500 text-white hover:bg-red-400 shadow-lg shadow-red-500/20'
+                                : 'bg-green-500/10 text-green-500 hover:bg-green-500/20'
                                 }`}
                         >
                             <LogOut size={16} /> {overdue ? 'End Session (Overdue)' : 'Check Out'}

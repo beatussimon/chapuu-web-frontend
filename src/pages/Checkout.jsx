@@ -97,8 +97,10 @@ export default function Checkout() {
                 navigate(`/order/confirmation/${res.data.id}`);
             })
             .catch(err => {
-                console.error(err.response?.data);
-                toast.error("Checkout failed: " + (err.response?.data?.detail || err.message), { id: toastId });
+                console.error("Order creation failed payload:", err.response?.data);
+                const errorMessage = err.response?.data?.detail
+                    || (typeof err.response?.data === 'object' ? JSON.stringify(err.response.data) : err.message);
+                toast.error("Checkout failed: " + errorMessage, { id: toastId, duration: 6000 });
                 setIsCheckingOut(false);
             });
     }
