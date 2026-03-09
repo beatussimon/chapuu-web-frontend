@@ -32,17 +32,22 @@ export function useCurrency() {
                 })
                 .catch(err => {
                     console.error("Failed to load currencies", err);
-                    // Fallback to TZS defaults
                     const fallback = [{ code: 'TZS', symbol: 'TSh', rate_to_base: '1.000000', is_default: true }];
                     _currencyCache = fallback;
                     return fallback;
                 });
         }
 
+        // Use the persistent promise to ensure we only wait for one request
+        let isMounted = true;
         _fetchPromise.then(data => {
-            setCurrencies(data);
-            setReady(true);
+            if (isMounted) {
+                setCurrencies(data);
+                setReady(true);
+            }
         });
+
+        return () => { isMounted = false; };
     }, []);
 
     const defaultCurrency = currencies.find(c => c.is_default) || currencies[0] || { code: 'TZS', symbol: 'TSh', rate_to_base: '1.000000' };

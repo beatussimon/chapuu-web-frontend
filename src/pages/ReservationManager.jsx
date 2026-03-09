@@ -72,6 +72,12 @@ export default function ReservationManager() {
     const upcoming = reservations.filter(r => r.status === 'CONFIRMED');
     const active = reservations.filter(r => r.status === 'ACTIVE');
 
+    const handleNoShow = (id) => {
+        apiClient.post(`/reservations/${id}/no_show/`)
+            .then(() => { toast.success("Marked as No-Show."); fetchReservations(); })
+            .catch(err => toast.error("Update failed."));
+    }
+
     const renderCard = (res) => {
         const overdue = isOverdue(res);
         const elapsed = getElapsedTime(res.session_started_at);
@@ -121,9 +127,14 @@ export default function ReservationManager() {
                         </button>
                     )}
                     {(res.status === 'PENDING' || res.status === 'CONFIRMED') && (
-                        <button className="px-4 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors flex items-center justify-center">
-                            <X size={18} />
-                        </button>
+                        <>
+                            <button onClick={() => handleNoShow(res.id)} className="px-3 bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 rounded-lg transition-colors flex items-center justify-center border border-orange-500/20" title="Mark No-Show">
+                                <AlertTriangle size={16} />
+                            </button>
+                            <button className="px-4 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors flex items-center justify-center border border-red-500/20">
+                                <X size={18} />
+                            </button>
+                        </>
                     )}
                     {res.status === 'ACTIVE' && (
                         <button onClick={() => handleCheckOut(res)}
@@ -141,35 +152,51 @@ export default function ReservationManager() {
     };
 
     return (
-        <div className="w-full min-h-screen py-6 px-2">
-            <div className="flex items-center justify-between mb-8">
-                <h1 className="text-3xl font-bold flex items-center gap-3"><CalendarIcon className="text-indigo-500" /> Host Stand</h1>
-                <div className="text-sm text-slate-500">Live updating...</div>
+        <div className="w-full min-h-screen py-4 md:py-6 px-2 md:px-4 text-white overflow-x-hidden">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+                <div>
+                    <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-3">
+                        <CalendarIcon className="text-indigo-500" size={28} /> Host Stand
+                    </h1>
+                    <p className="text-slate-500 text-xs mt-1 font-medium uppercase tracking-wider">Live Floor Management</p>
+                </div>
+                <button onClick={fetchReservations} className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-bold transition-all border border-white/10 self-stretch sm:self-auto">
+                    Sync Now
+                </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
                 {/* Column: Pending */}
-                <div className="flex flex-col bg-black/20 rounded-3xl p-4 overflow-hidden h-[60vh] md:h-[80vh]">
-                    <h2 className="text-lg font-semibold text-slate-400 mb-4 sticky top-0 px-2">Pending Requests <span className="ml-2 bg-white/10 text-xs px-2 py-0.5 rounded-full">{pending.length}</span></h2>
-                    <div className="flex-1 overflow-y-auto px-2 custom-scrollbar pb-10">
-                        {pending.length === 0 ? <p className="text-slate-600 text-sm text-center py-10">No pending requests</p> : pending.map(renderCard)}
+                <div className="flex flex-col bg-dark-900/50 border border-white/5 rounded-3xl p-4 overflow-hidden h-[500px] lg:h-[75vh]">
+                    <h2 className="text-sm font-black text-slate-400 mb-4 sticky top-0 px-2 flex items-center gap-2 uppercase tracking-tighter">
+                        Pending Requests 
+                        <span className="bg-white/10 text-[10px] px-2 py-0.5 rounded-full">{pending.length}</span>
+                    </h2>
+                    <div className="flex-1 overflow-y-auto px-1 custom-scrollbar pb-10 space-y-4">
+                        {pending.length === 0 ? <p className="text-slate-600 text-xs text-center py-10 italic">No pending requests</p> : pending.map(renderCard)}
                     </div>
                 </div>
 
                 {/* Column: Upcoming */}
-                <div className="flex flex-col bg-black/20 rounded-3xl p-4 overflow-hidden h-[60vh] md:h-[80vh]">
-                    <h2 className="text-lg font-semibold text-primary-400 mb-4 sticky top-0 px-2">Confirmed Upcoming <span className="ml-2 bg-primary-500/20 text-primary-400 text-xs px-2 py-0.5 rounded-full">{upcoming.length}</span></h2>
-                    <div className="flex-1 overflow-y-auto px-2 custom-scrollbar pb-10">
-                        {upcoming.length === 0 ? <p className="text-slate-600 text-sm text-center py-10">No upcoming reservations</p> : upcoming.map(renderCard)}
+                <div className="flex flex-col bg-dark-900/50 border border-white/5 rounded-3xl p-4 overflow-hidden h-[500px] lg:h-[75vh]">
+                    <h2 className="text-sm font-black text-primary-400 mb-4 sticky top-0 px-2 flex items-center gap-2 uppercase tracking-tighter">
+                        Confirmed 
+                        <span className="bg-primary-500/20 text-primary-400 text-[10px] px-2 py-0.5 rounded-full">{upcoming.length}</span>
+                    </h2>
+                    <div className="flex-1 overflow-y-auto px-1 custom-scrollbar pb-10 space-y-4">
+                        {upcoming.length === 0 ? <p className="text-slate-600 text-xs text-center py-10 italic">No upcoming arrivals</p> : upcoming.map(renderCard)}
                     </div>
                 </div>
 
                 {/* Column: Active (Seated) */}
-                <div className="flex flex-col bg-black/20 rounded-3xl p-4 overflow-hidden h-[60vh] md:h-[80vh]">
-                    <h2 className="text-lg font-semibold text-green-400 mb-4 sticky top-0 px-2">Currently Seated <span className="ml-2 bg-green-500/20 text-green-500 text-xs px-2 py-0.5 rounded-full">{active.length}</span></h2>
-                    <div className="flex-1 overflow-y-auto px-2 custom-scrollbar pb-10">
-                        {active.length === 0 ? <p className="text-slate-600 text-sm text-center py-10">No tables active</p> : active.map(renderCard)}
+                <div className="flex flex-col bg-dark-900/50 border border-white/5 rounded-3xl p-4 overflow-hidden h-[500px] lg:h-[75vh]">
+                    <h2 className="text-sm font-black text-green-400 mb-4 sticky top-0 px-2 flex items-center gap-2 uppercase tracking-tighter">
+                        Seated Guests
+                        <span className="bg-green-500/20 text-green-500 text-[10px] px-2 py-0.5 rounded-full">{active.length}</span>
+                    </h2>
+                    <div className="flex-1 overflow-y-auto px-1 custom-scrollbar pb-10 space-y-4">
+                        {active.length === 0 ? <p className="text-slate-600 text-xs text-center py-10 italic">Floor is empty</p> : active.map(renderCard)}
                     </div>
                 </div>
 

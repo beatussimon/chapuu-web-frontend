@@ -131,47 +131,59 @@ export default function Checkout() {
                         <div className="space-y-4">
                             <div>
                                 <label className="text-sm font-medium text-slate-400 mb-2 block">Order Method</label>
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                                    {isShop ? (
-                                        /* Shop modes: Pickup & Delivery */
-                                        <>
-                                            <button
-                                                onClick={() => setFulfillmentMode('PICKUP')}
-                                                className={`py-3 rounded-xl text-sm font-medium transition-all flex flex-col items-center gap-2 ${fulfillmentMode === 'PICKUP' ? 'bg-primary-500 text-dark-900 shadow-lg shadow-primary-500/20' : 'bg-white/5 text-slate-300 hover:bg-white/10'}`}
-                                            >
-                                                <ShoppingBag size={18} /> Pickup
-                                            </button>
-                                            <button
-                                                onClick={() => setFulfillmentMode('DELIVERY')}
-                                                className={`py-3 rounded-xl text-sm font-medium transition-all flex flex-col items-center gap-2 ${fulfillmentMode === 'DELIVERY' ? 'bg-primary-500 text-dark-900 shadow-lg shadow-primary-500/20' : 'bg-white/5 text-slate-300 hover:bg-white/10'}`}
-                                            >
-                                                <MapPin size={18} /> Delivery
-                                            </button>
-                                        </>
-                                    ) : (
-                                        /* Restaurant modes: Takeaway, Dine In, Delivery */
-                                        <>
-                                            <button
-                                                onClick={() => setFulfillmentMode('TAKEAWAY')}
-                                                className={`py-3 rounded-xl text-sm font-medium transition-all flex flex-col items-center gap-2 ${fulfillmentMode === 'TAKEAWAY' ? 'bg-primary-500 text-dark-900 shadow-lg shadow-primary-500/20' : 'bg-white/5 text-slate-300 hover:bg-white/10'}`}
-                                            >
-                                                <ShoppingCart size={18} /> Takeaway
-                                            </button>
-                                            <button
-                                                onClick={() => setFulfillmentMode('DINE_IN')}
-                                                className={`py-3 rounded-xl text-sm font-medium transition-all flex flex-col items-center gap-2 ${fulfillmentMode === 'DINE_IN' ? 'bg-primary-500 text-dark-900 shadow-lg shadow-primary-500/20' : 'bg-white/5 text-slate-300 hover:bg-white/10'}`}
-                                            >
-                                                <Utensils size={18} /> Dine In
-                                            </button>
-                                            <button
-                                                onClick={() => setFulfillmentMode('DELIVERY')}
-                                                className={`py-3 rounded-xl text-sm font-medium transition-all flex flex-col items-center gap-2 ${fulfillmentMode === 'DELIVERY' ? 'bg-primary-500 text-dark-900 shadow-lg shadow-primary-500/20' : 'bg-white/5 text-slate-300 hover:bg-white/10'}`}
-                                            >
-                                                <MapPin size={18} /> Delivery
-                                            </button>
-                                        </>
-                                    )}
-                                </div>
+                                {activeReservation ? (
+                                    <div className="bg-primary-500/10 border border-primary-500/20 rounded-xl p-4 flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-primary-500 flex items-center justify-center text-dark-950">
+                                            <Utensils size={20} />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold text-primary-400">Reservation Pre-order</p>
+                                            <p className="text-xs text-slate-400 mt-0.5">Linked to reservation #{activeReservation}</p>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                        {isShop ? (
+                                            /* Shop modes: Pickup & Delivery */
+                                            <>
+                                                <button
+                                                    onClick={() => setFulfillmentMode('PICKUP')}
+                                                    className={`py-3 rounded-xl text-sm font-medium transition-all flex flex-col items-center gap-2 ${fulfillmentMode === 'PICKUP' ? 'bg-primary-500 text-dark-900 shadow-lg shadow-primary-500/20' : 'bg-white/5 text-slate-300 hover:bg-white/10'}`}
+                                                >
+                                                    <ShoppingBag size={18} /> Pickup
+                                                </button>
+                                                <button
+                                                    onClick={() => setFulfillmentMode('DELIVERY')}
+                                                    className={`py-3 rounded-xl text-sm font-medium transition-all flex flex-col items-center gap-2 ${fulfillmentMode === 'DELIVERY' ? 'bg-primary-500 text-dark-900 shadow-lg shadow-primary-500/20' : 'bg-white/5 text-slate-300 hover:bg-white/10'}`}
+                                                >
+                                                    <MapPin size={18} /> Delivery
+                                                </button>
+                                            </>
+                                        ) : (
+                                            /* Restaurant modes: Takeaway, Dine In, Delivery */
+                                            <>
+                                                <button
+                                                    onClick={() => setFulfillmentMode('TAKEAWAY')}
+                                                    className={`py-3 rounded-xl text-sm font-medium transition-all flex flex-col items-center gap-2 ${fulfillmentMode === 'TAKEAWAY' ? 'bg-primary-500 text-dark-900 shadow-lg shadow-primary-500/20' : 'bg-white/5 text-slate-300 hover:bg-white/10'}`}
+                                                >
+                                                    <ShoppingCart size={18} /> Takeaway
+                                                </button>
+                                                <button
+                                                    onClick={() => setFulfillmentMode('DINE_IN')}
+                                                    className={`py-3 rounded-xl text-sm font-medium transition-all flex flex-col items-center gap-2 ${fulfillmentMode === 'DINE_IN' ? 'bg-primary-500 text-dark-900 shadow-lg shadow-primary-500/20' : 'bg-white/5 text-slate-300 hover:bg-white/10'}`}
+                                                >
+                                                    <Utensils size={18} /> Dine In
+                                                </button>
+                                                <button
+                                                    onClick={() => setFulfillmentMode('DELIVERY')}
+                                                    className={`py-3 rounded-xl text-sm font-medium transition-all flex flex-col items-center gap-2 ${fulfillmentMode === 'DELIVERY' ? 'bg-primary-500 text-dark-900 shadow-lg shadow-primary-500/20' : 'bg-white/5 text-slate-300 hover:bg-white/10'}`}
+                                                >
+                                                    <MapPin size={18} /> Delivery
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+                                )}
                             </div>
 
                             <AnimatePresence>

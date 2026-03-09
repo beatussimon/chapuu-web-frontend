@@ -80,24 +80,26 @@ function TopNavigation() {
                 {userRole}
               </div>
 
-              {userRole === 'SELLER' || userRole === 'ADMIN' ? (
+              {['SELLER', 'ADMIN', 'CHEF', 'ACCOUNTANT', 'DELIVERY'].includes(userRole) ? (
                 <>
-                  <Link to="/seller" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary-600/20 text-primary-500 hover:bg-primary-600/30 transition-colors"><TerminalSquare size={16} /><span className="text-sm">POS</span></Link>
-                  <Link to="/seller/reservations" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/30 transition-colors"><Calendar size={16} /><span className="text-sm">Host</span></Link>
-                  <Link to="/seller/menu" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-pink-600/20 text-pink-400 hover:bg-pink-600/30 transition-colors"><Utensils size={16} /><span className="text-sm">Menu</span></Link>
-                  <Link to="/seller/analytics" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-cyan-600/20 text-cyan-400 hover:bg-cyan-600/30 transition-colors"><BarChart3 size={16} /><span className="text-sm">Analytics</span></Link>
-                  <Link to="/seller/inventory" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-600/20 text-orange-400 hover:bg-orange-600/30 transition-colors"><Package size={16} /><span className="text-sm">Stock</span></Link>
-                  <Link to="/seller/qrcodes" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"><QrCode size={16} /><span className="text-sm">QRs</span></Link>
+                  <Link to="/seller" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary-600/20 text-primary-500 hover:bg-primary-600/30 transition-colors">
+                    <TerminalSquare size={16} /><span className="text-sm">Dashboard</span>
+                  </Link>
+                  {['SELLER', 'ADMIN'].includes(userRole) && (
+                    <>
+                      <Link to="/seller/reservations" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/30 transition-colors"><Calendar size={16} /><span className="text-sm">Host</span></Link>
+                      <Link to="/seller/menu" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-pink-600/20 text-pink-400 hover:bg-pink-600/30 transition-colors"><Utensils size={16} /><span className="text-sm">Menu</span></Link>
+                      <Link to="/seller/analytics" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-cyan-600/20 text-cyan-400 hover:bg-cyan-600/30 transition-colors"><BarChart3 size={16} /><span className="text-sm">Analytics</span></Link>
+                      <Link to="/seller/inventory" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-600/20 text-orange-400 hover:bg-orange-600/30 transition-colors"><Package size={16} /><span className="text-sm">Stock</span></Link>
+                      <Link to="/seller/qrcodes" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"><QrCode size={16} /><span className="text-sm">QRs</span></Link>
+                    </>
+                  )}
                   <Link to="/tv/1" target="_blank" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-yellow-600/20 text-yellow-500 hover:bg-yellow-600/30 transition-colors"><Tv size={16} /><span className="text-sm">TV Mode</span></Link>
                   {userRole === 'ADMIN' && (
                     <Link to="/admin" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-purple-600/20 text-purple-400 hover:bg-purple-600/30 transition-colors"><Shield size={16} /><span className="text-sm">Admin</span></Link>
                   )}
                 </>
               ) : null}
-
-              {userRole === 'CHEF' && (
-                <Link to="/seller" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary-600/20 text-primary-500 hover:bg-primary-600/30 transition-colors"><TerminalSquare size={16} /><span className="text-sm">KDS System</span></Link>
-              )}
 
               {userRole === 'CUSTOMER' ? (
                 <>
@@ -147,26 +149,24 @@ function TopNavigation() {
       {mobileMenuOpen && token && (
         <div className="absolute top-[100%] left-0 w-full bg-dark-950 border-b border-white/5 shadow-2xl p-4 flex flex-col gap-2 lg:hidden animate-in slide-in-from-top-4 duration-200">
 
-          {userRole === 'SELLER' || userRole === 'ADMIN' ? (
+          {['SELLER', 'ADMIN', 'CHEF', 'ACCOUNTANT', 'DELIVERY'].includes(userRole) ? (
             <div className="grid grid-cols-2 gap-2 mb-2">
-              <NavLink to="/seller" icon={<TerminalSquare size={18} />} label="POS System" bgClass="bg-primary-600/10 hover:bg-primary-600/20" textClass="text-primary-400" onClick={closeMenu} />
-              <NavLink to="/seller/reservations" icon={<Calendar size={18} />} label="Host Stand" bgClass="bg-indigo-600/10 hover:bg-indigo-600/20" textClass="text-indigo-400" onClick={closeMenu} />
-              <NavLink to="/seller/menu" icon={<Utensils size={18} />} label="Menu Builder" bgClass="bg-pink-600/10 hover:bg-pink-600/20" textClass="text-pink-400" onClick={closeMenu} />
-              <NavLink to="/seller/analytics" icon={<BarChart3 size={18} />} label="Analytics" bgClass="bg-cyan-600/10 hover:bg-cyan-600/20" textClass="text-cyan-400" onClick={closeMenu} />
-              <NavLink to="/seller/inventory" icon={<Package size={18} />} label="Stock Manage" bgClass="bg-orange-600/10 hover:bg-orange-600/20" textClass="text-orange-400" onClick={closeMenu} />
-              <NavLink to="/seller/qrcodes" icon={<QrCode size={18} />} label="Table QRs" bgClass="bg-white/5 hover:bg-white/10" textClass="text-slate-200" onClick={closeMenu} />
-              <NavLink to="/tv/1" icon={<Tv size={18} />} label="Launch TV Dashboard" bgClass="bg-yellow-600/10 hover:bg-yellow-600/20" textClass="text-yellow-500" onClick={closeMenu} />
+              <NavLink to="/seller" icon={<TerminalSquare size={18} />} label="Dashboard" bgClass="bg-primary-600/10 hover:bg-primary-600/20" textClass="text-primary-400" onClick={closeMenu} />
+              {['SELLER', 'ADMIN'].includes(userRole) && (
+                <>
+                  <NavLink to="/seller/reservations" icon={<Calendar size={18} />} label="Host Stand" bgClass="bg-indigo-600/10 hover:bg-indigo-600/20" textClass="text-indigo-400" onClick={closeMenu} />
+                  <NavLink to="/seller/menu" icon={<Utensils size={18} />} label="Menu Builder" bgClass="bg-pink-600/10 hover:bg-pink-600/20" textClass="text-pink-400" onClick={closeMenu} />
+                  <NavLink to="/seller/analytics" icon={<BarChart3 size={18} />} label="Analytics" bgClass="bg-cyan-600/10 hover:bg-cyan-600/20" textClass="text-cyan-400" onClick={closeMenu} />
+                  <NavLink to="/seller/inventory" icon={<Package size={18} />} label="Stock Manage" bgClass="bg-orange-600/10 hover:bg-orange-600/20" textClass="text-orange-400" onClick={closeMenu} />
+                  <NavLink to="/seller/qrcodes" icon={<QrCode size={18} />} label="Table QRs" bgClass="bg-white/5 hover:bg-white/10" textClass="text-slate-200" onClick={closeMenu} />
+                </>
+              )}
+              <NavLink to="/tv/1" icon={<Tv size={18} />} label="TV Dashboard" bgClass="bg-yellow-600/10 hover:bg-yellow-600/20" textClass="text-yellow-500" onClick={closeMenu} />
               {userRole === 'ADMIN' && (
                 <NavLink to="/admin" icon={<Shield size={18} />} label="Platform Admin" bgClass="bg-purple-600/10 hover:bg-purple-600/20" textClass="text-purple-400 col-span-2 justify-center" onClick={closeMenu} />
               )}
             </div>
           ) : null}
-
-          {userRole === 'CHEF' && (
-            <div className="flex flex-col gap-2 mb-2">
-              <NavLink to="/seller" icon={<TerminalSquare size={18} />} label="KDS System" bgClass="bg-primary-600/10 hover:bg-primary-600/20" textClass="text-primary-400" onClick={closeMenu} />
-            </div>
-          )}
 
           {userRole === 'CUSTOMER' ? (
             <div className="flex flex-col gap-2 mb-2">

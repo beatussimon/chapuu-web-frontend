@@ -90,9 +90,11 @@ export default function OrderConfirmation() {
                     <MessageSquare size={18} /> Send manually
                 </button>
 
-                <Link to={`/order/track/${order.id}`} className="bg-white/10 hover:bg-white/20 text-white font-medium py-3 px-6 rounded-xl flex items-center justify-center gap-2 transition-all border border-white/10">
-                    Track Order <ArrowRight size={18} />
-                </Link>
+                {order.id && (
+                    <Link to={`/order/track/${order.id}`} className="bg-white/10 hover:bg-white/20 text-white font-medium py-3 px-6 rounded-xl flex items-center justify-center gap-2 transition-all border border-white/10">
+                        Track Order <ArrowRight size={18} />
+                    </Link>
+                )}
 
                 <Link to="/menu" className="bg-white/10 hover:bg-white/20 text-white font-medium py-3 px-6 rounded-xl flex items-center justify-center gap-2 transition-all border border-white/10">
                     Keep Browsing <ArrowRight size={18} />

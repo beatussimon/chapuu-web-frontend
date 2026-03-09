@@ -105,7 +105,31 @@ export default function ReservationForm() {
                 }
             })
             .catch(err => {
-                const msg = err.response?.data?.error || "Booking failed. Please try again.";
+                let msg = "Booking failed. Please try again.";
+                const data = err.response?.data;
+                
+                if (data) {
+                    if (typeof data === 'string') {
+                        msg = data;
+                    } else if (data.error) {
+                        msg = data.error;
+                    } else if (data.detail) {
+                        msg = data.detail;
+                    } else {
+                        // Extract first validation error if it's a field-level error object
+                        const firstKey = Object.keys(data)[0];
+                        if (firstKey) {
+                            const val = data[firstKey];
+                            msg = Array.isArray(val) ? val[0] : val;
+                            if (typeof msg === 'object') msg = JSON.stringify(msg);
+                            // Prepend field name for clarity if it's not a generic error
+                            if (firstKey !== 'non_field_errors' && firstKey !== 'detail') {
+                                msg = `${firstKey}: ${msg}`;
+                            }
+                        }
+                    }
+                }
+                
                 setErrorMsg(msg);
                 toast.error(msg, { id: toastId });
                 setIsSubmitting(false);
@@ -118,7 +142,9 @@ export default function ReservationForm() {
     };
 
     const handlePreOrderFood = () => {
-        useAppStore.setState({ activeReservation: confirmedRes.id, activeStore: selectedStore });
+        // Global state for reservation could be set here, but URL params/state is simpler.
+        // Zustand could also hold this: useAppStore.getState().setActiveReservation(confirmedRes.id)
+        useAppStore.setState({ activeReservation: confirmedRes.id, selectedStore: currentStore });
         navigate('/menu');
     };
 

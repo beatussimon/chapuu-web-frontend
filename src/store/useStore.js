@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import apiClient from '../api/client';
+import apiClient, { BACKEND_URL } from '../api/client';
 
 export const useAppStore = create(
     persist(
@@ -27,17 +27,38 @@ export const useAppStore = create(
             userRole: null,
 
             login: async (username, password) => {
-                const response = await apiClient.post('/token/', { username, password });
-                const { access, refresh } = response.data;
+                // 1. CLEAN SLATE
+                localStorage.removeItem('access_token');
+                localStorage.removeItem('refresh_token');
+                
+                // 2. NUCLEAR OPTION: Use native browser FETCH to bypass ALL axios logic/interceptors
+                const response = await fetch(`${BACKEND_URL}/api/token/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.detail || errorData.error || 'Invalid credentials');
+                }
+
+                const data = await response.json();
+                const { access, refresh } = data;
 
                 localStorage.setItem('access_token', access);
                 localStorage.setItem('refresh_token', refresh);
 
-                // Fetch real role from the backend instead of guessing from username
-                const meRes = await apiClient.get('/auth/users/me/', {
-                    headers: { Authorization: `Bearer ${access}` }
-                });
-                const role = meRes.data.role || 'CUSTOMER';
+                // 3. Fetch role (using main client is safe now)
+                let role = 'CUSTOMER';
+                try {
+                    const meRes = await apiClient.get('/auth/users/me/');
+                    role = meRes.data.role || 'CUSTOMER';
+                } catch (meErr) {
+                    console.error("Profile fetch failed, defaulting to CUSTOMER", meErr);
+                }
 
                 set({ token: access, userRole: role });
                 return role;
@@ -65,7 +86,7 @@ export const useAppStore = create(
                 userRole: state.userRole,
                 cart: state.cart,
                 selectedStore: state.selectedStore,
-                activeReservation: state.activeReservation // Keep it in local storage in case of refresh
+                activeReservation: state.activeReservation
             }),
         }
     )

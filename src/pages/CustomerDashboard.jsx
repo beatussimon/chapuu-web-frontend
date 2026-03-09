@@ -33,7 +33,9 @@ export default function CustomerDashboard() {
         const fetchStoreData = () => {
             apiClient.get(`/products/?store=${selectedStore.id}`)
                 .then(res => {
-                    setProducts(res.data);
+                    // De-duplicate products by ID just in case API returns multiples
+                    const unique = Array.from(new Map(res.data.map(item => [item.id, item])).values());
+                    setProducts(unique);
                     setLoading(false);
                 })
                 .catch(err => {
@@ -237,19 +239,6 @@ export default function CustomerDashboard() {
                                                                 <UtensilsCrossed size={28} className="text-white/10" />
                                                             </div>
                                                         )}
-                                                        {/* Quick add button overlay */}
-                                                        {!cartItem && (
-                                                            <button
-                                                                onClick={() => {
-                                                                    triggerHaptic(hapticPatterns.light);
-                                                                    addToCart(p, 1);
-                                                                    toast.success(`Added ${p.name}`, { position: 'bottom-center', duration: 1500 });
-                                                                }}
-                                                                className="absolute bottom-2 right-2 bg-primary-500 hover:bg-primary-400 text-dark-900 rounded-xl p-2.5 shadow-lg shadow-primary-500/30 opacity-0 group-hover:opacity-100 transition-all transform translate-y-1 group-hover:translate-y-0"
-                                                            >
-                                                                <Plus size={18} />
-                                                            </button>
-                                                        )}
                                                     </div>
 
                                                     {/* Product Info */}
@@ -277,7 +266,7 @@ export default function CustomerDashboard() {
                                                                         addToCart(p, 1);
                                                                         toast.success(`Added ${p.name}`, { position: 'bottom-center', duration: 1500 });
                                                                     }}
-                                                                    className="bg-white/10 hover:bg-primary-500 hover:text-dark-900 text-white rounded-xl p-2 transition-colors md:hidden"
+                                                                    className="bg-white/10 hover:bg-primary-500 hover:text-dark-900 text-white rounded-xl p-2 transition-colors"
                                                                 >
                                                                     <Plus size={16} />
                                                                 </button>
