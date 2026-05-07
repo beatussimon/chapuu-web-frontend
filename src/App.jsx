@@ -61,7 +61,7 @@ function TopNavigation() {
     <nav className="sticky top-0 z-50 glass-dark border-b border-white/5 h-16 md:h-20 px-4 md:px-12 flex items-center justify-between transition-opacity duration-300">
       <Link to="/" className="flex items-center h-full text-primary-500 hover:text-primary-400 transition-colors cursor-pointer group py-2 gap-3">
         <img src="/logo.png" alt="Chapuu Logo" className="h-full object-contain" />
-        <h1 className="text-xl font-bold tracking-wider text-white">CHAPUU</h1>
+        <h1 className="text-2xl font-bold tracking-wider text-white">CHAPUU</h1>
       </Link>
 
       <div className="flex items-center gap-4">
