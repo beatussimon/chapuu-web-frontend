@@ -219,7 +219,7 @@ export default function MenuBuilder() {
                                     </div>
                                     {!editingProduct.requires_kitchen && (
                                         <div>
-                                            <label className="text-xs text-slate-400 mb-1 block">Stock Quantity (Optional)</label>
+                                            <label className="text-xs text-slate-400 mb-1 block">Quantity</label>
                                             <input type="number" step="0.01" min="0" value={editingProduct.initial_stock || ''} onChange={e => setEditingProduct({ ...editingProduct, initial_stock: e.target.value })} className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none" placeholder="Leave empty for unlimited" />
                                         </div>
                                     )}
@@ -308,6 +308,10 @@ export default function MenuBuilder() {
                 </div>
             </div>
         </div>
+    );
+}
+
+iv>
     );
 }
 
