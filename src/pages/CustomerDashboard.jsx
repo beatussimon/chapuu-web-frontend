@@ -224,11 +224,13 @@ export default function CustomerDashboard() {
                                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
                                         {items.map(p => {
                                             const cartItem = cart.find(i => i.product.id === p.id);
+                                            const isAvailable = p.computed_is_available !== undefined ? p.computed_is_available : p.is_active;
+                                            
                                             return (
                                                 <motion.div
                                                     whileHover={{ y: -3 }}
                                                     key={p.id}
-                                                    className="glass-dark rounded-2xl border border-white/5 hover:border-primary-500/30 transition-all flex flex-col overflow-hidden group"
+                                                    className={`glass-dark rounded-2xl border border-white/5 hover:border-primary-500/30 transition-all flex flex-col overflow-hidden group ${!isAvailable ? 'opacity-60 grayscale-[50%]' : ''}`}
                                                 >
                                                     {/* Product Image */}
                                                     <div className="relative w-full aspect-[4/3] bg-dark-900 overflow-hidden">
@@ -239,17 +241,29 @@ export default function CustomerDashboard() {
                                                                 <UtensilsCrossed size={28} className="text-white/10" />
                                                             </div>
                                                         )}
+                                                        {!isAvailable && (
+                                                            <div className="absolute inset-0 bg-dark-950/60 flex items-center justify-center">
+                                                                <span className="bg-red-500 text-white font-bold px-3 py-1 rounded-lg text-sm shadow-lg transform -rotate-12">Out of Stock</span>
+                                                            </div>
+                                                        )}
                                                     </div>
 
                                                     {/* Product Info */}
                                                     <div className="p-3 md:p-4 flex flex-col flex-grow">
                                                         <h4 className="font-semibold text-sm md:text-base text-slate-100 line-clamp-1">{p.name}</h4>
+                                                        {p.requires_inventory && p.stock_quantity !== null && (
+                                                            <span className="text-[10px] font-bold text-orange-400 bg-orange-400/10 px-2 py-0.5 rounded border border-orange-400/20 w-fit mt-1">
+                                                                {p.stock_quantity} in stock
+                                                            </span>
+                                                        )}
                                                         <p className="text-xs text-slate-500 mt-1 line-clamp-2 flex-grow">{p.description}</p>
 
                                                         <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/5">
                                                             <span className="text-lg font-bold text-primary-400">{formatPrice(p.price)}</span>
 
-                                                            {cartItem ? (
+                                                            {!isAvailable ? (
+                                                                <span className="text-xs font-bold text-red-400">Unavailable</span>
+                                                            ) : cartItem ? (
                                                                 <div className="flex items-center gap-1 bg-dark-900/80 rounded-xl p-0.5 border border-white/10">
                                                                     <button onClick={() => updateQuantity(p.id, cartItem.quantity - 1)} className="p-1.5 hover:bg-white/10 rounded-lg text-slate-300">
                                                                         <Minus size={14} />

@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-export const BACKEND_URL = 'http://127.0.0.1:8000';
+export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
 
 export const getWebSocketURL = (path) => {
     const url = new URL(BACKEND_URL);
@@ -50,7 +50,6 @@ const isPublicEndpoint = (url) => {
            url.includes('/stats/billboard/') || 
            url.includes('/currencies/') || 
            url.includes('/products/') ||
-           url.includes('/orders/') ||
            url.includes('/auth/users/me/'); 
 };
 

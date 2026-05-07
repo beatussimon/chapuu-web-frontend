@@ -72,7 +72,10 @@ export const useAppStore = create(
 
             // Multi-Vendor
             selectedStore: null,
-            setSelectedStore: (store) => set({ selectedStore: store }),
+            setSelectedStore: (store) => set((state) => ({
+                selectedStore: store,
+                cart: state.selectedStore?.id === store?.id ? state.cart : []
+            })),
 
             // Reservations
             activeReservation: null,

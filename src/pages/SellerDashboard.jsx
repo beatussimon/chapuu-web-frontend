@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import apiClient, { getWebSocketURL } from '../api/client';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChefHat, CheckCircle2, Clock, ListOrdered, Utensils, CreditCard, Play, SquareTerminal, Star, MessageSquare, Truck, Bell, QrCode, Calendar } from 'lucide-react';
+import { ChefHat, CheckCircle2, Clock, ListOrdered, Utensils, CreditCard, Play, SquareTerminal, Star, MessageSquare, Truck, Bell, QrCode, Calendar, Store } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAppStore } from '../store/useStore';
 import { useCurrency, formatPriceStatic } from '../utils/useCurrency';
@@ -225,6 +225,11 @@ export default function SellerDashboard() {
                         <button onClick={() => setActiveView('NOTICES')} className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap ${activeView === 'NOTICES' ? 'bg-primary-500 text-dark-950' : 'text-slate-400 hover:text-white'}`}>
                             <Bell size={14} /> Notices {notices.length > 0 && <span className="bg-red-500 text-white rounded-full px-1.5 text-[10px]">{notices.length}</span>}
                         </button>
+                        {canSeeAdminStuff && (
+                            <button onClick={() => setActiveView('SETTINGS')} className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap ${activeView === 'SETTINGS' ? 'bg-primary-500 text-dark-950' : 'text-slate-400 hover:text-white'}`}>
+                                <Store size={14} /> Settings
+                            </button>
+                        )}
                     </div>
 
                     <div className="flex gap-2">
@@ -334,6 +339,38 @@ export default function SellerDashboard() {
                 </div>
             )}
 
+            {activeView === 'SETTINGS' && storeDetails && canSeeAdminStuff && (
+                <div className="glass-dark border border-white/5 rounded-3xl p-6 max-w-4xl mx-auto w-full">
+                    <h2 className="text-2xl font-bold text-white flex items-center gap-2 mb-6"><Store className="text-primary-400" /> Store Settings</h2>
+                    
+                    <div className="bg-dark-900 border border-white/10 rounded-2xl p-6 mb-6">
+                        <h3 className="text-lg font-bold text-white mb-4">Payment Methods</h3>
+                        <p className="text-sm text-slate-400 mb-6">Configure the offline payment methods your customers can use during checkout.</p>
+                        
+                        <div className="space-y-4">
+                            {storeDetails.payment_methods?.map((pm, idx) => (
+                                <div key={pm.id || idx} className="bg-dark-950 border border-white/5 rounded-xl p-4 flex justify-between items-center">
+                                    <div>
+                                        <h4 className="font-bold text-primary-400">{pm.provider}</h4>
+                                        {pm.account_name && <p className="text-sm text-slate-300">Name: {pm.account_name}</p>}
+                                        {pm.account_number && <p className="text-sm text-slate-300">Account: {pm.account_number}</p>}
+                                        {pm.instructions && <p className="text-xs text-slate-500 mt-1 italic">{pm.instructions}</p>}
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                        <span className={`px-2 py-1 rounded text-[10px] font-bold ${pm.is_active ? 'bg-green-500/20 text-green-400' : 'bg-slate-500/20 text-slate-400'}`}>
+                                            {pm.is_active ? 'ACTIVE' : 'INACTIVE'}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
+                            {(!storeDetails.payment_methods || storeDetails.payment_methods.length === 0) && (
+                                <div className="text-center py-6 text-slate-500">No payment methods configured yet.</div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Other views omitted for brevity, adding back QR and NOTICES */}
             {activeView === 'NOTICES' && (
                 <div className="glass-dark border border-white/5 rounded-3xl p-6 max-w-4xl mx-auto w-full">
@@ -365,11 +402,47 @@ export default function SellerDashboard() {
             {/* MODALS */}
             {verifyModal.open && (
                 <div className="fixed inset-0 bg-dark-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-dark-900 border border-indigo-500/30 w-full max-w-md rounded-3xl shadow-2xl p-6">
+                    <div className="bg-dark-900 border border-indigo-500/30 w-full max-w-md rounded-3xl shadow-2xl p-6 overflow-y-auto max-h-[80vh]">
                         <h3 className="text-xl font-bold text-white mb-4">Verify Payment: #{verifyModal.order.id}</h3>
                         <div className="mb-4 text-slate-300">
                             Current Total: <strong className="text-primary-400">{formatPriceStatic(verifyModal.order.total_amount)}</strong>
                         </div>
+                        
+                        {/* Customer payment proof */}
+                        {verifyModal.order.payment_message && (
+                            <div className="mb-4 bg-dark-950 border border-white/10 rounded-xl p-4">
+                                <p className="text-xs font-bold text-slate-400 uppercase mb-1">Payment Message / Ref</p>
+                                <p className="text-white text-sm whitespace-pre-wrap">{verifyModal.order.payment_message}</p>
+                            </div>
+                        )}
+                        {verifyModal.order.payment_receipt && (
+                            <div className="mb-4">
+                                <p className="text-xs font-bold text-slate-400 uppercase mb-1">Receipt Image</p>
+                                <img
+                                    src={`${BACKEND_URL}${verifyModal.order.payment_receipt}`}
+                                    alt="Payment receipt"
+                                    className="rounded-xl max-h-60 w-full object-contain border border-white/10"
+                                />
+                            </div>
+                        )}
+                        {/* Order items summary */}
+                        <div className="mb-4">
+                            <p className="text-xs font-bold text-slate-400 uppercase mb-2">Items Ordered</p>
+                            {verifyModal.order.items?.map(item => (
+                                <div key={item.id} className="flex justify-between text-sm text-slate-300 py-1">
+                                    <span>{item.quantity}x {item.product.name}</span>
+                                    <span className="text-white font-bold">{formatPriceStatic(item.unit_price * item.quantity)}</span>
+                                </div>
+                            ))}
+                        </div>
+                        {/* Customer info */}
+                        <div className="flex gap-4 text-sm text-slate-400 mb-4">
+                            <span>Mode: <strong className="text-white">{verifyModal.order.fulfillment_mode}</strong></span>
+                            {verifyModal.order.customer_phone && (
+                                <span>Phone: <strong className="text-white">{verifyModal.order.customer_phone}</strong></span>
+                            )}
+                        </div>
+
                         {verifyModal.order.fulfillment_mode === 'DELIVERY' && (
                             <div className="mb-6">
                                 <label className="block text-sm font-bold text-slate-400 mb-2">Assign Delivery Fee (If Applicable)</label>

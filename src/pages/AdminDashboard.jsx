@@ -195,6 +195,13 @@ export default function AdminDashboard() {
                                 <div><label className="block text-xs md:text-sm font-medium text-slate-400 mb-1">Store Name</label><input type="text" required value={newStoreName} onChange={e => setNewStoreName(e.target.value)} className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-green-500" /></div>
                                 <div><label className="block text-xs md:text-sm font-medium text-slate-400 mb-1">Address / Location</label><input type="text" required value={newStoreAddress} onChange={e => setNewStoreAddress(e.target.value)} className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-green-500" /></div>
                                 <div>
+                                    <label className="block text-xs md:text-sm font-medium text-slate-400 mb-1">Store Type</label>
+                                    <select required value={newStoreType} onChange={e => setNewStoreType(e.target.value)} className="w-full bg-dark-900 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-green-500">
+                                        <option value="RESTAURANT">Restaurant</option>
+                                        <option value="SHOP">Shop</option>
+                                    </select>
+                                </div>
+                                <div>
                                     <label className="block text-xs md:text-sm font-medium text-slate-400 mb-1">Assign to Vendor</label>
                                     <select required value={selectedOwner} onChange={e => setSelectedOwner(e.target.value)} className="w-full bg-dark-900 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-green-500">
                                         <option value="" disabled>Select User</option>

@@ -132,23 +132,25 @@ export default function SellerAnalytics() {
                             {p.label}
                         </button>
                     ))}
-                    <div className="flex items-center gap-2 ml-auto">
-                        <input
-                            type="date"
-                            value={customFrom}
-                            onChange={e => setCustomFrom(e.target.value)}
-                            className="bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-300 focus:border-cyan-500 outline-none"
-                        />
-                        <span className="text-slate-500">→</span>
-                        <input
-                            type="date"
-                            value={customTo}
-                            onChange={e => setCustomTo(e.target.value)}
-                            className="bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-300 focus:border-cyan-500 outline-none"
-                        />
+                    <div className="flex flex-wrap lg:flex-nowrap items-center gap-2 w-full lg:w-auto lg:ml-auto mt-4 lg:mt-0">
+                        <div className="flex items-center gap-2 w-full lg:w-auto flex-1">
+                            <input
+                                type="date"
+                                value={customFrom}
+                                onChange={e => setCustomFrom(e.target.value)}
+                                className="bg-dark-900 border border-white/10 rounded-lg px-2 py-2 text-xs md:text-sm text-slate-300 focus:border-cyan-500 outline-none flex-1 min-w-0"
+                            />
+                            <span className="text-slate-500 shrink-0">→</span>
+                            <input
+                                type="date"
+                                value={customTo}
+                                onChange={e => setCustomTo(e.target.value)}
+                                className="bg-dark-900 border border-white/10 rounded-lg px-2 py-2 text-xs md:text-sm text-slate-300 focus:border-cyan-500 outline-none flex-1 min-w-0"
+                            />
+                        </div>
                         <button
                             onClick={handleCustomRange}
-                            className="px-3 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-sm text-slate-300 transition-colors"
+                            className="w-full lg:w-auto px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/5 rounded-lg text-sm font-bold text-slate-300 transition-colors"
                         >
                             Apply
                         </button>

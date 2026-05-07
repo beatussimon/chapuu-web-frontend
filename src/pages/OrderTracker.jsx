@@ -174,11 +174,12 @@ export default function OrderTracker() {
 
                     {/* Progress Fill Line */}
                     <div 
-                        className="absolute left-[31px] md:left-0 top-0 md:top-[31px] bg-primary-500 transition-all duration-1000 -z-10 rounded-full shadow-[0_0_10px_rgba(249,115,22,0.5)]"
-                        style={{
-                            height: window.innerWidth < 768 ? `${progressPercent}%` : '2px',
-                            width: window.innerWidth >= 768 ? `${progressPercent}%` : '2px'
-                        }}
+                        className="absolute left-[31px] md:left-0 top-0 md:top-[31px] bg-primary-500 transition-all duration-1000 -z-10 rounded-full shadow-[0_0_10px_rgba(249,115,22,0.5)] hidden md:block"
+                        style={{ width: `${progressPercent}%`, height: '2px' }}
+                    ></div>
+                    <div 
+                        className="absolute left-[31px] md:left-0 top-0 md:top-[31px] bg-primary-500 transition-all duration-1000 -z-10 rounded-full shadow-[0_0_10px_rgba(249,115,22,0.5)] md:hidden"
+                        style={{ height: `${progressPercent}%`, width: '2px' }}
                     ></div>
 
                     {displayStates.map((state, idx) => {
@@ -196,7 +197,7 @@ export default function OrderTracker() {
                                             isCurrent ? 'bg-dark-900 border-primary-500 text-primary-500 shadow-primary-500/50' :
                                                 'bg-dark-800 border-white/10 text-slate-500'}`}
                                 >
-                                    {isFinished ? <CheckCircle2 size={20} className="md:w-6 md:h-6" /> : React.cloneElement(getIcon(state), { size: window.innerWidth < 768 ? 18 : 24 })}
+                                    {isFinished ? <CheckCircle2 size={20} className="md:w-6 md:h-6" /> : React.cloneElement(getIcon(state), { className: "w-[18px] h-[18px] md:w-6 md:h-6" })}
                                 </motion.div>
 
                                 <div className="text-left md:text-center">

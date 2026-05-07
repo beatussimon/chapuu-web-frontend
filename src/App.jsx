@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useAppStore } from './store/useStore';
 import CustomerDashboard from './pages/CustomerDashboard';
 import SellerDashboard from './pages/SellerDashboard';
@@ -27,36 +27,24 @@ import { Toaster } from 'react-hot-toast';
 
 function ProtectedRoute({ children, role }) {
   const userRole = useAppStore(state => state.userRole);
-  if (!userRole) return <div className="p-8 text-center text-slate-400">Please login to access this area.</div>;
+  const location = useLocation();
+  if (!userRole) return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   if (role && userRole !== role && userRole !== 'ADMIN') return <div className="p-8 text-center text-red-400">Access Denied</div>;
   return children;
-}
-
-function NavLink({ to, icon, label, bgClass, textClass, onClick }) {
-  return (
-    <Link onClick={onClick} to={to} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${bgClass} ${textClass}`}>
-      {icon}
-      <span className="font-medium">{label}</span>
-    </Link>
-  );
 }
 
 function TopNavigation() {
   const { token, userRole, clearAuth, cart } = useAppStore();
   const navigate = useNavigate();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleLogout = () => {
     clearAuth();
     navigate('/login');
-    setMobileMenuOpen(false);
   };
-
-  const closeMenu = () => setMobileMenuOpen(false);
 
   return (
     <nav className="sticky top-0 z-50 glass-dark border-b border-white/5 py-4 px-4 md:px-12 flex items-center justify-between">
-      <Link onClick={closeMenu} to="/" className="flex items-center gap-3 text-primary-500 hover:text-primary-400 transition-colors cursor-pointer group">
+      <Link to="/" className="flex items-center gap-3 text-primary-500 hover:text-primary-400 transition-colors cursor-pointer group">
         <div className="bg-primary-500/20 p-2 rounded-xl border border-primary-500/30 overflow-hidden">
           <Utensils size={24} className="text-primary-500 relative z-10" />
         </div>
@@ -103,7 +91,7 @@ function TopNavigation() {
 
               {userRole === 'CUSTOMER' ? (
                 <>
-                  <Link to="/" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary-600/20 text-primary-400 hover:bg-primary-600/30 transition-colors"><Compass size={16} /><span className="text-sm">Discover</span></Link>
+                  <Link to="/" className="md:hidden flex items-center gap-2 px-3 py-2 rounded-lg bg-primary-600/20 text-primary-400 hover:bg-primary-600/30 transition-colors"><TrendingUp size={16} /><span className="text-sm">Trending</span></Link>
                   <Link to="/faq" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 text-slate-300 hover:text-white hover:bg-white/10 transition-colors"><HelpCircle size={16} /><span className="text-sm">FAQ</span></Link>
                   <Link to="/stores?type=RESTAURANT" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-600/20 text-orange-400 hover:bg-orange-600/30 transition-colors"><UtensilsCrossed size={16} /><span className="text-sm">Restaurants</span></Link>
                   <Link to="/stores?type=SHOP" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-purple-600/20 text-purple-400 hover:bg-purple-600/30 transition-colors"><Store size={16} /><span className="text-sm">Shops</span></Link>
@@ -128,67 +116,63 @@ function TopNavigation() {
               </button>
             </div>
 
-            {/* Mobile Hamburger Button */}
+            {/* Mobile Actions */}
             <div className="lg:hidden flex items-center gap-3">
               <div className="flex items-center gap-2 text-xs text-slate-400">
                 <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
                 {userRole}
               </div>
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="p-2 bg-white/5 rounded-xl text-slate-300 hover:text-white transition-colors"
-              >
-                {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+              <button onClick={handleLogout} className="p-2 bg-white/5 rounded-xl text-slate-300 hover:text-red-400 transition-colors" title="Logout">
+                <LogOut size={20} />
               </button>
             </div>
           </>
         )}
       </div>
+    </nav>
+  );
+}
 
-      {/* Mobile Menu Dropdown */}
-      {mobileMenuOpen && token && (
-        <div className="absolute top-[100%] left-0 w-full bg-dark-950 border-b border-white/5 shadow-2xl p-4 flex flex-col gap-2 lg:hidden animate-in slide-in-from-top-4 duration-200">
+function BottomNav() {
+  const { userRole, cart } = useAppStore();
+  const location = useLocation();
+  if (!userRole) return null;
 
-          {['SELLER', 'ADMIN', 'CHEF', 'ACCOUNTANT', 'DELIVERY'].includes(userRole) ? (
-            <div className="grid grid-cols-2 gap-2 mb-2">
-              <NavLink to="/seller" icon={<TerminalSquare size={18} />} label="Dashboard" bgClass="bg-primary-600/10 hover:bg-primary-600/20" textClass="text-primary-400" onClick={closeMenu} />
-              {['SELLER', 'ADMIN'].includes(userRole) && (
-                <>
-                  <NavLink to="/seller/reservations" icon={<Calendar size={18} />} label="Host Stand" bgClass="bg-indigo-600/10 hover:bg-indigo-600/20" textClass="text-indigo-400" onClick={closeMenu} />
-                  <NavLink to="/seller/menu" icon={<Utensils size={18} />} label="Menu Builder" bgClass="bg-pink-600/10 hover:bg-pink-600/20" textClass="text-pink-400" onClick={closeMenu} />
-                  <NavLink to="/seller/analytics" icon={<BarChart3 size={18} />} label="Analytics" bgClass="bg-cyan-600/10 hover:bg-cyan-600/20" textClass="text-cyan-400" onClick={closeMenu} />
-                  <NavLink to="/seller/inventory" icon={<Package size={18} />} label="Stock Manage" bgClass="bg-orange-600/10 hover:bg-orange-600/20" textClass="text-orange-400" onClick={closeMenu} />
-                  <NavLink to="/seller/qrcodes" icon={<QrCode size={18} />} label="Table QRs" bgClass="bg-white/5 hover:bg-white/10" textClass="text-slate-200" onClick={closeMenu} />
-                </>
-              )}
-              <NavLink to="/tv/1" icon={<Tv size={18} />} label="TV Dashboard" bgClass="bg-yellow-600/10 hover:bg-yellow-600/20" textClass="text-yellow-500" onClick={closeMenu} />
-              {userRole === 'ADMIN' && (
-                <NavLink to="/admin" icon={<Shield size={18} />} label="Platform Admin" bgClass="bg-purple-600/10 hover:bg-purple-600/20" textClass="text-purple-400 col-span-2 justify-center" onClick={closeMenu} />
-              )}
-            </div>
-          ) : null}
+  const isActive = (path) => location.pathname === path || location.search.includes(path.split('?')[1]);
 
-          {userRole === 'CUSTOMER' ? (
-            <div className="flex flex-col gap-2 mb-2">
-              <NavLink to="/" icon={<Compass size={18} />} label="Discover" bgClass="bg-primary-600/10 hover:bg-primary-600/20" textClass="text-primary-400" onClick={closeMenu} />
-              <NavLink to="/faq" icon={<HelpCircle size={18} />} label="FAQ" bgClass="bg-white/5 hover:bg-white/10" textClass="text-slate-200" onClick={closeMenu} />
-              <NavLink to="/stores?type=RESTAURANT" icon={<UtensilsCrossed size={18} />} label="Restaurants" bgClass="bg-orange-600/10 hover:bg-orange-600/20" textClass="text-orange-400" onClick={closeMenu} />
-              <NavLink to="/stores?type=SHOP" icon={<Store size={18} />} label="Shops" bgClass="bg-purple-600/10 hover:bg-purple-600/20" textClass="text-purple-400" onClick={closeMenu} />
-              <NavLink to="/orders" icon={<ShoppingBag size={18} />} label="My Orders" bgClass="bg-white/5 hover:bg-white/10" textClass="text-slate-200" onClick={closeMenu} />
-              <NavLink to="/reserve" icon={<Calendar size={18} />} label="Reserve Table" bgClass="bg-white/5 hover:bg-white/10" textClass="text-slate-200" onClick={closeMenu} />
-            </div>
-          ) : null}
-
-          {userRole === 'DELIVERY' ? (
-            <div className="flex flex-col gap-2 mb-2">
-              <NavLink to="/delivery" icon={<Navigation size={18} />} label="Deliveries" bgClass="bg-green-600/10 hover:bg-green-600/20" textClass="text-green-400" onClick={closeMenu} />
-            </div>
-          ) : null}
-
-          <button onClick={handleLogout} className="flex items-center justify-center gap-2 p-3 mt-2 rounded-xl text-red-400 bg-red-400/10 hover:bg-red-400/20 transition-colors font-medium">
-            <LogOut size={18} /> Sign Out
-          </button>
-        </div>
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden glass-dark border-t border-white/10 flex items-center justify-around px-2 py-2 safe-area-pb">
+      {userRole === 'CUSTOMER' && (
+        <>
+          <Link to="/" className={`flex flex-col items-center p-2 ${isActive('/') ? 'text-primary-500' : 'text-slate-400'}`}><Compass size={20} /><span className="text-[10px] mt-1">Discover</span></Link>
+          <Link to="/stores?type=RESTAURANT" className={`flex flex-col items-center p-2 ${isActive('/stores?type=RESTAURANT') ? 'text-primary-500' : 'text-slate-400'}`}><UtensilsCrossed size={20} /><span className="text-[10px] mt-1">Restaurants</span></Link>
+          <Link to="/checkout" className={`flex flex-col items-center p-2 relative ${isActive('/checkout') ? 'text-primary-500' : 'text-slate-400'}`}>
+            <ShoppingCart size={20} />
+            {cart.length > 0 && <span className="absolute top-1 right-1 bg-red-500 text-white text-[8px] font-bold px-1 rounded-full">{cart.reduce((s, i) => s + i.quantity, 0)}</span>}
+            <span className="text-[10px] mt-1">Cart</span>
+          </Link>
+          <Link to="/orders" className={`flex flex-col items-center p-2 ${isActive('/orders') ? 'text-primary-500' : 'text-slate-400'}`}><ShoppingBag size={20} /><span className="text-[10px] mt-1">Orders</span></Link>
+          <Link to="/reserve" className={`flex flex-col items-center p-2 ${isActive('/reserve') ? 'text-primary-500' : 'text-slate-400'}`}><Calendar size={20} /><span className="text-[10px] mt-1">Reserve</span></Link>
+        </>
+      )}
+      {['SELLER', 'ADMIN', 'CHEF'].includes(userRole) && (
+        <>
+          <Link to="/seller" className={`flex flex-col items-center p-2 ${isActive('/seller') ? 'text-primary-500' : 'text-slate-400'}`}><TerminalSquare size={20} /><span className="text-[10px] mt-1">Dashboard</span></Link>
+          <Link to="/seller/menu" className={`flex flex-col items-center p-2 ${isActive('/seller/menu') ? 'text-primary-500' : 'text-slate-400'}`}><Utensils size={20} /><span className="text-[10px] mt-1">Menu</span></Link>
+          <Link to="/seller/analytics" className={`flex flex-col items-center p-2 ${isActive('/seller/analytics') ? 'text-primary-500' : 'text-slate-400'}`}><BarChart3 size={20} /><span className="text-[10px] mt-1">Analytics</span></Link>
+          <Link to="/seller/inventory" className={`flex flex-col items-center p-2 ${isActive('/seller/inventory') ? 'text-primary-500' : 'text-slate-400'}`}><Package size={20} /><span className="text-[10px] mt-1">Stock</span></Link>
+        </>
+      )}
+      {userRole === 'ACCOUNTANT' && (
+        <>
+          <Link to="/seller" className={`flex flex-col items-center p-2 ${isActive('/seller') ? 'text-primary-500' : 'text-slate-400'}`}><TerminalSquare size={20} /><span className="text-[10px] mt-1">Dashboard</span></Link>
+        </>
+      )}
+      {userRole === 'DELIVERY' && (
+        <>
+          <Link to="/seller" className={`flex flex-col items-center p-2 ${isActive('/seller') ? 'text-primary-500' : 'text-slate-400'}`}><TerminalSquare size={20} /><span className="text-[10px] mt-1">Dashboard</span></Link>
+          <Link to="/delivery" className={`flex flex-col items-center p-2 ${isActive('/delivery') ? 'text-primary-500' : 'text-slate-400'}`}><Navigation size={20} /><span className="text-[10px] mt-1">Deliveries</span></Link>
+        </>
       )}
     </nav>
   );
@@ -204,7 +188,7 @@ function App() {
           success: { iconTheme: { primary: '#22c55e', secondary: '#fff' } }
         }} />
 
-        <main className="flex-1 w-full max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 w-full max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8 pb-20 lg:pb-8">
           <Routes>
             {/* Public App Routes */}
             <Route path="/" element={<DiscoverPage />} />
@@ -234,6 +218,7 @@ function App() {
             <Route path="/delivery" element={<ProtectedRoute role="DELIVERY"><DeliveryDashboard /></ProtectedRoute>} />
           </Routes>
         </main>
+        <BottomNav />
       </div>
     </Router>
   );

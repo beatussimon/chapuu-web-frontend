@@ -89,6 +89,10 @@ export default function MenuBuilder() {
         formData.append('requires_kitchen', editingProduct.requires_kitchen);
         formData.append('is_active', editingProduct.is_active);
 
+        if (!editingProduct.requires_kitchen && editingProduct.initial_stock) {
+            formData.append('initial_stock', editingProduct.initial_stock);
+        }
+
         if (productImageFile) {
             formData.append('image', productImageFile);
         }
@@ -175,7 +179,7 @@ export default function MenuBuilder() {
                             <h2 className="text-xl font-bold flex items-center gap-2"><Package className="text-primary-500" size={20} /> Products</h2>
                             <button
                                 onClick={() => {
-                                    setEditingProduct({ name: '', description: '', price: '', category: '', requires_kitchen: true, is_active: true });
+                                    setEditingProduct({ name: '', description: '', price: '', category: '', requires_kitchen: true, is_active: true, initial_stock: '' });
                                     setProductImageFile(null);
                                 }}
                                 className="bg-primary-500 hover:bg-primary-400 text-dark-900 font-bold px-4 py-2 rounded-xl transition-all flex items-center gap-2 shadow-lg shadow-primary-500/20"
@@ -208,6 +212,12 @@ export default function MenuBuilder() {
                                             {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                         </select>
                                     </div>
+                                    {!editingProduct.requires_kitchen && (
+                                        <div>
+                                            <label className="text-xs text-slate-400 mb-1 block">Stock Quantity (Optional)</label>
+                                            <input type="number" step="0.01" min="0" value={editingProduct.initial_stock || ''} onChange={e => setEditingProduct({ ...editingProduct, initial_stock: e.target.value })} className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none" placeholder="Leave empty for unlimited" />
+                                        </div>
+                                    )}
                                     <div className="md:col-span-2">
                                         <label className="text-xs text-slate-400 mb-1 block">Product Image</label>
                                         {editingProduct.image_url && !productImageFile && (

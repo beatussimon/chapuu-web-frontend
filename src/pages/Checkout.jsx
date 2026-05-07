@@ -38,8 +38,21 @@ export default function Checkout() {
         }
     }, [selectedStore]);
 
-    if (!selectedStore || cart.length === 0) {
-        return <Navigate to="/menu" />;
+    if (!selectedStore) {
+        return <Navigate to="/stores" />;
+    }
+
+    if (cart.length === 0) {
+        return (
+            <div className="w-full max-w-4xl mx-auto py-8 text-white min-h-[60vh] flex flex-col items-center justify-center">
+                <ShoppingCart size={64} className="text-slate-600 mb-6" />
+                <h2 className="text-2xl font-bold mb-2">Your Cart is Empty</h2>
+                <p className="text-slate-400 mb-6">Looks like you haven't added anything yet.</p>
+                <button onClick={() => navigate('/menu')} className="bg-primary-500 text-dark-950 font-bold px-6 py-3 rounded-xl transition-transform hover:-translate-y-1">
+                    Browse Menu
+                </button>
+            </div>
+        );
     }
 
     const cartTotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
@@ -274,8 +287,24 @@ export default function Checkout() {
 
                         <div className="mb-6 pt-4 border-t border-white/10">
                             <h3 className="text-base font-bold mb-3 text-slate-200">Proof of Payment (Offline)</h3>
-                            <p className="text-xs text-slate-400 mb-4">Please transfer the Total amount to the restaurant natively (M-Pesa, Bank, Cash) and provide proof here to speed up approval.</p>
-                            <label className="text-sm font-medium text-slate-400 mb-1 block">Transaction ID / Message</label>
+                            
+                            {selectedStore.payment_methods && selectedStore.payment_methods.length > 0 ? (
+                                <div className="mb-4 space-y-3">
+                                    <p className="text-xs text-slate-400 mb-2">Please transfer the Total amount to one of the store's accounts below, then provide proof.</p>
+                                    {selectedStore.payment_methods.map(pm => pm.is_active && (
+                                        <div key={pm.id} className="bg-dark-900 border border-white/5 rounded-xl p-3">
+                                            <h4 className="text-sm font-bold text-primary-400">{pm.provider}</h4>
+                                            {pm.account_name && <p className="text-xs text-slate-300">Name: {pm.account_name}</p>}
+                                            {pm.account_number && <p className="text-xs font-mono text-slate-200 mt-1 select-all">{pm.account_number}</p>}
+                                            {pm.instructions && <p className="text-xs text-slate-500 mt-1 italic">{pm.instructions}</p>}
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-xs text-slate-400 mb-4">Please transfer the Total amount to the restaurant natively (M-Pesa, Bank, Cash) and provide proof here to speed up approval.</p>
+                            )}
+
+                            <label className="text-sm font-medium text-slate-400 mb-1 block mt-2">Transaction ID / Message</label>
                             <textarea
                                 value={paymentMessage}
                                 onChange={(e) => setPaymentMessage(e.target.value)}
