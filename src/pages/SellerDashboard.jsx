@@ -184,6 +184,34 @@ export default function SellerDashboard() {
 
     const storeUrl = typeof window !== 'undefined' ? `${window.location.origin}/?store=${storeDetails?.id}` : '';
 
+    const handleSavePaymentMethod = (e) => {
+        e.preventDefault();
+        const toastId = toast.loading('Saving payment method...');
+        const formData = new FormData(e.target);
+        formData.append('store', storeDetails.id);
+        
+        const req = editingPaymentMethod.id 
+            ? apiClient.patch(`/payment-methods/${editingPaymentMethod.id}/`, formData, { headers: { 'Content-Type': 'multipart/form-data' }})
+            : apiClient.post('/payment-methods/', formData, { headers: { 'Content-Type': 'multipart/form-data' }});
+            
+        req.then(() => {
+            toast.success('Payment method saved!', { id: toastId });
+            setEditingPaymentMethod(null);
+            fetchDashboard();
+        }).catch(err => toast.error('Failed to save payment method', { id: toastId }));
+    };
+
+    const handleDeletePaymentMethod = (id) => {
+        if (!window.confirm('Delete this payment method?')) return;
+        const toastId = toast.loading('Deleting...');
+        apiClient.delete(`/payment-methods/${id}/`)
+            .then(() => {
+                toast.success('Deleted', { id: toastId });
+                fetchDashboard();
+            })
+            .catch(err => toast.error('Failed to delete', { id: toastId }));
+    };
+
     return (
         <div className="w-full min-h-screen flex flex-col pt-2 pb-8 px-2 md:px-4 overflow-y-auto">
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
