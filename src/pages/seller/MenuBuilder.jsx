@@ -96,6 +96,9 @@ export default function MenuBuilder() {
         if (productImageFile) {
             formData.append('image', productImageFile);
         }
+        if (productImageFile2) {
+            formData.append('image2', productImageFile2);
+        }
 
         const req = editingProduct.id
             ? apiClient.patch(`/products/${editingProduct.id}/`, formData, { headers: { 'Content-Type': 'multipart/form-data' } })
@@ -105,6 +108,7 @@ export default function MenuBuilder() {
             toast.success("Product saved!", { id: toastId });
             setEditingProduct(null);
             setProductImageFile(null);
+            setProductImageFile2(null);
             if (storeId) fetchData(storeId);
         }).catch(err => toast.error("Error saving product.", { id: toastId }));
     };
@@ -219,7 +223,7 @@ export default function MenuBuilder() {
                                         </div>
                                     )}
                                     <div className="md:col-span-2">
-                                        <label className="text-xs text-slate-400 mb-1 block">Product Image</label>
+                                        <label className="text-xs text-slate-400 mb-1 block">Product Image 1</label>
                                         {editingProduct.image_url && !productImageFile && (
                                             <div className="mb-2 w-24 h-24 rounded-xl overflow-hidden border border-white/10">
                                                 <img src={editingProduct.image_url} alt="Current" className="w-full h-full object-cover" />
@@ -229,6 +233,14 @@ export default function MenuBuilder() {
                                             type="file"
                                             accept="image/*"
                                             onChange={e => setProductImageFile(e.target.files[0])}
+                                            className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-primary-500/10 file:text-primary-500 hover:file:bg-primary-500/20 mb-4"
+                                        />
+
+                                        <label className="text-xs text-slate-400 mb-1 block">Product Image 2 (Optional)</label>
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={e => setProductImageFile2(e.target.files[0])}
                                             className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-primary-500/10 file:text-primary-500 hover:file:bg-primary-500/20"
                                         />
                                     </div>

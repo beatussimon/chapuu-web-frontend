@@ -187,7 +187,7 @@ export default function SellerDashboard() {
         <div className="w-full min-h-screen flex flex-col pt-2 pb-8 px-2 md:px-4 overflow-y-auto">
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
                 <div className="flex flex-col gap-1">
-                    <h2 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-primary-400 to-orange-400 bg-clip-text text-transparent">
+                    <h2 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-primary-400 to-yellow-300 bg-clip-text text-transparent drop-shadow-sm">
                         {userRole === 'ACCOUNTANT' ? 'Accounting Center' : 
                          userRole === 'DELIVERY' ? 'Driver Dispatch' :
                          userRole === 'CHEF' ? 'Kitchen Command' : 'Command Center'}
@@ -343,6 +343,50 @@ export default function SellerDashboard() {
                 <div className="glass-dark border border-white/5 rounded-3xl p-6 max-w-4xl mx-auto w-full">
                     <h2 className="text-2xl font-bold text-white flex items-center gap-2 mb-6"><Store className="text-primary-400" /> Store Settings</h2>
                     
+                    <div className="bg-dark-900 border border-white/10 rounded-2xl p-6 mb-6">
+                        <h3 className="text-lg font-bold text-white mb-4">Store Profile</h3>
+                        <p className="text-sm text-slate-400 mb-6">Update your store details, contact info, and picture.</p>
+                        
+                        <form onSubmit={(e) => {
+                            e.preventDefault();
+                            const toastId = toast.loading('Saving store profile...');
+                            const formData = new FormData(e.target);
+                            apiClient.patch(`/stores/${storeDetails.id}/`, formData, { headers: { 'Content-Type': 'multipart/form-data' }})
+                                .then(() => {
+                                    toast.success('Store profile updated!', { id: toastId });
+                                    fetchDashboard();
+                                })
+                                .catch(err => toast.error('Failed to update profile', { id: toastId }));
+                        }} className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-xs text-slate-400 block mb-1">Store Name</label>
+                                    <input type="text" name="name" defaultValue={storeDetails.name} required className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none text-white" />
+                                </div>
+                                <div>
+                                    <label className="text-xs text-slate-400 block mb-1">Contact Phone</label>
+                                    <input type="text" name="contact_phone" defaultValue={storeDetails.contact_phone || ''} className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none text-white" />
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className="text-xs text-slate-400 block mb-1">Location</label>
+                                    <textarea name="location" defaultValue={storeDetails.location || ''} className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none text-white h-20" />
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className="text-xs text-slate-400 block mb-1">Store Picture</label>
+                                    {storeDetails.image_url && (
+                                        <div className="mb-2 w-32 h-32 rounded-xl overflow-hidden border border-white/10">
+                                            <img src={storeDetails.image_url} alt="Store" className="w-full h-full object-cover" />
+                                        </div>
+                                    )}
+                                    <input type="file" name="image" accept="image/*" className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-primary-500/10 file:text-primary-500" />
+                                </div>
+                            </div>
+                            <div className="flex justify-end mt-4">
+                                <button type="submit" className="bg-primary-500 hover:bg-primary-400 text-dark-900 font-bold px-6 py-2 rounded-lg text-sm shadow-lg">Save Profile</button>
+                            </div>
+                        </form>
+                    </div>
+
                     <div className="bg-dark-900 border border-white/10 rounded-2xl p-6 mb-6">
                         <h3 className="text-lg font-bold text-white mb-4">Payment Methods</h3>
                         <p className="text-sm text-slate-400 mb-6">Configure the offline payment methods your customers can use during checkout.</p>

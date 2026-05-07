@@ -233,7 +233,7 @@ export default function CustomerDashboard() {
                                                     className={`glass-dark rounded-2xl border border-white/5 hover:border-primary-500/30 transition-all flex flex-col overflow-hidden group ${!isAvailable ? 'opacity-60 grayscale-[50%]' : ''}`}
                                                 >
                                                     {/* Product Image */}
-                                                    <div className="relative w-full aspect-[4/3] bg-dark-900 overflow-hidden">
+                                                    <div className="relative w-full aspect-[4/3] bg-dark-900 overflow-hidden cursor-pointer" onClick={() => setPreviewImageProduct(p)}>
                                                         {p.image_url ? (
                                                             <img src={p.image_url} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                                                         ) : (
@@ -358,6 +358,31 @@ export default function CustomerDashboard() {
                     </div>
                 </div>
             )}
+
+            {/* Full Picture Modal */}
+            <AnimatePresence>
+                {previewImageProduct && (
+                    <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-dark-950/90 backdrop-blur-sm"
+                        onClick={() => setPreviewImageProduct(null)}
+                    >
+                        <button className="absolute top-6 right-6 text-white bg-white/10 hover:bg-white/20 p-2 rounded-full transition-colors" onClick={() => setPreviewImageProduct(null)}>
+                            <X size={24} />
+                        </button>
+                        <div className="relative max-w-5xl w-full h-[80vh] flex flex-col md:flex-row items-center justify-center gap-4" onClick={e => e.stopPropagation()}>
+                            {previewImageProduct.image_url && (
+                                <img src={previewImageProduct.image_url} alt={previewImageProduct.name} className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl border border-white/10" />
+                            )}
+                            {previewImageProduct.image2_url && (
+                                <img src={previewImageProduct.image2_url} alt={`${previewImageProduct.name} alternate`} className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl border border-white/10" />
+                            )}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

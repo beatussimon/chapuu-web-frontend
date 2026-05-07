@@ -36,17 +36,32 @@ function ProtectedRoute({ children, role }) {
 function TopNavigation() {
   const { token, userRole, clearAuth, cart } = useAppStore();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [scrolled, setScrolled] = useState(false);
+
+  useState(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('scroll', handleScroll);
+      return () => window.removeEventListener('scroll', handleScroll);
+    }
+  }, []);
 
   const handleLogout = () => {
     clearAuth();
     navigate('/login');
   };
 
+  const isTvMode = location.pathname.startsWith('/tv');
+  if (isTvMode && !scrolled) return null;
+
   return (
-    <nav className="sticky top-0 z-50 glass-dark border-b border-white/5 py-4 px-4 md:px-12 flex items-center justify-between">
+    <nav className="sticky top-0 z-50 glass-dark border-b border-white/5 py-4 px-4 md:px-12 flex items-center justify-between transition-opacity duration-300">
       <Link to="/" className="flex items-center gap-3 text-primary-500 hover:text-primary-400 transition-colors cursor-pointer group">
-        <div className="bg-primary-500/20 p-2 rounded-xl border border-primary-500/30 overflow-hidden">
-          <Utensils size={24} className="text-primary-500 relative z-10" />
+        <div className="w-10 h-10 overflow-hidden flex items-center justify-center">
+          <img src="/logo.png" alt="Chapuu Logo" className="w-full h-full object-contain" />
         </div>
         <h1 className="text-xl font-bold tracking-wider">CHAPUU</h1>
       </Link>

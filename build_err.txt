@@ -1,0 +1,29 @@
+
+> frontend@0.0.0 build
+> vite build
+
+vite v7.3.1 building client environment for production...
+transforming...
+✓ 22 modules transformed.
+✗ Build failed in 1.76s
+error during build:
+[vite:esbuild] Transform failed with 1 error:
+/home/bea/chapuu/chapuu-web-frontend/src/pages/SellerDashboard.jsx:558:156: ERROR: Unexpected "}"
+file: /home/bea/chapuu/chapuu-web-frontend/src/pages/SellerDashboard.jsx:558:156
+
+Unexpected "}"
+556 |  
+557 |  const LoadingSkeleton = () => <div className="bg-dark-950/50 rounded-2xl p-5 border border-white/5 animate-pulse h-40...
+558 |  ...50">{icon}<p className="mt-2 font-medium">{text}</p></div>;t}</p></div>;
+    |                                                                 ^
+
+    at failureErrorWithLog (/home/bea/chapuu/chapuu-web-frontend/node_modules/esbuild/lib/main.js:1467:15)
+    at /home/bea/chapuu/chapuu-web-frontend/node_modules/esbuild/lib/main.js:736:50
+    at responseCallbacks.<computed> (/home/bea/chapuu/chapuu-web-frontend/node_modules/esbuild/lib/main.js:603:9)
+    at handleIncomingPacket (/home/bea/chapuu/chapuu-web-frontend/node_modules/esbuild/lib/main.js:658:12)
+    at Socket.readFromStdout (/home/bea/chapuu/chapuu-web-frontend/node_modules/esbuild/lib/main.js:581:7)
+    at Socket.emit (node:events:508:28)
+    at addChunk (node:internal/streams/readable:559:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+    at Readable.push (node:internal/streams/readable:390:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23)
