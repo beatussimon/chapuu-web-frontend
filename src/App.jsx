@@ -22,7 +22,7 @@ import DeliveryDashboard from './pages/staff/DeliveryDashboard';
 import PublicDisplay from './pages/PublicDisplay';
 import DiscoverPage from './pages/DiscoverPage';
 import FAQ from './pages/FAQ';
-import { Utensils, LayoutDashboard, LogOut, ShoppingBag, TerminalSquare, QrCode, Calendar, Package, Shield, Store, Menu, X, Navigation, Tv, BarChart3, Compass, UtensilsCrossed, HelpCircle, ListOrdered, ShoppingCart } from 'lucide-react';
+import { Utensils, LayoutDashboard, LogOut, ShoppingBag, TerminalSquare, QrCode, Calendar, Package, Shield, Store, Menu, X, Navigation, Tv, BarChart3, Compass, UtensilsCrossed, HelpCircle, ListOrdered, ShoppingCart, TrendingUp } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 
 function ProtectedRoute({ children, role }) {
