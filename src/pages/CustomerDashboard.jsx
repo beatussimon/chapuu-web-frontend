@@ -16,6 +16,7 @@ export default function CustomerDashboard() {
     const [searchQuery, setSearchQuery] = useState('');
     const [activeCategory, setActiveCategory] = useState(null);
     const [showMobileCart, setShowMobileCart] = useState(false);
+    const [previewImageProduct, setPreviewImageProduct] = useState(null);
     const { cart, addToCart, updateQuantity, removeFromCart, selectedStore } = useAppStore();
     const navigate = useNavigate();
     const { formatPrice } = useCurrency();
