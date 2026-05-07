@@ -8,10 +8,21 @@ export const useAppStore = create(
             cart: [],
             addToCart: (product, qty = 1) => set((state) => {
                 const existing = state.cart.find(item => item.product.id === product.id);
-                if (existing) {
-                    return { cart: state.cart.map(i => i.product.id === product.id ? { ...i, quantity: i.quantity + qty } : i) };
+                let newQty = existing ? existing.quantity + qty : qty;
+                
+                if (product.requires_inventory && product.stock_quantity !== null) {
+                    if (newQty > product.stock_quantity) {
+                        newQty = product.stock_quantity;
+                        import('react-hot-toast').then(({ default: toast }) => {
+                            toast.error(`Only ${product.stock_quantity} available in stock.`);
+                        });
+                    }
                 }
-                return { cart: [...state.cart, { product, quantity: qty }] };
+                
+                if (existing) {
+                    return { cart: state.cart.map(i => i.product.id === product.id ? { ...i, quantity: newQty } : i) };
+                }
+                return { cart: [...state.cart, { product, quantity: newQty }] };
             }),
             removeFromCart: (productId) => set((state) => ({
                 cart: state.cart.filter(item => item.product.id !== productId)
@@ -19,7 +30,21 @@ export const useAppStore = create(
             clearCart: () => set({ cart: [] }),
             updateQuantity: (productId, qty) => set((state) => {
                 if (qty < 1) return { cart: state.cart.filter(item => item.product.id !== productId) };
-                return { cart: state.cart.map(i => i.product.id === productId ? { ...i, quantity: qty } : i) };
+                
+                const item = state.cart.find(i => i.product.id === productId);
+                if (!item) return state;
+                
+                let newQty = qty;
+                if (item.product.requires_inventory && item.product.stock_quantity !== null) {
+                    if (newQty > item.product.stock_quantity) {
+                        newQty = item.product.stock_quantity;
+                        import('react-hot-toast').then(({ default: toast }) => {
+                            toast.error(`Only ${item.product.stock_quantity} available in stock.`);
+                        });
+                    }
+                }
+                
+                return { cart: state.cart.map(i => i.product.id === productId ? { ...i, quantity: newQty } : i) };
             }),
 
             // Auth

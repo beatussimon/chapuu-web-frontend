@@ -14,6 +14,7 @@ export default function MenuBuilder() {
     const [editingCategory, setEditingCategory] = useState(null);
     const [editingProduct, setEditingProduct] = useState(null);
     const [productImageFile, setProductImageFile] = useState(null);
+    const [productImageFile2, setProductImageFile2] = useState(null);
 
     const [storeId, setStoreId] = useState(null);
 
@@ -291,7 +292,8 @@ export default function MenuBuilder() {
                                                     category: p.category,
                                                     requires_kitchen: p.requires_kitchen,
                                                     is_active: p.is_active,
-                                                    image_url: p.image_url
+                                                    image_url: p.image_url,
+                                                    initial_stock: p.stock_quantity !== null ? p.stock_quantity : ''
                                                 });
                                                 setProductImageFile(null);
                                             }} className="p-2 text-slate-400 hover:text-white bg-white/5 rounded-lg"><Edit2 size={14} /></button>

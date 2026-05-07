@@ -7,7 +7,14 @@ export const getWebSocketURL = (path) => {
     const protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
     // Ensure path starts with /
     const cleanPath = path.startsWith('/') ? path : `/${path}`;
-    return `${protocol}//${url.host}${cleanPath}`;
+    let wsUrl = `${protocol}//${url.host}${cleanPath}`;
+    
+    const token = localStorage.getItem('access_token');
+    if (token) {
+        wsUrl += (wsUrl.includes('?') ? '&' : '?') + `token=${token}`;
+    }
+    
+    return wsUrl;
 };
 
 const apiClient = axios.create({
