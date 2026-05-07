@@ -38,6 +38,7 @@ export default function SellerDashboard() {
     const [posSkipKitchen, setPosSkipKitchen] = useState(false);
 
     const [verifyModal, setVerifyModal] = useState({ open: false, order: null, fee: '' });
+    const [editingPaymentMethod, setEditingPaymentMethod] = useState(null);
 
     const fetchDashboard = () => {
         apiClient.get('/auth/users/me/')
@@ -388,27 +389,79 @@ export default function SellerDashboard() {
                     </div>
 
                     <div className="bg-dark-900 border border-white/10 rounded-2xl p-6 mb-6">
-                        <h3 className="text-lg font-bold text-white mb-4">Payment Methods</h3>
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-bold text-white">Payment Methods</h3>
+                            <button 
+                                onClick={() => setEditingPaymentMethod({ provider: '', account_name: '', account_number: '', instructions: '', is_active: true })}
+                                className="bg-primary-500/10 hover:bg-primary-500/20 text-primary-400 p-2 rounded-lg transition-colors flex items-center gap-1 text-sm font-bold"
+                            >
+                                <Plus size={16} /> Add Method
+                            </button>
+                        </div>
                         <p className="text-sm text-slate-400 mb-6">Configure the offline payment methods your customers can use during checkout.</p>
                         
+                        {editingPaymentMethod && (
+                            <form onSubmit={handleSavePaymentMethod} className="mb-6 bg-dark-950 border border-primary-500/30 p-4 rounded-xl space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-xs text-slate-400 block mb-1">Provider (e.g., M-Pesa, Cash)</label>
+                                        <input type="text" name="provider" defaultValue={editingPaymentMethod.provider} required className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none text-white" />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-slate-400 block mb-1">Account Name (Optional)</label>
+                                        <input type="text" name="account_name" defaultValue={editingPaymentMethod.account_name} className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none text-white" />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-slate-400 block mb-1">Account Number (Optional)</label>
+                                        <input type="text" name="account_number" defaultValue={editingPaymentMethod.account_number} className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none text-white" />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-slate-400 block mb-1">Provider Logo (Optional)</label>
+                                        <input type="file" name="image" accept="image/*" className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-primary-500/10 file:text-primary-500" />
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <label className="text-xs text-slate-400 block mb-1">Instructions</label>
+                                        <textarea name="instructions" defaultValue={editingPaymentMethod.instructions} className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none text-white h-16" placeholder="e.g. Pay to Till Number 123456" />
+                                    </div>
+                                    <div className="md:col-span-2 flex items-center gap-2">
+                                        <input type="checkbox" name="is_active" id="pm_is_active" defaultChecked={editingPaymentMethod.is_active} value="true" className="accent-primary-500 w-4 h-4 rounded" />
+                                        <label htmlFor="pm_is_active" className="text-sm font-medium text-white cursor-pointer">Actively Available</label>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2 justify-end pt-2">
+                                    <button type="button" onClick={() => setEditingPaymentMethod(null)} className="px-4 py-2 hover:bg-white/5 rounded-lg text-sm font-medium transition-colors text-white">Cancel</button>
+                                    <button type="submit" className="bg-primary-500 hover:bg-primary-400 text-dark-900 px-6 py-2 rounded-lg text-sm font-bold shadow-lg shadow-primary-500/20">Save Method</button>
+                                </div>
+                            </form>
+                        )}
+
                         <div className="space-y-4">
                             {storeDetails.payment_methods?.map((pm, idx) => (
-                                <div key={pm.id || idx} className="bg-dark-950 border border-white/5 rounded-xl p-4 flex justify-between items-center">
-                                    <div>
-                                        <h4 className="font-bold text-primary-400">{pm.provider}</h4>
-                                        {pm.account_name && <p className="text-sm text-slate-300">Name: {pm.account_name}</p>}
-                                        {pm.account_number && <p className="text-sm text-slate-300">Account: {pm.account_number}</p>}
-                                        {pm.instructions && <p className="text-xs text-slate-500 mt-1 italic">{pm.instructions}</p>}
+                                <div key={pm.id || idx} className="bg-dark-950 border border-white/5 rounded-xl p-4 flex justify-between items-center group">
+                                    <div className="flex gap-4 items-center">
+                                        {pm.image && (
+                                            <img src={pm.image.startsWith('http') ? pm.image : `${apiClient.defaults.baseURL.replace('/api', '')}${pm.image}`} alt={pm.provider} className="w-10 h-10 object-contain rounded bg-white/5" />
+                                        )}
+                                        <div>
+                                            <h4 className="font-bold text-primary-400">{pm.provider}</h4>
+                                            {pm.account_name && <p className="text-sm text-slate-300">Name: {pm.account_name}</p>}
+                                            {pm.account_number && <p className="text-sm text-slate-300">Account: {pm.account_number}</p>}
+                                            {pm.instructions && <p className="text-xs text-slate-500 mt-1 italic">{pm.instructions}</p>}
+                                        </div>
                                     </div>
-                                    <div className="flex flex-col gap-2">
+                                    <div className="flex flex-col items-end gap-2">
                                         <span className={`px-2 py-1 rounded text-[10px] font-bold ${pm.is_active ? 'bg-green-500/20 text-green-400' : 'bg-slate-500/20 text-slate-400'}`}>
                                             {pm.is_active ? 'ACTIVE' : 'INACTIVE'}
                                         </span>
+                                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button onClick={() => setEditingPaymentMethod(pm)} className="p-1.5 text-slate-400 hover:text-white bg-white/5 rounded-lg transition-colors"><Edit2 size={14} /></button>
+                                            <button onClick={() => handleDeletePaymentMethod(pm.id)} className="p-1.5 text-slate-400 hover:text-red-400 bg-white/5 rounded-lg transition-colors"><Trash2 size={14} /></button>
+                                        </div>
                                     </div>
                                 </div>
                             ))}
-                            {(!storeDetails.payment_methods || storeDetails.payment_methods.length === 0) && (
-                                <div className="text-center py-6 text-slate-500">No payment methods configured yet.</div>
+                            {(!storeDetails.payment_methods || storeDetails.payment_methods.length === 0) && !editingPaymentMethod && (
+                                <div className="text-center py-6 text-slate-500 bg-dark-950 rounded-xl border border-white/5 border-dashed">No payment methods configured yet.</div>
                             )}
                         </div>
                     </div>
