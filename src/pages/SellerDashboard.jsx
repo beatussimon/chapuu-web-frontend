@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import apiClient, { getWebSocketURL } from '../api/client';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChefHat, CheckCircle2, Clock, ListOrdered, Utensils, CreditCard, Play, SquareTerminal, Star, MessageSquare, Truck, Bell, QrCode, Calendar, Store, Plus, Edit2, Trash2, X } from 'lucide-react';
+import { ChefHat, CheckCircle2, Clock, ListOrdered, Utensils, CreditCard, Play, SquareTerminal, Star, MessageSquare, Truck, Bell, QrCode, Calendar, Store, Plus, Edit2, Trash2, X, ShoppingBag, ShoppingCart } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAppStore } from '../store/useStore';
 import { useCurrency, formatPriceStatic } from '../utils/useCurrency';
@@ -42,7 +42,67 @@ export default function SellerDashboard() {
     const [verifyModal, setVerifyModal] = useState({ open: false, order: null, fee: '' });
     const [editingPaymentMethod, setEditingPaymentMethod] = useState(null);
 
-    const fetchDashboard = () => {
+    const addToPosCart = (product) => {
+        setPosCart(prev => {
+            const existing = prev.find(i => i.id === product.id);
+            if (existing) {
+                return prev.map(i => i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i);
+            }
+            return [...prev, { ...product, quantity: 1 }];
+        });
+    };
+
+    const updatePosQty = (productId, delta) => {
+        setPosCart(prev => prev.map(i => {
+            if (i.id === productId) {
+                const newQty = Math.max(1, i.quantity + delta);
+                return { ...i, quantity: newQty };
+            }
+            return i;
+        }));
+    };
+
+    const handlePOSCheckout = () => {
+        if (posCart.length === 0) {
+            toast.error("POS cart is empty!");
+            return;
+        }
+        
+        const toastId = toast.loading('Processing walk-in order...');
+        const payload = {
+            store: storeDetails.id,
+            fulfillment_mode: 'TAKEAWAY',
+            payment_message: `POS Order: ${posCustomerName || 'Walk-in Customer'}`,
+            items: posCart.map(i => ({ product: i.id, quantity: i.quantity, unit_price: i.price }))
+        };
+
+        apiClient.post('/orders/', payload)
+            .then(res => {
+                const orderId = res.data.id;
+                // Move to PAID immediately
+                return apiClient.post(`/orders/${orderId}/advance_state/`, { state: 'PAID' })
+                    .then(() => {
+                        if (posSkipKitchen) {
+                            return apiClient.post(`/orders/${orderId}/advance_state/`, { state: 'PREPARING' })
+                                .then(() => apiClient.post(`/orders/${orderId}/advance_state/`, { state: 'READY' }));
+                        }
+                    });
+            })
+            .then(() => {
+                toast.success('POS Order created successfully!', { id: toastId });
+                setShowPOSModal(false);
+                setPosCart([]);
+                setPosCustomerName('');
+                setPosSkipKitchen(false);
+                fetchDashboard();
+            })
+            .catch(err => {
+                console.error(err);
+                toast.error("POS Failed: " + (err.response?.data?.detail || "Check console"), { id: toastId });
+            });
+    };
+
+    const fetchDashboard = useCallback(() => {
         apiClient.get('/auth/users/me/')
             .then(res => setUserProfile(res.data))
             .catch(e => console.error("Profile sync error"));
@@ -89,7 +149,7 @@ export default function SellerDashboard() {
         apiClient.get('/notices/')
             .then(res => setNotices(res.data))
             .catch(e => console.log("Notices sync failed"));
-    }
+    }, [userRole, storeDetails?.id]); // Dependencies for stability
 
     const markItemReady = (orderId, itemId) => {
         const toastId = toast.loading('Marking item ready...');
@@ -231,6 +291,16 @@ export default function SellerDashboard() {
                                 <div className={`w-1.5 h-1.5 rounded-full ${wsConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
                                 <span className="text-[10px] font-black uppercase tracking-tighter">{wsConnected ? 'Live' : 'Offline'}</span>
                             </div>
+                        </div>
+                    )}
+                    {storeDetails && (
+                        <div className="flex items-center gap-2 mt-1">
+                            <Store size={12} className="text-primary-400" />
+                            <span className="text-primary-400 text-xs font-black uppercase tracking-widest">
+                                {storeDetails.name}
+                            </span>
+                            <span className="text-slate-600 text-[10px]">·</span>
+                            <span className="text-slate-500 text-[10px] uppercase font-bold">{storeDetails.store_type}</span>
                         </div>
                     )}
                 </div>
@@ -533,6 +603,129 @@ export default function SellerDashboard() {
             )}
 
             {/* MODALS */}
+            {/* POS MODAL */}
+            {showPOSModal && (
+                <div className="fixed inset-0 bg-dark-950/90 backdrop-blur-md z-[100] flex items-center justify-center p-0 sm:p-4">
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+                        className="bg-dark-900 w-full h-full sm:h-auto sm:max-w-5xl sm:rounded-3xl shadow-2xl flex flex-col sm:flex-row overflow-hidden border border-white/10"
+                    >
+                        {/* Product Picker */}
+                        <div className="flex-1 flex flex-col h-full overflow-hidden border-r border-white/5 bg-dark-950/30">
+                            <div className="p-6 border-b border-white/5 flex justify-between items-center bg-dark-900/50">
+                                <div>
+                                    <h3 className="text-xl font-black text-white uppercase tracking-tight">Point of Sale</h3>
+                                    <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">Select products to add to cart</p>
+                                </div>
+                                <button onClick={() => setShowPOSModal(false)} className="sm:hidden p-2 text-slate-400 hover:text-white"><X size={24} /></button>
+                            </div>
+                            
+                            <div className="flex-1 overflow-y-auto p-4 md:p-6 grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 custom-scrollbar">
+                                {posProducts.map(product => (
+                                    <button 
+                                        key={product.id} 
+                                        onClick={() => addToPosCart(product)}
+                                        className="bg-dark-900 border border-white/5 rounded-2xl p-3 md:p-4 text-left hover:border-primary-500/50 transition-all group flex flex-col h-full shadow-lg"
+                                    >
+                                        <div className="w-full aspect-square rounded-xl bg-dark-950 mb-3 overflow-hidden border border-white/5">
+                                            {product.image ? (
+                                                <img src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-slate-800"><ShoppingBag size={32} /></div>
+                                            )}
+                                        </div>
+                                        <h4 className="font-bold text-white text-sm md:text-base line-clamp-1 group-hover:text-primary-400 transition-colors">{product.name}</h4>
+                                        <div className="mt-auto pt-2 flex justify-between items-center">
+                                            <span className="text-primary-500 font-black text-sm md:text-base">{formatPrice(product.price)}</span>
+                                            <div className="w-8 h-8 rounded-full bg-primary-500/10 text-primary-500 flex items-center justify-center group-hover:bg-primary-500 group-hover:text-dark-900 transition-all">
+                                                <Plus size={16} />
+                                            </div>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Cart Summary */}
+                        <div className="w-full sm:w-80 md:w-96 bg-dark-900 flex flex-col h-full border-t sm:border-t-0 sm:border-l border-white/10 shadow-[-10px_0_30px_rgba(0,0,0,0.5)]">
+                            <div className="p-6 border-b border-white/5 flex items-center justify-between">
+                                <h4 className="font-black text-slate-400 uppercase tracking-widest text-xs">Current Order</h4>
+                                <button onClick={() => setPosCart([])} className="text-[10px] font-black text-red-500 hover:text-red-400 uppercase tracking-widest">Clear All</button>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 custom-scrollbar">
+                                {posCart.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center h-full opacity-20 py-10">
+                                        <ShoppingCart size={48} className="mb-4" />
+                                        <p className="font-bold uppercase tracking-widest text-xs">Cart is empty</p>
+                                    </div>
+                                ) : (
+                                    posCart.map(item => (
+                                        <div key={item.id} className="flex gap-4 items-center bg-dark-950/50 p-3 rounded-2xl border border-white/5">
+                                            <div className="flex-1">
+                                                <h5 className="text-sm font-bold text-white line-clamp-1">{item.name}</h5>
+                                                <p className="text-xs text-primary-500 font-black mt-1">{formatPrice(item.price * item.quantity)}</p>
+                                            </div>
+                                            <div className="flex items-center gap-2 bg-dark-900 rounded-xl p-1 border border-white/10">
+                                                <button onClick={() => updatePosQty(item.id, -1)} className="p-1 hover:text-primary-400 text-slate-500 transition-colors"><X size={14} /></button>
+                                                <span className="w-6 text-center text-sm font-black text-white">{item.quantity}</span>
+                                                <button onClick={() => updatePosQty(item.id, 1)} className="p-1 hover:text-primary-400 text-slate-500 transition-colors"><Plus size={14} /></button>
+                                            </div>
+                                            <button onClick={() => removeFromPosCart(item.id)} className="text-red-500/50 hover:text-red-500 p-1"><Trash2 size={16} /></button>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+
+                            <div className="p-6 bg-dark-950/50 border-t border-white/10 space-y-4">
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 block">Customer Name</label>
+                                    <input 
+                                        type="text" 
+                                        placeholder="e.g. John Doe"
+                                        value={posCustomerName}
+                                        onChange={e => setPosCustomerName(e.target.value)}
+                                        className="w-full bg-dark-900 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-primary-500 outline-none transition-all font-medium"
+                                    />
+                                </div>
+                                
+                                <label className="flex items-center gap-3 cursor-pointer group">
+                                    <div className={`w-10 h-6 rounded-full transition-colors relative ${posSkipKitchen ? 'bg-primary-500' : 'bg-dark-800'}`}>
+                                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${posSkipKitchen ? 'left-5' : 'left-1'}`}></div>
+                                    </div>
+                                    <input type="checkbox" className="hidden" checked={posSkipKitchen} onChange={e => setPosSkipKitchen(e.target.checked)} />
+                                    <span className="text-xs font-bold text-slate-400 group-hover:text-white transition-colors">Skip Kitchen Queue</span>
+                                </label>
+
+                                <div className="pt-4 space-y-3">
+                                    <div className="flex justify-between items-end mb-2">
+                                        <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Total Amount</span>
+                                        <span className="text-2xl font-black text-white tracking-tight">
+                                            {formatPrice(posCart.reduce((sum, i) => sum + (i.price * i.quantity), 0))}
+                                        </span>
+                                    </div>
+                                    <div className="flex gap-3">
+                                        <button 
+                                            onClick={() => setShowPOSModal(false)}
+                                            className="flex-1 py-4 rounded-2xl bg-white/5 text-white font-bold text-sm hover:bg-white/10 transition-all border border-white/5"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button 
+                                            disabled={posCart.length === 0}
+                                            onClick={handlePOSCheckout}
+                                            className="flex-[2] py-4 rounded-2xl bg-primary-500 text-dark-900 font-black text-sm hover:bg-primary-400 transition-all shadow-[0_10px_30px_rgba(249,115,22,0.3)] disabled:opacity-50 disabled:shadow-none"
+                                        >
+                                            PLACE ORDER
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </motion.div>
+                </div>
+            )}
+
             {verifyModal.open && (
                 <div className="fixed inset-0 bg-dark-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                     <div className="bg-dark-900 border border-indigo-500/30 w-full max-w-md rounded-3xl shadow-2xl p-6 overflow-y-auto max-h-[80vh]">

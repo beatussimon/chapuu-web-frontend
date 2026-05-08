@@ -94,6 +94,13 @@ export default function OrderTracker() {
         };
     }, [id]);
 
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+    useEffect(() => {
+        const handler = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handler);
+        return () => window.removeEventListener('resize', handler);
+    }, []);
+
     if (loading) {
         return (
             <div className="flex justify-center items-center h-[calc(100vh-200px)]">
@@ -107,6 +114,21 @@ export default function OrderTracker() {
             <div className="text-center py-20 text-white">
                 <p className="mb-4 text-slate-400">Order not found.</p>
                 <Link to="/orders" className="bg-primary-500 text-dark-950 px-6 py-2 rounded-xl font-bold">Back to My Orders</Link>
+            </div>
+        );
+    }
+
+    if (['CANCELLED', 'EXPIRED', 'REFUNDED'].includes(order?.state)) {
+        return (
+            <div className="w-full max-w-3xl mx-auto py-20 px-4 text-center">
+                <div className="w-20 h-20 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mb-6 mx-auto">
+                    <X size={40} />
+                </div>
+                <h2 className="text-3xl font-black text-white mb-2 uppercase tracking-tight">Order {order.state}</h2>
+                <p className="text-slate-400 mb-8">This order is no longer active and cannot be tracked.</p>
+                <Link to="/orders" className="inline-block bg-white/5 hover:bg-white/10 text-white px-8 py-3 rounded-2xl font-bold transition-all">
+                    ← Back to My Orders
+                </Link>
             </div>
         );
     }
@@ -174,12 +196,11 @@ export default function OrderTracker() {
 
                     {/* Progress Fill Line */}
                     <div 
-                        className="absolute left-[31px] md:left-0 top-0 md:top-[31px] bg-primary-500 transition-all duration-1000 -z-10 rounded-full shadow-[0_0_10px_rgba(249,115,22,0.5)] hidden md:block"
-                        style={{ width: `${progressPercent}%`, height: '2px' }}
-                    ></div>
-                    <div 
-                        className="absolute left-[31px] md:left-0 top-0 md:top-[31px] bg-primary-500 transition-all duration-1000 -z-10 rounded-full shadow-[0_0_10px_rgba(249,115,22,0.5)] md:hidden"
-                        style={{ height: `${progressPercent}%`, width: '2px' }}
+                        className="absolute left-[31px] md:left-0 top-0 md:top-[31px] bg-primary-500 transition-all duration-1000 -z-10 rounded-full shadow-[0_0_10px_rgba(249,115,22,0.5)]"
+                        style={{ 
+                            width: !isMobile ? `${progressPercent}%` : '2px',
+                            height: isMobile ? `${progressPercent}%` : '2px'
+                        }}
                     ></div>
 
                     {displayStates.map((state, idx) => {
