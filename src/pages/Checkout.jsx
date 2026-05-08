@@ -35,8 +35,16 @@ export default function Checkout() {
             apiClient.get(`/stores/${selectedStore.id}/tables/`)
                 .then(res => setTables(res.data))
                 .catch(err => console.error("Could not fetch tables", err));
+            
+            // Re-fetch store details to get latest payment methods
+            apiClient.get(`/stores/${selectedStore.id}/`)
+                .then(res => {
+                    // Update global state if data differs
+                    useAppStore.getState().setSelectedStore(res.data);
+                })
+                .catch(err => console.error("Could not refresh store details", err));
         }
-    }, [selectedStore]);
+    }, [selectedStore?.id]); // Use .id to avoid infinite loops if object reference changes
 
     if (!selectedStore) {
         return <Navigate to="/stores" />;
@@ -289,16 +297,42 @@ export default function Checkout() {
                             <h3 className="text-base font-bold mb-3 text-slate-200">Proof of Payment (Offline)</h3>
                             
                             {selectedStore.payment_methods && selectedStore.payment_methods.length > 0 ? (
-                                <div className="mb-4 space-y-3">
-                                    <p className="text-xs text-slate-400 mb-2">Please transfer the Total amount to one of the store's accounts below, then provide proof.</p>
-                                    {selectedStore.payment_methods.map(pm => pm.is_active && (
-                                        <div key={pm.id} className="bg-dark-900 border border-white/5 rounded-xl p-3">
-                                            <h4 className="text-sm font-bold text-primary-400">{pm.provider}</h4>
-                                            {pm.account_name && <p className="text-xs text-slate-300">Name: {pm.account_name}</p>}
-                                            {pm.account_number && <p className="text-xs font-mono text-slate-200 mt-1 select-all">{pm.account_number}</p>}
-                                            {pm.instructions && <p className="text-xs text-slate-500 mt-1 italic">{pm.instructions}</p>}
-                                        </div>
-                                    ))}
+                                <div className="mb-6 space-y-4">
+                                    <p className="text-xs text-slate-400">Transfer the total to a provider below, then upload proof.</p>
+                                    
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        {selectedStore.payment_methods.map(pm => pm.is_active && (
+                                            <div key={pm.id} className="bg-dark-900/50 border border-white/10 rounded-2xl p-4 flex flex-col items-center text-center shadow-xl">
+                                                {(pm.image_url || pm.image) && (
+                                                    <div className="w-24 h-24 mb-3 rounded-xl bg-white flex items-center justify-center p-2 shrink-0 overflow-hidden shadow-inner">
+                                                        <img 
+                                                            src={pm.image_url || pm.image} 
+                                                            alt={pm.provider} 
+                                                            className="w-full h-full object-contain"
+                                                            onError={(e) => e.target.style.display = 'none'}
+                                                        />
+                                                    </div>
+                                                )}
+                                                
+                                                <h4 className="text-sm font-black text-primary-400 uppercase tracking-tighter mb-1">{pm.provider}</h4>
+                                                
+                                                {pm.account_name && (
+                                                    <p className="text-[10px] text-slate-300 font-bold line-clamp-1 mb-2">{pm.account_name}</p>
+                                                )}
+                                                
+                                                {pm.account_number && (
+                                                    <div className="w-full bg-dark-950 px-2 py-2 rounded-xl border border-white/5 mt-auto">
+                                                        <p className="text-lg font-black font-mono text-white select-all tracking-tight leading-none">{pm.account_number}</p>
+                                                        <p className="text-[8px] text-slate-500 uppercase font-black tracking-widest mt-1">Lipa Number</p>
+                                                    </div>
+                                                )}
+
+                                                {pm.instructions && (
+                                                    <p className="text-[9px] text-slate-500 mt-2 italic line-clamp-2">{pm.instructions}</p>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             ) : (
                                 <p className="text-xs text-slate-400 mb-4">Please transfer the Total amount to the restaurant natively (M-Pesa, Bank, Cash) and provide proof here to speed up approval.</p>

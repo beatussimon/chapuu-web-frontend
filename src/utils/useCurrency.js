@@ -32,8 +32,8 @@ export function useCurrency() {
                 })
                 .catch(err => {
                     console.error("Failed to load currencies", err);
+                    _fetchPromise = null; // Clear promise so we can retry on next mount
                     const fallback = [{ code: 'TZS', symbol: 'TSh', rate_to_base: '1.000000', is_default: true }];
-                    _currencyCache = fallback;
                     return fallback;
                 });
         }

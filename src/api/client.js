@@ -19,7 +19,7 @@ export const getWebSocketURL = (path) => {
 
 const apiClient = axios.create({
     baseURL: `${BACKEND_URL}/api`, 
-    timeout: 10000,
+    timeout: 30000,
     headers: {
         'Content-Type': 'application/json'
     }

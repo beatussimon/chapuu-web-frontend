@@ -7,6 +7,8 @@ import { useAppStore } from '../store/useStore';
 import { useCurrency, formatPriceStatic } from '../utils/useCurrency';
 import { QRCodeSVG } from 'qrcode.react';
 
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
+
 export default function SellerDashboard() {
     const [orders, setOrders] = useState([]);
     const [queueSize, setQueueSize] = useState(0);
@@ -346,7 +348,7 @@ export default function SellerDashboard() {
                         <div className="flex items-center gap-2 mb-6 pb-4 border-b border-green-500/10">
                             <CheckCircle2 className="text-green-500" />
                             <h3 className="font-bold text-lg text-white tracking-wide">READY FOR PICKUP/DELIVERY</h3>
-                            <span className="ml-auto bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-xs font-bold border border-green-500/30">{readyForDelivery.length}</span>
+                            <span className="ml-auto bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-xs font-bold border border-indigo-500/30">{readyForDelivery.length}</span>
                         </div>
                         <div className="overflow-y-auto pr-2 space-y-4 flex-grow">
                             {loading ? <LoadingSkeleton /> : <AnimatePresence>{readyForDelivery.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} />)}</AnimatePresence>}
@@ -462,27 +464,34 @@ export default function SellerDashboard() {
                             </form>
                         )}
 
-                        <div className="space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             {storeDetails.payment_methods?.map((pm, idx) => (
-                                <div key={pm.id || idx} className="bg-dark-950 border border-white/5 rounded-xl p-4 flex justify-between items-center group">
-                                    <div className="flex gap-4 items-center">
-                                        {pm.image && (
-                                            <img src={pm.image.startsWith('http') ? pm.image : `${apiClient.defaults.baseURL.replace('/api', '')}${pm.image}`} alt={pm.provider} className="w-10 h-10 object-contain rounded bg-white/5" />
-                                        )}
-                                        <div>
-                                            <h4 className="font-bold text-primary-400">{pm.provider}</h4>
-                                            {pm.account_name && <p className="text-sm text-slate-300">Name: {pm.account_name}</p>}
-                                            {pm.account_number && <p className="text-sm text-slate-300">Account: {pm.account_number}</p>}
-                                            {pm.instructions && <p className="text-xs text-slate-500 mt-1 italic">{pm.instructions}</p>}
+                                <div key={pm.id || idx} className="bg-dark-950 border border-white/5 rounded-2xl p-4 flex flex-col items-center text-center group relative">
+                                    {(pm.image_url || pm.image) && (
+                                        <div className="w-20 h-20 mb-3 rounded-xl bg-white flex items-center justify-center p-2 shrink-0 overflow-hidden shadow-inner border border-white/10">
+                                            <img 
+                                                src={pm.image_url || pm.image} 
+                                                alt={pm.provider} 
+                                                className="w-full h-full object-contain" 
+                                            />
                                         </div>
-                                    </div>
-                                    <div className="flex flex-col items-end gap-2">
-                                        <span className={`px-2 py-1 rounded text-[10px] font-bold ${pm.is_active ? 'bg-green-500/20 text-green-400' : 'bg-slate-500/20 text-slate-400'}`}>
+                                    )}
+                                    <h4 className="font-black text-sm text-primary-400 uppercase tracking-tight mb-1">{pm.provider}</h4>
+                                    {pm.account_name && <p className="text-[10px] text-slate-200 font-bold line-clamp-1 mb-2">{pm.account_name}</p>}
+                                    {pm.account_number && (
+                                        <div className="w-full bg-dark-900 px-2 py-2 rounded-xl border border-white/10 mt-auto">
+                                            <p className="text-lg font-black font-mono text-white select-all tracking-tight leading-none">{pm.account_number}</p>
+                                            <p className="text-[8px] text-slate-500 uppercase font-black tracking-widest mt-1">Lipa Number</p>
+                                        </div>
+                                    )}
+                                    
+                                    <div className="flex justify-between w-full mt-3 pt-2 border-t border-white/5">
+                                        <span className={`px-2 py-0.5 rounded text-[8px] font-black tracking-widest ${pm.is_active ? 'bg-green-500/20 text-green-400' : 'bg-slate-500/20 text-slate-400'}`}>
                                             {pm.is_active ? 'ACTIVE' : 'INACTIVE'}
                                         </span>
-                                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button onClick={() => setEditingPaymentMethod(pm)} className="p-1.5 text-slate-400 hover:text-white bg-white/5 rounded-lg transition-colors"><Edit2 size={14} /></button>
-                                            <button onClick={() => handleDeletePaymentMethod(pm.id)} className="p-1.5 text-slate-400 hover:text-red-400 bg-white/5 rounded-lg transition-colors"><Trash2 size={14} /></button>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => setEditingPaymentMethod(pm)} className="p-1 text-slate-400 hover:text-white bg-white/5 rounded transition-colors"><Edit2 size={12} /></button>
+                                            <button onClick={() => handleDeletePaymentMethod(pm.id)} className="p-1 text-slate-400 hover:text-red-400 bg-white/5 rounded transition-colors"><Trash2 size={12} /></button>
                                         </div>
                                     </div>
                                 </div>
