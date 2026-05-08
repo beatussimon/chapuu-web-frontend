@@ -118,13 +118,12 @@ export default function SellerDashboard() {
         let reconnectTimeout = null;
 
         const connectWebSocket = () => {
-            let wsUrl = getWebSocketURL('/ws/orders/');
-            
-            // If we have a store, listen to store-specific updates
+            let wsPath = '/ws/orders/';
             if (storeDetails?.id) {
-                wsUrl += `${storeDetails.id}/`;
+                wsPath += `${storeDetails.id}/`;
             }
-
+            
+            const wsUrl = getWebSocketURL(wsPath);
             console.log("[WS] Connecting to:", wsUrl);
             socket = new WebSocket(wsUrl);
 
