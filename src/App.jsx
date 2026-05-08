@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useAppStore } from './store/useStore';
 import CustomerDashboard from './pages/CustomerDashboard';
@@ -39,7 +39,7 @@ function TopNavigation() {
   const location = useLocation();
   const [scrolled, setScrolled] = useState(false);
 
-  useState(() => {
+  useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
     };
@@ -149,7 +149,11 @@ function BottomNav() {
   const location = useLocation();
   if (!userRole) return null;
 
-  const isActive = (path) => location.pathname === path || location.search.includes(path.split('?')[1]);
+  const isActive = (path) => {
+    const [pathname, search] = path.split('?');
+    if (search) return location.pathname === pathname && location.search.includes(search);
+    return location.pathname === pathname;
+  };
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden glass-dark border-t border-white/10 flex items-center justify-around px-2 py-2 safe-area-pb">

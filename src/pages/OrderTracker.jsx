@@ -61,7 +61,7 @@ export default function OrderTracker() {
         fetchOrder();
         const interval = setInterval(fetchOrder, 30000); // Polling fallback
 
-        const wsUrl = getWebSocketURL('/ws/orders/');
+        const wsUrl = getWebSocketURL(`/ws/order/${id}/`);
         
         let socket = null;
         let reconnectTimeout = null;
@@ -73,7 +73,7 @@ export default function OrderTracker() {
             socket.onmessage = (event) => {
                 try {
                     const data = JSON.parse(event.data);
-                    if (data.type === 'order_update' && data.message.order_id === parseInt(id)) {
+                    if (data.type === 'order_update') {
                         console.log("[WS] Live update for this order:", data.message);
                         fetchOrder();
                     }
