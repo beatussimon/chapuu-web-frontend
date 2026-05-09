@@ -72,6 +72,7 @@ export default function SellerDashboard() {
         const payload = {
             store: storeDetails.id,
             fulfillment_mode: 'TAKEAWAY',
+            is_instant_payment: true,
             payment_message: `POS Order: ${posCustomerName || 'Walk-in Customer'}`,
             items: posCart.map(i => ({ product: i.id, quantity: i.quantity, unit_price: i.price }))
         };
@@ -79,14 +80,12 @@ export default function SellerDashboard() {
         apiClient.post('/orders/', payload)
             .then(res => {
                 const orderId = res.data.id;
-                // Move to PAID immediately
-                return apiClient.post(`/orders/${orderId}/advance_state/`, { state: 'PAID' })
-                    .then(() => {
-                        if (posSkipKitchen) {
-                            return apiClient.post(`/orders/${orderId}/advance_state/`, { state: 'PREPARING' })
-                                .then(() => apiClient.post(`/orders/${orderId}/advance_state/`, { state: 'READY' }));
-                        }
-                    });
+                if (posSkipKitchen) {
+                    // Force to READY if requested by staff
+                    return apiClient.post(`/orders/${orderId}/advance_state/`, { state: 'PREPARING' })
+                        .then(() => apiClient.post(`/orders/${orderId}/advance_state/`, { state: 'READY' }));
+                }
+                return res;
             })
             .then(() => {
                 toast.success('POS Order created successfully!', { id: toastId });

@@ -9,7 +9,7 @@ import toast from 'react-hot-toast';
 import { triggerHaptic, hapticPatterns } from '../utils/haptics';
 
 export default function Checkout() {
-    const { cart, selectedStore, clearCart, activeReservation } = useAppStore();
+    const { cart, selectedStore, clearCart, activeReservation, userRole } = useAppStore();
     const navigate = useNavigate();
     const { formatPrice } = useCurrency();
 
@@ -23,9 +23,16 @@ export default function Checkout() {
     const [paymentMessage, setPaymentMessage] = useState('');
     const [paymentReceipt, setPaymentReceipt] = useState(null);
     const [isCheckingOut, setIsCheckingOut] = useState(false);
+    const [isInstantPayment, setIsInstantPayment] = useState(false);
 
     // AI Recommendations
     const [recommendations, setRecommendations] = useState([]);
+
+    useEffect(() => {
+        if (isInstantPayment && fulfillmentMode === 'DELIVERY') {
+            setFulfillmentMode(isShop ? 'PICKUP' : 'TAKEAWAY');
+        }
+    }, [isInstantPayment, isShop]);
 
     useEffect(() => {
         if (selectedStore) {
@@ -88,7 +95,8 @@ export default function Checkout() {
             fulfillment_mode: isReservationOrder ? 'RESERVATION' : fulfillmentMode,
             ...(fulfillmentMode === 'DINE_IN' && { table: selectedTable }),
             ...(fulfillmentMode === 'DELIVERY' && { customer_phone: customerPhone, delivery_location: deliveryLocation }),
-            payment_message: paymentMessage,
+            payment_message: isInstantPayment ? `Instant Payment (Walk-in)` : paymentMessage,
+            is_instant_payment: isInstantPayment,
             items: cart.map(i => ({ product: i.product.id, quantity: i.quantity, unit_price: i.product.price }))
         }
 
@@ -150,6 +158,22 @@ export default function Checkout() {
                         </h2>
 
                         <div className="space-y-4">
+                            {['SELLER', 'ADMIN', 'ACCOUNTANT', 'CHEF'].includes(userRole) && (
+                                <div className="flex items-center gap-3 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+                                    <input
+                                        type="checkbox"
+                                        checked={isInstantPayment}
+                                        onChange={(e) => setIsInstantPayment(e.target.checked)}
+                                        className="w-5 h-5 accent-amber-500"
+                                    />
+                                    <div>
+                                        <p className="text-sm font-bold text-amber-400">Walk-In / Pay on Spot</p>
+                                        <p className="text-xs text-slate-400">
+                                            Customer is physically present and paying now. Order goes directly to kitchen.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
                             <div>
                                 <label className="text-sm font-medium text-slate-400 mb-2 block">Order Method</label>
                                 {activeReservation ? (
@@ -294,66 +318,80 @@ export default function Checkout() {
                         </div>
 
                         <div className="mb-6 pt-4 border-t border-white/10">
-                            <h3 className="text-base font-bold mb-3 text-slate-200">Proof of Payment (Offline)</h3>
-                            
-                            {selectedStore.payment_methods && selectedStore.payment_methods.length > 0 ? (
-                                <div className="mb-6 space-y-4">
-                                    <p className="text-xs text-slate-400">Transfer the total to a provider below, then upload proof.</p>
-                                    
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        {selectedStore.payment_methods.map(pm => pm.is_active && (
-                                            <div key={pm.id} className="bg-dark-900/50 border border-white/10 rounded-2xl p-4 flex flex-col items-center text-center shadow-xl">
-                                                {(pm.image_url || pm.image) && (
-                                                    <div className="w-24 h-24 mb-3 rounded-xl bg-white flex items-center justify-center p-2 shrink-0 overflow-hidden shadow-inner">
-                                                        <img 
-                                                            src={pm.image_url || pm.image} 
-                                                            alt={pm.provider} 
-                                                            className="w-full h-full object-contain"
-                                                            onError={(e) => e.target.style.display = 'none'}
-                                                        />
-                                                    </div>
-                                                )}
-                                                
-                                                <h4 className="text-sm font-black text-primary-400 uppercase tracking-tighter mb-1">{pm.provider}</h4>
-                                                
-                                                {pm.account_name && (
-                                                    <p className="text-[10px] text-slate-300 font-bold line-clamp-1 mb-2">{pm.account_name}</p>
-                                                )}
-                                                
-                                                {pm.account_number && (
-                                                    <div className="w-full bg-dark-950 px-2 py-2 rounded-xl border border-white/5 mt-auto">
-                                                        <p className="text-lg font-black font-mono text-white select-all tracking-tight leading-none">{pm.account_number}</p>
-                                                        <p className="text-[8px] text-slate-500 uppercase font-black tracking-widest mt-1">Lipa Number</p>
-                                                    </div>
-                                                )}
-
-                                                {pm.instructions && (
-                                                    <p className="text-[9px] text-slate-500 mt-2 italic line-clamp-2">{pm.instructions}</p>
-                                                )}
-                                            </div>
-                                        ))}
+                            {isInstantPayment ? (
+                                <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-2xl flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center text-dark-950">
+                                        <CreditCard size={20} />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-bold text-green-400">Paid in Person</p>
+                                        <p className="text-xs text-slate-400">This order will be marked as PAID immediately.</p>
                                     </div>
                                 </div>
                             ) : (
-                                <p className="text-xs text-slate-400 mb-4">Please transfer the Total amount to the restaurant natively (M-Pesa, Bank, Cash) and provide proof here to speed up approval.</p>
+                                <>
+                                    <h3 className="text-base font-bold mb-3 text-slate-200">Proof of Payment (Offline)</h3>
+                                    
+                                    {selectedStore.payment_methods && selectedStore.payment_methods.length > 0 ? (
+                                        <div className="mb-6 space-y-4">
+                                            <p className="text-xs text-slate-400">Transfer the total to a provider below, then upload proof.</p>
+                                            
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                {selectedStore.payment_methods.map(pm => pm.is_active && (
+                                                    <div key={pm.id} className="bg-dark-900/50 border border-white/10 rounded-2xl p-4 flex flex-col items-center text-center shadow-xl">
+                                                        {(pm.image_url || pm.image) && (
+                                                            <div className="w-24 h-24 mb-3 rounded-xl bg-white flex items-center justify-center p-2 shrink-0 overflow-hidden shadow-inner">
+                                                                <img 
+                                                                    src={pm.image_url || pm.image} 
+                                                                    alt={pm.provider} 
+                                                                    className="w-full h-full object-contain"
+                                                                    onError={(e) => e.target.style.display = 'none'}
+                                                                />
+                                                            </div>
+                                                        )}
+                                                        
+                                                        <h4 className="text-sm font-black text-primary-400 uppercase tracking-tighter mb-1">{pm.provider}</h4>
+                                                        
+                                                        {pm.account_name && (
+                                                            <p className="text-[10px] text-slate-300 font-bold line-clamp-1 mb-2">{pm.account_name}</p>
+                                                        )}
+                                                        
+                                                        {pm.account_number && (
+                                                            <div className="w-full bg-dark-950 px-2 py-2 rounded-xl border border-white/5 mt-auto">
+                                                                <p className="text-lg font-black font-mono text-white select-all tracking-tight leading-none">{pm.account_number}</p>
+                                                                <p className="text-[8px] text-slate-500 uppercase font-black tracking-widest mt-1">Lipa Number</p>
+                                                            </div>
+                                                        )}
+
+                                                        {pm.instructions && (
+                                                            <p className="text-[9px] text-slate-500 mt-2 italic line-clamp-2">{pm.instructions}</p>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <p className="text-xs text-slate-400 mb-4">Please transfer the Total amount to the restaurant natively (M-Pesa, Bank, Cash) and provide proof here to speed up approval.</p>
+                                    )}
+
+                                    <label className="text-sm font-medium text-slate-400 mb-1 block mt-2">Transaction ID / Message</label>
+                                    <textarea
+                                        value={paymentMessage}
+                                        onChange={(e) => setPaymentMessage(e.target.value)}
+                                        placeholder="e.g. Paid via M-Pesa. Ref: ABCD123456"
+                                        rows="2"
+                                        className="w-full mb-3 bg-dark-950 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-primary-500 transition-all resize-none"
+                                    ></textarea>
+
+                                    <label className="text-sm font-medium text-slate-400 mb-1 block">Payment Receipt (Optional Image)</label>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(e) => setPaymentReceipt(e.target.files[0])}
+                                        className="w-full bg-dark-950 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-primary-500 transition-all file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-primary-500/10 file:text-primary-500 hover:file:bg-primary-500/20"
+                                    />
+                                </>
                             )}
-
-                            <label className="text-sm font-medium text-slate-400 mb-1 block mt-2">Transaction ID / Message</label>
-                            <textarea
-                                value={paymentMessage}
-                                onChange={(e) => setPaymentMessage(e.target.value)}
-                                placeholder="e.g. Paid via M-Pesa. Ref: ABCD123456"
-                                rows="2"
-                                className="w-full mb-3 bg-dark-950 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-primary-500 transition-all resize-none"
-                            ></textarea>
-
-                            <label className="text-sm font-medium text-slate-400 mb-1 block">Payment Receipt (Optional Image)</label>
-                            <input
-                                type="file"
-                                accept="image/*"
-                                onChange={(e) => setPaymentReceipt(e.target.files[0])}
-                                className="w-full bg-dark-950 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-primary-500 transition-all file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-primary-500/10 file:text-primary-500 hover:file:bg-primary-500/20"
-                            />
                         </div>
 
                         {/* AI Recommendations Section */}
