@@ -90,7 +90,7 @@ export default function MenuBuilder() {
         formData.append('requires_kitchen', editingProduct.requires_kitchen);
         formData.append('is_active', editingProduct.is_active);
 
-        if (!editingProduct.requires_kitchen && editingProduct.initial_stock) {
+        if (editingProduct.initial_stock !== undefined && editingProduct.initial_stock !== null && editingProduct.initial_stock !== '') {
             formData.append('initial_stock', editingProduct.initial_stock);
         }
 
@@ -217,12 +217,10 @@ export default function MenuBuilder() {
                                             {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                         </select>
                                     </div>
-                                    {!editingProduct.requires_kitchen && (
-                                        <div>
-                                            <label className="text-xs text-slate-400 mb-1 block">Quantity</label>
-                                            <input type="number" step="0.01" min="0" value={editingProduct.initial_stock || ''} onChange={e => setEditingProduct({ ...editingProduct, initial_stock: e.target.value })} className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none" placeholder="Leave empty for unlimited" />
-                                        </div>
-                                    )}
+                                    <div>
+                                        <label className="text-xs text-slate-400 mb-1 block">Inventory Quantity</label>
+                                        <input type="number" step="0.01" min="0" value={editingProduct.initial_stock || ''} onChange={e => setEditingProduct({ ...editingProduct, initial_stock: e.target.value })} className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none" placeholder="Leave empty for unlimited" />
+                                    </div>
                                     <div className="md:col-span-2">
                                         <label className="text-xs text-slate-400 mb-1 block">Product Image 1</label>
                                         {editingProduct.image_url && !productImageFile && (
