@@ -24,6 +24,7 @@ import DiscoverPage from './pages/DiscoverPage';
 import FAQ from './pages/FAQ';
 import { Utensils, LayoutDashboard, LogOut, ShoppingBag, TerminalSquare, QrCode, Calendar, Package, Shield, Store, Menu, X, Navigation, Tv, BarChart3, Compass, UtensilsCrossed, HelpCircle, ListOrdered, ShoppingCart, TrendingUp } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
+import { setStoreResetFn } from './api/client';
 
 function ProtectedRoute({ children, role }) {
   const userRole = useAppStore(state => state.userRole);
@@ -194,6 +195,12 @@ function BottomNav() {
 }
 
 function App() {
+  const clearAuth = useAppStore(state => state.clearAuth);
+
+  useEffect(() => {
+    setStoreResetFn(clearAuth);
+  }, [clearAuth]);
+
   return (
     <Router>
       <div className="flex flex-col min-h-screen">

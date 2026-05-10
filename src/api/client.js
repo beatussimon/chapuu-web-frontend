@@ -61,6 +61,11 @@ const isPublicEndpoint = (url) => {
 };
 
 let isHandling401 = false;
+let storeResetFn = null;
+
+export const setStoreResetFn = (fn) => {
+    storeResetFn = fn;
+};
 
 // Interceptor to handle global errors (e.g. 401 Unauthorized)
 apiClient.interceptors.response.use((response) => {
@@ -72,6 +77,11 @@ apiClient.interceptors.response.use((response) => {
         // Clear stale tokens immediately on any 401
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
+
+        // Reset global state if possible
+        if (storeResetFn) {
+            storeResetFn();
+        }
 
         // 1. If it's a public endpoint, retry ONCE without auth
         if (isPublicEndpoint(originalRequest.url) && !originalRequest._retry) {
@@ -94,7 +104,7 @@ apiClient.interceptors.response.use((response) => {
             setTimeout(() => { 
                 isHandling401 = false; 
                 window.location.href = '/login';
-            }, 2000);
+            }, 1000);
         }
     }
     return Promise.reject(error);
