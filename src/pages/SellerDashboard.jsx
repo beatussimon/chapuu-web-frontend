@@ -474,6 +474,10 @@ export default function SellerDashboard() {
                                     <label className="text-xs text-slate-400 block mb-1">Contact Phone</label>
                                     <input type="text" name="contact_phone" defaultValue={storeDetails.contact_phone || ''} className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none text-white" />
                                 </div>
+                                <div>
+                                    <label className="text-xs text-slate-400 block mb-1">Contact Email</label>
+                                    <input type="email" name="contact_email" defaultValue={storeDetails.contact_email || ''} className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none text-white" />
+                                </div>
                                 <div className="md:col-span-2">
                                     <label className="text-xs text-slate-400 block mb-1">Location</label>
                                     <textarea name="location" defaultValue={storeDetails.location || ''} className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none text-white h-20" />

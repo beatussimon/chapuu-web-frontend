@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import apiClient from '../api/client';
-import { CheckCircle2, Copy, MessageSquare, ArrowRight, Store } from 'lucide-react';
+import { CheckCircle2, Copy, MessageSquare, ArrowRight, Store, Send } from 'lucide-react';
 import { useCurrency } from '../utils/useCurrency';
 import toast from 'react-hot-toast';
+import { triggerHaptic, hapticPatterns } from '../utils/haptics';
 
 export default function OrderConfirmation() {
     const { id } = useParams();
@@ -46,6 +47,15 @@ export default function OrderConfirmation() {
         toast.success("Message copied to clipboard!");
     };
 
+    const handleSendSMS = () => {
+        triggerHaptic(hapticPatterns.medium);
+        const phoneNumber = order.store_phone || '';
+        // Use standard sms: URI. Some platforms use & or ; for the body separator. 
+        // We'll use ?body= which is most widely compatible.
+        const smsUri = `sms:${phoneNumber}?body=${encodeURIComponent(confirmationMessage)}`;
+        window.location.href = smsUri;
+    };
+
     return (
         <div className="w-full max-w-2xl mx-auto py-12 px-4 flex flex-col items-center">
             <div className="w-20 h-20 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(34,197,94,0.3)]">
@@ -84,10 +94,10 @@ export default function OrderConfirmation() {
 
             <div className="flex flex-col sm:flex-row flex-wrap justify-center w-full gap-4">
                 <button
-                    onClick={handleCopy}
-                    className="bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-3 px-6 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-600/20"
+                    onClick={handleSendSMS}
+                    className="bg-primary-500 hover:bg-primary-400 text-dark-900 font-bold py-3 px-8 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-primary-500/20 transform hover:-translate-y-1 active:translate-y-0"
                 >
-                    <MessageSquare size={18} /> Send manually
+                    <Send size={18} /> Send SMS Confirmation
                 </button>
 
                 {order.id && (
