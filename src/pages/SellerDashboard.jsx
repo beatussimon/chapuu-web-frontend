@@ -193,6 +193,10 @@ export default function SellerDashboard() {
     }
 
     const advanceOrderState = (orderId, newState, extraData = {}) => {
+        // IDEMPOTENCY: Skip if already in the target state
+        const order = orders.find(o => o.id === orderId);
+        if (order && order.state === newState) return;
+
         const toastId = toast.loading('Updating order...');
         apiClient.post(`/orders/${orderId}/advance_state/`, { state: newState, ...extraData })
             .then(() => {
