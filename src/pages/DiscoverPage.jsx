@@ -28,8 +28,12 @@ export default function DiscoverPage() {
             apiClient.get('/stores/'),
             apiClient.get('/stats/billboard/')
         ]).then(([storesRes, statsRes]) => {
-            setStores(storesRes.data);
-            setStats(statsRes.data);
+            setStores(Array.isArray(storesRes.data) ? storesRes.data : []);
+            setStats(statsRes.data || {
+                metrics: { total_stores: 0, total_meals_served: 0 },
+                top_stores: [],
+                trending_items: []
+            });
             setLoading(false);
         }).catch(() => {
             toast.error("Failed to load discover data");
@@ -37,7 +41,8 @@ export default function DiscoverPage() {
         });
     }, []);
 
-    const filteredStores = stores.filter(s => {
+    const storesArray = Array.isArray(stores) ? stores : [];
+    const filteredStores = storesArray.filter(s => {
         const matchesSearch = !searchQuery || s.name.toLowerCase().includes(searchQuery.toLowerCase()) || s.location?.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesFilter = activeFilter === 'ALL' || s.store_type === activeFilter;
         return matchesSearch && matchesFilter;

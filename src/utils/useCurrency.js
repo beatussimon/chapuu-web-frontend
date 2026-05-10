@@ -42,7 +42,8 @@ export function useCurrency() {
         let isMounted = true;
         _fetchPromise.then(data => {
             if (isMounted) {
-                setCurrencies(data);
+                const safeData = Array.isArray(data) ? data : [];
+                setCurrencies(safeData);
                 setReady(true);
             }
         });
@@ -50,7 +51,8 @@ export function useCurrency() {
         return () => { isMounted = false; };
     }, []);
 
-    const defaultCurrency = currencies.find(c => c.is_default) || currencies[0] || { code: 'TZS', symbol: 'TSh', rate_to_base: '1.000000' };
+    const currenciesArray = Array.isArray(currencies) ? currencies : [];
+    const defaultCurrency = currenciesArray.find(c => c.is_default) || currenciesArray[0] || { code: 'TZS', symbol: 'TSh', rate_to_base: '1.000000' };
 
     /**
      * Format a price amount (stored in base currency TZS) for display.
@@ -63,7 +65,7 @@ export function useCurrency() {
         if (isNaN(num)) return `${defaultCurrency.symbol} 0`;
 
         const target = currencyCode
-            ? currencies.find(c => c.code === currencyCode)
+            ? currenciesArray.find(c => c.code === currencyCode)
             : defaultCurrency;
 
         if (!target) return `TSh ${num.toLocaleString()}`;

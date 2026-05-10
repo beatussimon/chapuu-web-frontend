@@ -244,7 +244,8 @@ export default function CustomerDashboard() {
                                     </h3>
                                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
                                         {items.map(p => {
-                                            const cartItem = cart.find(i => i.product.id === p.id);
+                                            const cartArray = Array.isArray(cart) ? cart : [];
+                                            const cartItem = cartArray.find(i => i.product.id === p.id);
                                             const isAvailable = p.computed_is_available !== undefined ? p.computed_is_available : p.is_active;
                                             
                                             return (
@@ -474,7 +475,8 @@ export default function CustomerDashboard() {
                                 {/* Quick add to cart from preview */}
                                 {(() => {
                                     const isAvailable = previewImageProduct.computed_is_available !== undefined ? previewImageProduct.computed_is_available : previewImageProduct.is_active;
-                                    const cartItem = cart.find(i => i.product.id === previewImageProduct.id);
+                                    const cartArray = Array.isArray(cart) ? cart : [];
+                                    const cartItem = cartArray.find(i => i.product.id === previewImageProduct.id);
                                     if (!isAvailable) return null;
                                     return (
                                         <button

@@ -7,7 +7,8 @@ export const useAppStore = create(
         (set) => ({
             cart: [],
             addToCart: (product, qty = 1) => set((state) => {
-                const existing = state.cart.find(item => item.product.id === product.id);
+                const safeCart = Array.isArray(state.cart) ? state.cart : [];
+                const existing = safeCart.find(item => item.product.id === product.id);
                 let newQty = existing ? existing.quantity + qty : qty;
                 
                 if (product.requires_inventory && product.stock_quantity !== null) {
@@ -20,18 +21,19 @@ export const useAppStore = create(
                 }
                 
                 if (existing) {
-                    return { cart: state.cart.map(i => i.product.id === product.id ? { ...i, quantity: newQty } : i) };
+                    return { cart: safeCart.map(i => i.product.id === product.id ? { ...i, quantity: newQty } : i) };
                 }
-                return { cart: [...state.cart, { product, quantity: newQty }] };
+                return { cart: [...safeCart, { product, quantity: newQty }] };
             }),
             removeFromCart: (productId) => set((state) => ({
-                cart: state.cart.filter(item => item.product.id !== productId)
+                cart: (Array.isArray(state.cart) ? state.cart : []).filter(item => item.product.id !== productId)
             })),
             clearCart: () => set({ cart: [] }),
             updateQuantity: (productId, qty) => set((state) => {
-                if (qty < 1) return { cart: state.cart.filter(item => item.product.id !== productId) };
+                const safeCart = Array.isArray(state.cart) ? state.cart : [];
+                if (qty < 1) return { cart: safeCart.filter(item => item.product.id !== productId) };
                 
-                const item = state.cart.find(i => i.product.id === productId);
+                const item = safeCart.find(i => i.product.id === productId);
                 if (!item) return state;
                 
                 let newQty = qty;
@@ -44,7 +46,7 @@ export const useAppStore = create(
                     }
                 }
                 
-                return { cart: state.cart.map(i => i.product.id === productId ? { ...i, quantity: newQty } : i) };
+                return { cart: safeCart.map(i => i.product.id === productId ? { ...i, quantity: newQty } : i) };
             }),
 
             // Auth
