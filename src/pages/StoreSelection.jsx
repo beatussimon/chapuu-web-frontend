@@ -29,7 +29,8 @@ export default function StoreSelection() {
             try {
                 const response = await apiClient.get('/stores/');
                 // Fetch reviews for all stores concurrently
-                const storesWithReviews = await Promise.all(response.data.map(async (store) => {
+                const data = Array.isArray(response.data) ? response.data : [];
+                const storesWithReviews = await Promise.all(data.map(async (store) => {
                     try {
                         const reviewsRes = await apiClient.get(`/stores/${store.id}/reviews/`);
                         const reviews = reviewsRes.data;

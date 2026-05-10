@@ -55,7 +55,8 @@ export default function CustomerDashboard() {
             apiClient.get(`/products/?store=${selectedStore.id}`)
                 .then(res => {
                     // De-duplicate products by ID just in case API returns multiples
-                    const unique = Array.from(new Map(res.data.map(item => [item.id, item])).values());
+                    const data = Array.isArray(res.data) ? res.data : [];
+                    const unique = Array.from(new Map(data.map(item => [item.id, item])).values());
                     setProducts(unique);
                     setLoading(false);
                 })
