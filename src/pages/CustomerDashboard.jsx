@@ -345,7 +345,7 @@ export default function CustomerDashboard() {
                     ) : (
                         /* Expanded bar */
                         <button
-                            onClick={() => navigate('/checkout')}
+                            onClick={() => navigate('/cart')}
                             className="w-full bg-primary-500 text-dark-950 font-bold py-4 px-6 rounded-2xl flex items-center justify-between shadow-2xl shadow-primary-500/30"
                         >
                             <div className="flex items-center gap-3">

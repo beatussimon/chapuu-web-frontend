@@ -20,15 +20,19 @@ export const useAppStore = create(
                     }
                 }
                 
+                const storeObj = state.selectedStore;
                 if (existing) {
                     return { cart: safeCart.map(i => i.product.id === product.id ? { ...i, quantity: newQty } : i) };
                 }
-                return { cart: [...safeCart, { product, quantity: newQty }] };
+                return { cart: [...safeCart, { product, quantity: newQty, store: storeObj }] };
             }),
             removeFromCart: (productId) => set((state) => ({
                 cart: (Array.isArray(state.cart) ? state.cart : []).filter(item => item.product.id !== productId)
             })),
             clearCart: () => set({ cart: [] }),
+            clearStoreCart: (storeId) => set((state) => ({
+                cart: (Array.isArray(state.cart) ? state.cart : []).filter(item => item.store?.id !== storeId)
+            })),
             updateQuantity: (productId, qty) => set((state) => {
                 const safeCart = Array.isArray(state.cart) ? state.cart : [];
                 if (qty < 1) return { cart: safeCart.filter(item => item.product.id !== productId) };
@@ -100,8 +104,7 @@ export const useAppStore = create(
             // Multi-Vendor
             selectedStore: null,
             setSelectedStore: (store) => set((state) => ({
-                selectedStore: store,
-                cart: state.selectedStore?.id === store?.id ? state.cart : []
+                selectedStore: store
             })),
 
             // Reservations

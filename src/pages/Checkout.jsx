@@ -10,7 +10,7 @@ import { triggerHaptic, hapticPatterns } from '../utils/haptics';
 import OptimizedImage from '../components/OptimizedImage';
 
 export default function Checkout() {
-    const { cart, selectedStore, clearCart, activeReservation, userRole } = useAppStore();
+    const { cart, selectedStore, clearStoreCart, activeReservation, userRole } = useAppStore();
     const navigate = useNavigate();
     const { formatPrice } = useCurrency();
 
@@ -58,20 +58,28 @@ export default function Checkout() {
         return <Navigate to="/stores" />;
     }
 
-    if (cart.length === 0) {
+    const storeCart = (Array.isArray(cart) ? cart : []).filter(item => item.store?.id === selectedStore?.id);
+
+    if (storeCart.length === 0) {
         return (
             <div className="w-full max-w-4xl mx-auto py-8 text-white min-h-[60vh] flex flex-col items-center justify-center">
                 <ShoppingCart size={64} className="text-slate-600 mb-6" />
-                <h2 className="text-2xl font-bold mb-2">Your Cart is Empty</h2>
-                <p className="text-slate-400 mb-6">Looks like you haven't added anything yet.</p>
-                <button onClick={() => navigate('/menu')} className="bg-primary-500 text-dark-950 font-bold px-6 py-3 rounded-xl transition-transform hover:-translate-y-1">
-                    Browse Menu
-                </button>
+                <h2 className="text-2xl font-bold mb-2">Your Cart for {selectedStore.name} is Empty</h2>
+                <p className="text-slate-400 mb-6">Looks like you haven't added anything from this store yet.</p>
+                {cart.length > 0 ? (
+                    <button onClick={() => navigate('/cart')} className="bg-primary-500 text-dark-950 font-bold px-6 py-3 rounded-xl transition-transform hover:-translate-y-1">
+                        View Global Cart
+                    </button>
+                ) : (
+                    <button onClick={() => navigate('/menu')} className="bg-primary-500 text-dark-950 font-bold px-6 py-3 rounded-xl transition-transform hover:-translate-y-1">
+                        Browse Menu
+                    </button>
+                )}
             </div>
         );
     }
 
-    const cartTotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+    const cartTotal = storeCart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
 
     const handleCheckout = () => {
         if (fulfillmentMode === 'DINE_IN' && !selectedTable) {
@@ -98,7 +106,7 @@ export default function Checkout() {
             ...(fulfillmentMode === 'DELIVERY' && { customer_phone: customerPhone, delivery_location: deliveryLocation }),
             payment_message: isInstantPayment ? `Instant Payment (Walk-in)` : paymentMessage,
             is_instant_payment: isInstantPayment,
-            items: (Array.isArray(cart) ? cart : []).map(i => ({ product: i.product.id, quantity: i.quantity, unit_price: i.product.price })),
+            items: storeCart.map(i => ({ product: i.product.id, quantity: i.quantity, unit_price: i.product.price })),
         }
 
         if (isReservationOrder) {
@@ -119,7 +127,7 @@ export default function Checkout() {
             })
             .then(res => {
                 toast.success('Order placed successfully!', { id: toastId });
-                clearCart();
+                clearStoreCart(selectedStore.id);
                 localStorage.removeItem('scanned_table_id'); // Clear table session on checkout
                 useAppStore.setState({ activeReservation: null }); // Clear active reservation
 
@@ -296,7 +304,7 @@ export default function Checkout() {
                         </h2>
 
                         <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 mb-6">
-                            {cart.map((item) => (
+                            {storeCart.map((item) => (
                                 <div key={item.product.id} className="flex justify-between items-center text-sm py-2">
                                     <div className="flex items-center gap-2">
                                         <span className="font-medium text-white">{item.quantity}x</span>

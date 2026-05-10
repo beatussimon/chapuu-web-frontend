@@ -7,6 +7,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import StoreSelection from './pages/StoreSelection';
 import Checkout from './pages/Checkout';
+import GlobalCart from './pages/GlobalCart';
 import OrderConfirmation from './pages/OrderConfirmation';
 import OrderTracker from './pages/OrderTracker';
 import ScanHandler from './pages/ScanHandler';
@@ -111,7 +112,7 @@ function TopNavigation() {
                   <Link to="/faq" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors"><HelpCircle size={16} /><span className="text-sm font-medium">FAQ</span></Link>
 
                   {/* Global Cart Button */}
-                  <Link to="/checkout" className="flex items-center gap-2 ml-4 px-4 py-2 rounded-full bg-primary-500 text-dark-950 font-bold hover:bg-primary-400 transition-colors shadow-lg shadow-primary-500/20 relative">
+                  <Link to="/cart" className="flex items-center gap-2 ml-4 px-4 py-2 rounded-full bg-primary-500 text-dark-950 font-bold hover:bg-primary-400 transition-colors shadow-lg shadow-primary-500/20 relative">
                     <ShoppingCart size={16} />
                     <span className="text-sm">Cart</span>
                     {cart.length > 0 && (
@@ -162,7 +163,7 @@ function BottomNav() {
         <>
           <Link to="/" className={`flex flex-col items-center p-2 ${isActive('/') ? 'text-primary-500' : 'text-slate-400'}`}><Compass size={20} /><span className="text-[10px] mt-1">Discover</span></Link>
           <Link to="/stores?type=RESTAURANT" className={`flex flex-col items-center p-2 ${isActive('/stores?type=RESTAURANT') ? 'text-primary-500' : 'text-slate-400'}`}><UtensilsCrossed size={20} /><span className="text-[10px] mt-1">Restaurants</span></Link>
-          <Link to="/checkout" className={`flex flex-col items-center p-2 relative ${isActive('/checkout') ? 'text-primary-500' : 'text-slate-400'}`}>
+          <Link to="/cart" className={`flex flex-col items-center p-2 relative ${isActive('/cart') ? 'text-primary-500' : 'text-slate-400'}`}>
             <ShoppingCart size={20} />
             {cart.length > 0 && <span className="absolute top-1 right-1 bg-red-500 text-white text-[8px] font-bold px-1 rounded-full">{cart.reduce((s, i) => s + i.quantity, 0)}</span>}
             <span className="text-[10px] mt-1">Cart</span>
@@ -222,6 +223,7 @@ function App() {
             {/* Customer Routes (Accessible by any authenticated user) */}
             <Route path="/stores" element={<ProtectedRoute><StoreSelection /></ProtectedRoute>} />
             <Route path="/menu" element={<ProtectedRoute><CustomerDashboard /></ProtectedRoute>} />
+            <Route path="/cart" element={<ProtectedRoute><GlobalCart /></ProtectedRoute>} />
             <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
             <Route path="/orders" element={<ProtectedRoute><CustomerOrders /></ProtectedRoute>} />
             <Route path="/order/confirmation/:id" element={<ProtectedRoute><OrderConfirmation /></ProtectedRoute>} />
