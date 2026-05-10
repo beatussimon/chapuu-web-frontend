@@ -152,11 +152,19 @@ export default function CustomerDashboard() {
                                         {selectedStore.location && <span className="w-1 h-1 rounded-full bg-white/20"></span>}
 
                                         <div className="flex items-center gap-2 md:gap-3">
-                                            <a href={`tel:${selectedStore.phone || '+255000000000'}`} className="text-primary-400 hover:text-primary-300 text-[10px] md:text-sm font-medium flex items-center gap-1 transition-colors" title="Call Store">
+                                            <a 
+                                                href={`tel:${selectedStore.contact_phone || selectedStore.phone || ''}`} 
+                                                className={`text-primary-400 hover:text-primary-300 text-[10px] md:text-sm font-medium flex items-center gap-1 transition-colors ${!(selectedStore.contact_phone || selectedStore.phone) ? 'pointer-events-none opacity-50' : ''}`} 
+                                                title="Call Store"
+                                            >
                                                 <Phone size={10} className="md:w-3 md:h-3" /> Call
                                             </a>
                                             <span className="w-1 h-1 rounded-full bg-white/20"></span>
-                                            <a href={`mailto:${selectedStore.email || `contact@${selectedStore.name.replace(/\s+/g, '').toLowerCase()}.chapuu.test`}?subject=Inquiry from Chapuu`} className="text-slate-300 hover:text-white text-[10px] md:text-sm font-medium flex items-center gap-1 transition-colors" title="Email Store">
+                                            <a 
+                                                href={`mailto:${selectedStore.contact_email || ''}?subject=Inquiry from Chapuu`} 
+                                                className={`text-slate-300 hover:text-white text-[10px] md:text-sm font-medium flex items-center gap-1 transition-colors ${!selectedStore.contact_email ? 'pointer-events-none opacity-50' : ''}`} 
+                                                title="Email Store"
+                                            >
                                                 <Mail size={10} className="md:w-3 md:h-3" /> Email
                                             </a>
                                         </div>
