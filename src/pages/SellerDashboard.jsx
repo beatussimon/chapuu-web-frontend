@@ -63,6 +63,10 @@ export default function SellerDashboard() {
         }));
     };
 
+    const removeFromPosCart = (productId) => {
+        setPosCart(prev => prev.filter(i => i.id !== productId));
+    };
+
     const handlePOSCheckout = () => {
         if (posCart.length === 0) {
             toast.error("POS cart is empty!");
