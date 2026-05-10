@@ -111,19 +111,21 @@ export default function CustomerDashboard() {
     return (
         <div className="w-full relative">
 
-            {/* Store Image Underlay */}
-            {selectedStore.image_url && (
-                <div className="absolute top-0 left-0 w-full h-32 md:h-72 -mx-4 sm:-mx-6 lg:-mx-8 md:-mt-8 -z-10 overflow-hidden pointer-events-none rounded-b-[2rem] md:rounded-b-[3rem]">
-                    <OptimizedImage src={selectedStore.image_url} alt={selectedStore.name} className="w-full h-full object-cover opacity-20" wrapperClassName="w-full h-full" eager />
-                    <div className="absolute inset-0 bg-gradient-to-b from-dark-950/10 via-dark-950/60 to-dark-950"></div>
-                </div>
-            )}
-
             <div className="flex flex-col lg:flex-row gap-8">
                 {/* Main Menu Section */}
-                <div className={`flex-grow ${selectedStore.image_url ? 'pt-2 md:pt-8' : ''}`}>
-                    {/* Header */}
-                    <div className="flex items-center gap-3 md:gap-4 mb-3 md:mb-6">
+                <div className="flex-grow">
+                    {/* Header Area Wrapper */}
+                    <div className={`relative ${selectedStore.image_url ? '-mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 pt-4 md:pt-8 pb-4 md:pb-6 mb-4 md:mb-6 md:-mt-8 rounded-b-[2rem] md:rounded-b-[3rem] overflow-hidden' : 'mb-4 md:mb-6'}`}>
+                        {/* Store Image Underlay */}
+                        {selectedStore.image_url && (
+                            <div className="absolute inset-0 -z-10 pointer-events-none">
+                                <OptimizedImage src={selectedStore.image_url} alt={selectedStore.name} className="w-full h-full object-cover opacity-20" wrapperClassName="w-full h-full" eager />
+                                <div className="absolute inset-0 bg-gradient-to-b from-dark-950/10 via-dark-950/60 to-dark-950"></div>
+                            </div>
+                        )}
+
+                        {/* Header */}
+                        <div className="flex items-center gap-3 md:gap-4 mb-4 md:mb-6">
                         <button
                             onClick={() => navigate('/stores')}
                             className="p-2 bg-white/5 hover:bg-white/10 rounded-xl transition-colors text-slate-400 hover:text-white"
@@ -172,7 +174,7 @@ export default function CustomerDashboard() {
                     </div>
 
                     {/* Search Bar */}
-                    <div className="relative mb-3 md:mb-4">
+                    <div className="relative mb-4">
                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                             <Search size={18} className="text-slate-500" />
                         </div>
@@ -181,7 +183,7 @@ export default function CustomerDashboard() {
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder={`Search ${isShop ? 'products' : 'menu'}...`}
-                            className="w-full bg-dark-900/80 border border-white/10 focus:border-primary-500 rounded-2xl py-2 md:py-3 pl-11 pr-10 text-slate-100 placeholder-slate-600 transition-all outline-none focus:ring-1 focus:ring-primary-500/30"
+                            className="w-full bg-dark-900/80 border border-white/10 focus:border-primary-500 rounded-2xl py-3 pl-11 pr-10 text-slate-100 placeholder-slate-600 transition-all outline-none focus:ring-1 focus:ring-primary-500/30"
                         />
                         {searchQuery && (
                             <button onClick={() => setSearchQuery('')} className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-500 hover:text-white">
@@ -192,10 +194,10 @@ export default function CustomerDashboard() {
 
                     {/* Category Chips */}
                     {categories.length > 1 && (
-                        <div className="flex gap-2 mb-4 md:mb-6 overflow-x-auto pb-2 scrollbar-hide">
+                        <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
                             <button
                                 onClick={() => setActiveCategory(null)}
-                                className={`shrink-0 px-3 py-1.5 md:px-4 md:py-2 rounded-xl text-sm font-medium transition-all ${!activeCategory
+                                className={`shrink-0 px-4 py-2 rounded-xl text-sm font-medium transition-all ${!activeCategory
                                     ? 'bg-primary-500 text-dark-950 shadow-lg shadow-primary-500/20'
                                     : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
                                     }`}
@@ -206,7 +208,7 @@ export default function CustomerDashboard() {
                                 <button
                                     key={cat}
                                     onClick={() => scrollToCategory(cat)}
-                                    className={`shrink-0 px-3 py-1.5 md:px-4 md:py-2 rounded-xl text-sm font-medium transition-all ${activeCategory === cat
+                                    className={`shrink-0 px-4 py-2 rounded-xl text-sm font-medium transition-all ${activeCategory === cat
                                         ? 'bg-primary-500 text-dark-950 shadow-lg shadow-primary-500/20'
                                         : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
                                         }`}
@@ -216,6 +218,7 @@ export default function CustomerDashboard() {
                             ))}
                         </div>
                     )}
+                    </div>
 
                     {/* Product Grid */}
                     {loading ? (
