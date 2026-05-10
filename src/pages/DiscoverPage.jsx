@@ -29,10 +29,11 @@ export default function DiscoverPage() {
             apiClient.get('/stats/billboard/')
         ]).then(([storesRes, statsRes]) => {
             setStores(Array.isArray(storesRes.data) ? storesRes.data : []);
-            setStats(statsRes.data || {
-                metrics: { total_stores: 0, total_meals_served: 0 },
-                top_stores: [],
-                trending_items: []
+            const statsData = statsRes.data || {};
+            setStats({
+                metrics: statsData.metrics || { total_stores: 0, total_meals_served: 0 },
+                top_stores: Array.isArray(statsData.top_stores) ? statsData.top_stores : [],
+                trending_items: Array.isArray(statsData.trending_items) ? statsData.trending_items : []
             });
             setLoading(false);
         }).catch(() => {

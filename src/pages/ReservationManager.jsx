@@ -10,7 +10,7 @@ export default function ReservationManager() {
 
     const fetchReservations = () => {
         apiClient.get('/reservations/')
-            .then(res => setReservations(res.data))
+            .then(res => setReservations(Array.isArray(res.data) ? res.data : []))
             .catch(err => toast.error("Failed to load reservations."));
     }
 
@@ -38,7 +38,8 @@ export default function ReservationManager() {
         // Find active session and close it
         apiClient.get('/sessions/')
             .then(sessRes => {
-                const session = sessRes.data.find(s => s.reservation === res.id && s.is_active);
+                const data = Array.isArray(sessRes.data) ? sessRes.data : [];
+                const session = data.find(s => s.reservation === res.id && s.is_active);
                 if (session) {
                     apiClient.post(`/sessions/${session.id}/close/`)
                         .then(() => { toast.success("Guest checked out!"); fetchReservations(); })

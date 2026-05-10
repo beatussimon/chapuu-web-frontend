@@ -22,23 +22,23 @@ export default function InventoryDashboard() {
     const fetchData = () => {
         apiClient.get('/stores/')
             .then(res => {
-                if (res.data.length > 0) setStoreId(res.data[0].id);
+                if (Array.isArray(res.data) && res.data.length > 0) setStoreId(res.data[0].id);
             });
 
         apiClient.get('/inventory/')
-            .then(res => setInventory(res.data))
+            .then(res => setInventory(Array.isArray(res.data) ? res.data : []))
             .catch(err => console.error("Failed to load inventory:", err));
 
         apiClient.get('/products/')
-            .then(res => setProducts(res.data))
+            .then(res => setProducts(Array.isArray(res.data) ? res.data : []))
             .catch(err => console.error("Failed to load products:", err));
 
         apiClient.get('/ingredients/')
-            .then(res => setIngredients(res.data))
+            .then(res => setIngredients(Array.isArray(res.data) ? res.data : []))
             .catch(err => console.error("Failed to load ingredients:", err));
 
         apiClient.get('/recipes/')
-            .then(res => setRecipes(res.data))
+            .then(res => setRecipes(Array.isArray(res.data) ? res.data : []))
             .catch(err => console.error("Failed to load recipes:", err));
     };
 
@@ -112,17 +112,21 @@ export default function InventoryDashboard() {
             .catch(err => toast.error('Failed to unlink recipe'));
     };
 
-    const filteredProducts = products.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
-    const filteredInventory = inventory.filter(i =>
+    const productsArray = Array.isArray(products) ? products : [];
+    const inventoryArray = Array.isArray(inventory) ? inventory : [];
+    const ingredientsArray = Array.isArray(ingredients) ? ingredients : [];
+    const recipesArray = Array.isArray(recipes) ? recipes : [];
+
+    const filteredProducts = productsArray.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
+    const filteredInventory = inventoryArray.filter(i =>
         (i.product_name && i.product_name.toLowerCase().includes(search.toLowerCase())) ||
         (i.ingredient_name && i.ingredient_name.toLowerCase().includes(search.toLowerCase()))
     );
-    const filteredIngredients = ingredients.filter(ing => ing.name.toLowerCase().includes(search.toLowerCase()));
-    const filteredRecipesProducts = products.filter(p =>
-        recipes.some(r => r.product === p.id) &&
-        (p.name.toLowerCase().includes(search.toLowerCase()) || recipes.some(r => r.product === p.id && r.ingredient_name && r.ingredient_name.toLowerCase().includes(search.toLowerCase())))
+    const filteredIngredients = ingredientsArray.filter(ing => ing.name.toLowerCase().includes(search.toLowerCase()));
+    const filteredRecipesProducts = productsArray.filter(p => 
+        recipesArray.some(r => r.product === p.id) &&
+        (p.name.toLowerCase().includes(search.toLowerCase()) || recipesArray.some(r => r.product === p.id && r.ingredient_name && r.ingredient_name.toLowerCase().includes(search.toLowerCase())))
     );
-
     return (
         <div className="w-full min-h-screen py-6 px-4">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">

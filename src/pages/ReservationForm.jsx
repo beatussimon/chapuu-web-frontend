@@ -32,7 +32,8 @@ export default function ReservationForm() {
     useEffect(() => {
         apiClient.get('/stores/')
             .then(res => {
-                const restaurantStores = res.data.filter(s => s.store_type === 'RESTAURANT');
+                const data = Array.isArray(res.data) ? res.data : [];
+                const restaurantStores = data.filter(s => s.store_type === 'RESTAURANT');
                 setStores(restaurantStores);
                 if (restaurantStores.length > 0) setSelectedStore(restaurantStores[0].id);
             })
@@ -45,13 +46,17 @@ export default function ReservationForm() {
         setTables([]);
         setSelectedTable('');
         apiClient.get(`/tables/?store=${selectedStore}`)
-            .then(res => setTables(res.data.filter(t => t.is_active)))
+            .then(res => {
+                const data = Array.isArray(res.data) ? res.data : [];
+                setTables(data.filter(t => t.is_active));
+            })
             .catch(() => setTables([]));
 
         // Fetch best sellers for this store
         apiClient.get(`/products/?store=${selectedStore}`)
             .then(res => {
-                const active = res.data.filter(p => p.is_active);
+                const data = Array.isArray(res.data) ? res.data : [];
+                const active = data.filter(p => p.is_active);
                 setBestSellers(active.slice(0, 4));
             })
             .catch(() => setBestSellers([]));

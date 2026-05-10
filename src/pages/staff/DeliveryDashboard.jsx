@@ -23,7 +23,8 @@ export default function DeliveryDashboard() {
                 .then(res => {
                     // Filter for active delivery orders (READY or strictly PREPARING if they want to wait)
                     // Usually delivery picks up when READY. We'll show READY and PREPARING for awareness.
-                    const deliveryOrders = res.data.filter(o =>
+                    const data = Array.isArray(res.data) ? res.data : [];
+                    const deliveryOrders = data.filter(o =>
                         o.fulfillment_mode === 'DELIVERY' &&
                         ['PREPARING', 'READY'].includes(o.state)
                     );

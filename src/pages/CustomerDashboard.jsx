@@ -66,7 +66,7 @@ export default function CustomerDashboard() {
                 });
 
             apiClient.get(`/stores/${selectedStore.id}/reviews/`)
-                .then(res => setReviews(res.data))
+                .then(res => setReviews(Array.isArray(res.data) ? res.data : []))
                 .catch(err => console.error("Failed to load reviews", err));
         };
 
@@ -80,10 +80,11 @@ export default function CustomerDashboard() {
     }
 
     const isShop = selectedStore?.store_type === 'SHOP';
+    const productsArray = Array.isArray(products) ? products : [];
     const cartTotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
 
     // Filter products by search and category
-    const filteredProducts = products.filter(p => {
+    const filteredProducts = productsArray.filter(p => {
         const matchesSearch = !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.description?.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesCategory = !activeCategory || (p.category_name || 'Uncategorized') === activeCategory;
         return matchesSearch && matchesCategory;
@@ -98,7 +99,7 @@ export default function CustomerDashboard() {
     }, {});
 
     // Get unique categories
-    const categories = [...new Set(products.map(p => p.category_name || 'Uncategorized'))];
+    const categories = [...new Set(productsArray.map(p => p.category_name || 'Uncategorized'))];
 
     const scrollToCategory = (cat) => {
         setActiveCategory(activeCategory === cat ? null : cat);

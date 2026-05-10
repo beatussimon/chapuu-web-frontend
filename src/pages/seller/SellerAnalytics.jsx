@@ -73,7 +73,8 @@ export default function SellerAnalytics() {
     const handleExportCSV = () => {
         if (!data) return;
         const rows = [['Date', 'Revenue', 'Orders']];
-        data.revenue_by_day.forEach(d => rows.push([d.day, d.revenue, d.count]));
+        const revenueData = Array.isArray(data.revenue_by_day) ? data.revenue_by_day : [];
+        revenueData.forEach(d => rows.push([d.day, d.revenue, d.count]));
         const csv = rows.map(r => r.join(',')).join('\n');
         const blob = new Blob([csv], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);
@@ -226,7 +227,7 @@ export default function SellerAnalytics() {
                             </h3>
                             <p className="text-sm text-slate-500 mb-6">Daily revenue for the selected period</p>
                             <ResponsiveContainer width="100%" height={280}>
-                                <AreaChart data={data.revenue_by_day}>
+                                <AreaChart data={Array.isArray(data?.revenue_by_day) ? data.revenue_by_day : []}>
                                     <defs>
                                         <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
                                             <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3} />
@@ -261,14 +262,14 @@ export default function SellerAnalytics() {
                             <ResponsiveContainer width="100%" height={220}>
                                 <PieChart>
                                     <Pie
-                                        data={data.fulfillment_breakdown}
+                                        data={Array.isArray(data?.fulfillment_breakdown) ? data.fulfillment_breakdown : []}
                                         cx="50%" cy="50%"
                                         innerRadius={55} outerRadius={85}
                                         paddingAngle={4}
                                         dataKey="count"
                                         nameKey="fulfillment_mode"
                                     >
-                                        {data.fulfillment_breakdown.map((_, i) => (
+                                        {(Array.isArray(data?.fulfillment_breakdown) ? data.fulfillment_breakdown : []).map((_, i) => (
                                             <Cell key={i} fill={COLORS[i % COLORS.length]} />
                                         ))}
                                     </Pie>
@@ -279,7 +280,7 @@ export default function SellerAnalytics() {
                                 </PieChart>
                             </ResponsiveContainer>
                             <div className="flex flex-wrap justify-center gap-3 mt-2">
-                                {data.fulfillment_breakdown.map((f, i) => (
+                                {(Array.isArray(data?.fulfillment_breakdown) ? data.fulfillment_breakdown : []).map((f, i) => (
                                     <div key={f.fulfillment_mode} className="flex items-center gap-2 text-xs">
                                         <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
                                         <span className="text-slate-300">{f.fulfillment_mode.replace('_', ' ')} ({f.count})</span>
@@ -301,7 +302,7 @@ export default function SellerAnalytics() {
                             </h3>
                             <p className="text-sm text-slate-500 mb-6">Identify your peak business hours</p>
                             <ResponsiveContainer width="100%" height={250}>
-                                <BarChart data={data.orders_by_hour}>
+                                <BarChart data={Array.isArray(data?.orders_by_hour) ? data.orders_by_hour : []}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
                                     <XAxis dataKey="hour" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false}
                                         tickFormatter={h => `${h}:00`}
@@ -325,8 +326,8 @@ export default function SellerAnalytics() {
                             </h3>
                             <p className="text-sm text-slate-500 mb-4">Best sellers by revenue</p>
                             <div className="space-y-3 max-h-[280px] overflow-y-auto pr-2">
-                                {data.top_products.map((p, idx) => {
-                                    const maxRev = data.top_products[0]?.total_revenue || 1;
+                                {(Array.isArray(data?.top_products) ? data.top_products : []).map((p, idx) => {
+                                    const maxRev = (Array.isArray(data?.top_products) ? data.top_products : [])[0]?.total_revenue || 1;
                                     const pct = (p.total_revenue / maxRev) * 100;
                                     return (
                                         <div key={p.product_name} className="group">
@@ -354,7 +355,7 @@ export default function SellerAnalytics() {
                                         </div>
                                     );
                                 })}
-                                {data.top_products.length === 0 && (
+                                {(Array.isArray(data?.top_products) ? data.top_products : []).length === 0 && (
                                     <p className="text-slate-500 text-sm text-center py-8">No product data for this period</p>
                                 )}
                             </div>
@@ -362,7 +363,7 @@ export default function SellerAnalytics() {
                     </div>
 
                     {/* Insights Section */}
-                    {data.insights && data.insights.length > 0 && (
+                    {Array.isArray(data?.insights) && data.insights.length > 0 && (
                         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8 }}
                             className="glass-dark border border-cyan-500/20 rounded-2xl p-6"
                         >
@@ -390,7 +391,7 @@ export default function SellerAnalytics() {
                             <ShoppingBag size={20} className="text-purple-400" /> Order Status Breakdown
                         </h3>
                         <div className="flex flex-wrap gap-3">
-                            {data.state_breakdown.map((s, idx) => {
+                            {(Array.isArray(data?.state_breakdown) ? data.state_breakdown : []).map((s, idx) => {
                                 const stateColors = {
                                     COMPLETED: 'bg-green-500/10 text-green-400 border-green-500/20',
                                     CANCELLED: 'bg-red-500/10 text-red-400 border-red-500/20',

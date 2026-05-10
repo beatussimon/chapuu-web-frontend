@@ -115,7 +115,7 @@ export default function SellerDashboard() {
 
         apiClient.get('/orders/')
             .then(res => {
-                setOrders(res.data);
+                setOrders(Array.isArray(res.data) ? res.data : []);
             })
             .catch(err => {
                 toast.error("Error syncing live dashboard");
@@ -135,7 +135,7 @@ export default function SellerDashboard() {
                     }
                     if (['SELLER', 'ADMIN'].includes(userRole)) {
                         apiClient.get(`/stores/${store.id}/reviews/`)
-                            .then(r => setReviews(r.data))
+                            .then(r => setReviews(Array.isArray(r.data) ? r.data : []))
                             .catch(e => console.error("Review sync error:", e));
                     }
                 }
@@ -148,12 +148,12 @@ export default function SellerDashboard() {
 
         if (['SELLER', 'ADMIN'].includes(userRole)) {
             apiClient.get('/products/')
-                .then(res => setPosProducts(res.data))
+                .then(res => setPosProducts(Array.isArray(res.data) ? res.data : []))
                 .catch(e => console.error("Products sync error:", e));
         }
 
         apiClient.get('/notices/')
-            .then(res => setNotices(res.data))
+            .then(res => setNotices(Array.isArray(res.data) ? res.data : []))
             .catch(e => console.log("Notices sync failed"));
     }, [userRole, storeDetails?.id]); // Dependencies for stability
 
@@ -232,7 +232,8 @@ export default function SellerDashboard() {
         };
     }, [storeDetails?.id, userRole]);
 
-    const activeOrders = orders.filter(o => o.state !== 'COMPLETED' && o.state !== 'CANCELLED' && o.state !== 'CREATED' && o.state !== 'REFUNDED');
+    const ordersArray = Array.isArray(orders) ? orders : [];
+    const activeOrders = ordersArray.filter(o => o.state !== 'COMPLETED' && o.state !== 'CANCELLED' && o.state !== 'CREATED' && o.state !== 'REFUNDED');
     const awaitingPaymentOrders = activeOrders.filter(o => o.state === 'AWAITING_PAYMENT');
     const queuedOrders = activeOrders.filter(o => (o.state === 'QUEUED' || o.state === 'PAID') && o.fulfillment_mode !== 'RESERVATION');
     const reservationOrders = activeOrders.filter(o => (o.state === 'QUEUED' || o.state === 'PAID') && o.fulfillment_mode === 'RESERVATION');
@@ -541,7 +542,7 @@ export default function SellerDashboard() {
                         )}
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {storeDetails.payment_methods?.map((pm, idx) => (
+                            {(Array.isArray(storeDetails.payment_methods) ? storeDetails.payment_methods : []).map((pm, idx) => (
                                 <div key={pm.id || idx} className="bg-dark-950 border border-white/5 rounded-2xl p-4 flex flex-col items-center text-center group relative">
                                     {(pm.image_url || pm.image) && (
                                         <div className="w-20 h-20 mb-3 rounded-xl bg-white flex items-center justify-center p-2 shrink-0 overflow-hidden shadow-inner border border-white/10">

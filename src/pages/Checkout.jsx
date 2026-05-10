@@ -38,10 +38,10 @@ export default function Checkout() {
     useEffect(() => {
         if (selectedStore) {
             apiClient.get(`/products/recommendations/?store=${selectedStore.id}`)
-                .then(res => setRecommendations(res.data))
+                .then(res => setRecommendations(Array.isArray(res.data) ? res.data : []))
                 .catch(err => console.error("Could not fetch recommendations", err));
             apiClient.get(`/stores/${selectedStore.id}/tables/`)
-                .then(res => setTables(res.data))
+                .then(res => setTables(Array.isArray(res.data) ? res.data : []))
                 .catch(err => console.error("Could not fetch tables", err));
             
             // Re-fetch store details to get latest payment methods
@@ -333,7 +333,7 @@ export default function Checkout() {
                                 <>
                                     <h3 className="text-base font-bold mb-3 text-slate-200">Proof of Payment (Offline)</h3>
                                     
-                                    {selectedStore.payment_methods && selectedStore.payment_methods.length > 0 ? (
+                                    {Array.isArray(selectedStore.payment_methods) && selectedStore.payment_methods.length > 0 ? (
                                         <div className="mb-6 space-y-4">
                                             <p className="text-xs text-slate-400">Transfer the total to a provider below, then upload proof.</p>
                                             

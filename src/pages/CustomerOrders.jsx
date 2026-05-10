@@ -27,11 +27,13 @@ export default function CustomerOrders() {
             apiClient.get('/orders/'),
             apiClient.get('/reservations/')
         ]).then(([ordersRes, resRes]) => {
-            const sortedOrders = ordersRes.data.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            const ordersData = Array.isArray(ordersRes.data) ? ordersRes.data : [];
+            const sortedOrders = [...ordersData].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
             setAllOrders(sortedOrders);
             setDisplayedOrders(sortedOrders.slice(0, ITEMS_PER_PAGE));
             
-            const sortedRes = resRes.data.sort((a, b) => new Date(b.reservation_time) - new Date(a.reservation_time));
+            const resData = Array.isArray(resRes.data) ? resRes.data : [];
+            const sortedRes = [...resData].sort((a, b) => new Date(b.reservation_time) - new Date(a.reservation_time));
             setReservations(sortedRes);
             setLoading(false);
         }).catch(err => {

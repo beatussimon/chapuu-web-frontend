@@ -33,7 +33,7 @@ export default function StoreSelection() {
                 const storesWithReviews = await Promise.all(data.map(async (store) => {
                     try {
                         const reviewsRes = await apiClient.get(`/stores/${store.id}/reviews/`);
-                        const reviews = reviewsRes.data;
+                        const reviews = Array.isArray(reviewsRes.data) ? reviewsRes.data : [];
                         const avgRating = reviews.length > 0
                             ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
                             : 'New';
@@ -59,7 +59,8 @@ export default function StoreSelection() {
         navigate('/menu');
     };
 
-    const filteredStores = filter === 'ALL' ? stores : stores.filter(s => s.store_type === filter);
+    const storesArray = Array.isArray(stores) ? stores : [];
+    const filteredStores = filter === 'ALL' ? storesArray : storesArray.filter(s => s.store_type === filter);
 
     return (
         <div className="w-full max-w-6xl mx-auto py-8">

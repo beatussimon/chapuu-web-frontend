@@ -246,7 +246,7 @@ export default function OrderTracker() {
             <div className="glass-dark border border-white/10 rounded-2xl md:rounded-3xl p-4 md:p-8 mb-8 shadow-xl">
                 <h3 className="text-sm md:text-lg font-bold text-white mb-6 border-b border-white/5 pb-4">Order Details</h3>
                 <div className="space-y-3 mb-6">
-                    {order.items.map(item => (
+                    {(Array.isArray(order.items) ? order.items : []).map(item => (
                         <div key={item.id} className="flex justify-between items-center text-xs md:text-sm text-slate-300 bg-dark-900/50 p-3 rounded-xl border border-white/5">
                             <div className="flex items-center gap-2">
                                 <span className="font-black text-primary-500 w-6">{item.quantity}x</span>

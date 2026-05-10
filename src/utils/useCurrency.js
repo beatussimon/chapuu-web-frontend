@@ -27,8 +27,9 @@ export function useCurrency() {
         if (!_fetchPromise) {
             _fetchPromise = apiClient.get('/currencies/')
                 .then(res => {
-                    _currencyCache = res.data;
-                    return res.data;
+                    const data = Array.isArray(res.data) ? res.data : [];
+                    _currencyCache = data;
+                    return data;
                 })
                 .catch(err => {
                     console.error("Failed to load currencies", err);

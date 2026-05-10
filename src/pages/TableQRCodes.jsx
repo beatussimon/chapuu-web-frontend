@@ -19,7 +19,7 @@ export default function TableQRCodes() {
     useEffect(() => {
         apiClient.get('/stores/')
             .then(res => {
-                const stores = res.data;
+                const stores = Array.isArray(res.data) ? res.data : [];
                 if (stores.length > 0) {
                     const sid = stores[0].id;
                     setStoreId(sid);
@@ -32,7 +32,7 @@ export default function TableQRCodes() {
             })
             .then(res => {
                 if (res) {
-                    setTables(res.data);
+                    setTables(Array.isArray(res.data) ? res.data : []);
                     setLoading(false);
                 }
             })

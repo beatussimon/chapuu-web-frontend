@@ -29,18 +29,21 @@ export default function PublicDisplay() {
             // Fetch live KDS orders for the store
             const orderRes = await apiClient.get(storeId ? `/orders/?store=${storeId}` : '/orders/');
             // Only show active kitchen orders (exclude delivery/cart states)
-            const activeOrders = orderRes.data.filter(o => ['QUEUED', 'PREPARING', 'READY'].includes(o.state));
+            const orderData = Array.isArray(orderRes.data) ? orderRes.data : [];
+            const activeOrders = orderData.filter(o => ['QUEUED', 'PREPARING', 'READY'].includes(o.state));
             setOrders(activeOrders);
 
             // Fetch ads 
             const adsRes = await apiClient.get(storeId ? `/ads/?store=${storeId}` : '/ads/');
-            setAds(adsRes.data);
+            const adsData = Array.isArray(adsRes.data) ? adsRes.data : [];
+            setAds(adsData);
 
             // Fetch featured products (just taking top 4 for now)
             const prodRes = await apiClient.get(storeId ? `/products/?store=${storeId}` : '/products/');
-            if (prodRes.data.length > 0) {
+            const prodData = Array.isArray(prodRes.data) ? prodRes.data : [];
+            if (prodData.length > 0) {
                 // simple deterministic shuffle / slice
-                setFeaturedProducts(prodRes.data.slice(0, 4));
+                setFeaturedProducts(prodData.slice(0, 4));
             }
 
         } catch (error) {
@@ -122,7 +125,7 @@ export default function PublicDisplay() {
                                     <h2 className="text-2xl font-bold uppercase tracking-widest text-slate-300">Queued</h2>
                                 </div>
                                 <div className="flex-1 p-6 space-y-4">
-                                    {queued.map(o => (
+                                    {(Array.isArray(queued) ? queued : []).map(o => (
                                         <div key={o.id} className="bg-dark-900/50 p-6 rounded-2xl border border-white/5 shadow-lg flex justify-between items-center">
                                             <span className="text-4xl font-black font-mono tracking-tighter text-slate-400">#{o.id}</span>
                                         </div>
@@ -140,7 +143,7 @@ export default function PublicDisplay() {
                                     <h2 className="text-2xl font-bold uppercase tracking-widest text-orange-400">Cooking</h2>
                                 </div>
                                 <div className="flex-1 p-6 space-y-4">
-                                    {preparing.map(o => (
+                                    {(Array.isArray(preparing) ? preparing : []).map(o => (
                                         <motion.div
                                             key={o.id}
                                             initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
@@ -161,7 +164,7 @@ export default function PublicDisplay() {
                                     <h2 className="text-4xl font-black uppercase tracking-widest text-green-400">Please Collect</h2>
                                 </div>
                                 <div className="flex-1 p-6 flex flex-wrap gap-4 align-start content-start">
-                                    {ready.map(o => (
+                                    {(Array.isArray(ready) ? ready : []).map(o => (
                                         <motion.div
                                             key={o.id}
                                             initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
@@ -184,7 +187,7 @@ export default function PublicDisplay() {
                             transition={{ duration: 1 }}
                             className="absolute inset-0 flex items-center justify-center p-12"
                         >
-                            {ads.length > 0 && ads[currentAdIndex].media ? (
+                            {Array.isArray(ads) && ads.length > 0 && ads[currentAdIndex].media ? (
                                 <div className="w-full h-full relative rounded-[3rem] overflow-hidden shadow-2xl border border-white/10">
                                     <div className="absolute inset-0 bg-gradient-to-t from-dark-950 via-transparent to-transparent z-10"></div>
                                     {ads[currentAdIndex].media.endsWith('.mp4') ? (
@@ -211,7 +214,7 @@ export default function PublicDisplay() {
                     transition={{ repeat: Infinity, duration: 25, ease: "linear" }}
                     className="whitespace-nowrap flex gap-12 font-bold tracking-widest text-lg drop-shadow-md text-dark-900"
                 >
-                    {featuredProducts.length > 0 ? featuredProducts.map((p, i) => (
+                    {Array.isArray(featuredProducts) && featuredProducts.length > 0 ? featuredProducts.map((p, i) => (
                         <span key={i}>★ TRY OUR {p.name.toUpperCase()} FOR {formatPriceStatic(p.price)} ★</span>
                     )) : (
                         <span>★ ORDER AT THE COUNTER OR SCAN YOUR TABLE'S QR CODE ★</span>

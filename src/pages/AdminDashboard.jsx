@@ -41,15 +41,15 @@ export default function AdminDashboard() {
 
     const fetchData = () => {
         apiClient.get('/stores/')
-            .then(res => setStores(res.data))
+            .then(res => setStores(Array.isArray(res.data) ? res.data : []))
             .catch(err => console.error("Failed to load stores", err));
 
         apiClient.get('/users/')
-            .then(res => setUsers(res.data))
+            .then(res => setUsers(Array.isArray(res.data) ? res.data : []))
             .catch(err => console.error("Failed to load users", err));
 
         apiClient.get('/orders/')
-            .then(res => setOrders(res.data))
+            .then(res => setOrders(Array.isArray(res.data) ? res.data : []))
             .catch(err => console.error("Failed to load orders", err));
     };
 
