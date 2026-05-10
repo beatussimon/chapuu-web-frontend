@@ -6,6 +6,7 @@ import { useAppStore } from '../store/useStore';
 import { useCurrency } from '../utils/useCurrency';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import OptimizedImage from '../components/OptimizedImage';
 
 export default function DiscoverPage() {
     const [stores, setStores] = useState([]);
@@ -129,7 +130,7 @@ export default function DiscoverPage() {
                             >
                                 <div className="w-12 h-12 rounded-xl bg-dark-900 overflow-hidden shrink-0">
                                     {item.image_url ? (
-                                        <img src={item.image_url} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                                        <OptimizedImage src={item.image_url} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform" wrapperClassName="w-full h-full" />
                                     ) : (
                                         <div className="w-full h-full flex items-center justify-center"><Utensils size={14} className="text-slate-600" /></div>
                                     )}
@@ -174,7 +175,7 @@ export default function DiscoverPage() {
                                     )}
                                     <div className="relative w-full aspect-square bg-dark-900 overflow-hidden">
                                         {store.image_url ? (
-                                            <img src={store.image_url} alt={store.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                            <OptimizedImage src={store.image_url} alt={store.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" wrapperClassName="w-full h-full" />
                                         ) : (
                                             <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-dark-800 to-dark-900">
                                                 {store.store_type === 'SHOP' ? <ShoppingBag size={24} className="text-white/10" /> : <ChefHat size={24} className="text-white/10" />}

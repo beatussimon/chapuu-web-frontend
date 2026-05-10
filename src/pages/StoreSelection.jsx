@@ -5,6 +5,7 @@ import { Store, MapPin, ChefHat, ArrowRight, ShoppingBag, Utensils } from 'lucid
 import { useAppStore } from '../store/useStore';
 import apiClient from '../api/client';
 import toast from 'react-hot-toast';
+import OptimizedImage from '../components/OptimizedImage';
 
 export default function StoreSelection() {
     const [stores, setStores] = useState([]);
@@ -110,7 +111,7 @@ export default function StoreSelection() {
                         >
                             <div className="h-40 bg-gradient-to-br from-slate-800 to-slate-900 border-b border-white/5 flex items-center justify-center relative overflow-hidden">
                                 {store.image_url ? (
-                                    <img src={store.image_url} alt={store.name} className="w-full h-full object-cover" />
+                                    <OptimizedImage src={store.image_url} alt={store.name} className="w-full h-full object-cover" wrapperClassName="w-full h-full" />
                                 ) : (
                                     <Store size={48} className="text-white/10" />
                                 )}

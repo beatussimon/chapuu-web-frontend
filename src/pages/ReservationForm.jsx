@@ -6,6 +6,7 @@ import apiClient from '../api/client';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/useStore';
 import { useCurrency } from '../utils/useCurrency';
+import OptimizedImage from '../components/OptimizedImage';
 
 export default function ReservationForm() {
     const navigate = useNavigate();
@@ -402,7 +403,7 @@ export default function ReservationForm() {
                                 {bestSellers.map(p => (
                                     <div key={p.id} className="flex items-center gap-3">
                                         {p.image_url ? (
-                                            <img src={p.image_url} alt={p.name} className="w-10 h-10 rounded-lg object-cover" />
+                                            <OptimizedImage src={p.image_url} alt={p.name} className="w-10 h-10 rounded-lg object-cover" wrapperClassName="w-10 h-10 rounded-lg" eager />
                                         ) : (
                                             <div className="w-10 h-10 rounded-lg bg-dark-900/50 flex items-center justify-center">
                                                 <ChefHat size={14} className="text-slate-500" />

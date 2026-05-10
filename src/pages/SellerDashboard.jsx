@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { useAppStore } from '../store/useStore';
 import { useCurrency, formatPriceStatic } from '../utils/useCurrency';
 import { QRCodeSVG } from 'qrcode.react';
+import OptimizedImage from '../components/OptimizedImage';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
 
@@ -476,7 +477,7 @@ export default function SellerDashboard() {
                                     <label className="text-xs text-slate-400 block mb-1">Store Picture</label>
                                     {storeDetails.image_url && (
                                         <div className="mb-2 w-32 h-32 rounded-xl overflow-hidden border border-white/10">
-                                            <img src={storeDetails.image_url} alt="Store" className="w-full h-full object-cover" />
+                                            <OptimizedImage src={storeDetails.image_url} alt="Store" className="w-full h-full object-cover" wrapperClassName="w-full h-full" eager />
                                         </div>
                                     )}
                                     <input type="file" name="image" accept="image/*" className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-primary-500/10 file:text-primary-500" />
@@ -540,10 +541,12 @@ export default function SellerDashboard() {
                                 <div key={pm.id || idx} className="bg-dark-950 border border-white/5 rounded-2xl p-4 flex flex-col items-center text-center group relative">
                                     {(pm.image_url || pm.image) && (
                                         <div className="w-20 h-20 mb-3 rounded-xl bg-white flex items-center justify-center p-2 shrink-0 overflow-hidden shadow-inner border border-white/10">
-                                            <img 
+                                            <OptimizedImage 
                                                 src={pm.image_url || pm.image} 
                                                 alt={pm.provider} 
                                                 className="w-full h-full object-contain" 
+                                                wrapperClassName="w-full h-full"
+                                                eager
                                             />
                                         </div>
                                     )}
@@ -630,7 +633,7 @@ export default function SellerDashboard() {
                                     >
                                         <div className="w-full aspect-square rounded-xl bg-dark-950 mb-3 overflow-hidden border border-white/5">
                                             {product.image ? (
-                                                <img src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                                                <OptimizedImage src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" wrapperClassName="w-full h-full" />
                                             ) : (
                                                 <div className="w-full h-full flex items-center justify-center text-slate-800"><ShoppingBag size={32} /></div>
                                             )}
@@ -745,10 +748,12 @@ export default function SellerDashboard() {
                         {verifyModal.order.payment_receipt && (
                             <div className="mb-4">
                                 <p className="text-xs font-bold text-slate-400 uppercase mb-1">Receipt Image</p>
-                                <img
+                                <OptimizedImage
                                     src={`${BACKEND_URL}${verifyModal.order.payment_receipt}`}
                                     alt="Payment receipt"
                                     className="rounded-xl max-h-60 w-full object-contain border border-white/10"
+                                    wrapperClassName="w-full"
+                                    eager
                                 />
                             </div>
                         )}

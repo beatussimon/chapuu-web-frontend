@@ -4,6 +4,7 @@ import { useCurrency } from '../utils/useCurrency';
 import { Package, Plus, Minus, Power, AlertTriangle, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 import apiClient from '../api/client';
+import OptimizedImage from '../components/OptimizedImage';
 
 export default function InventoryDashboard() {
     const [inventory, setInventory] = useState([]);
@@ -267,7 +268,7 @@ export default function InventoryDashboard() {
                                 {filteredIngredients.map(ing => (
                                     <div key={ing.id} className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10">
                                         {ing.image ? (
-                                            <img src={ing.image} alt={ing.name} className="w-10 h-10 rounded-lg object-cover border border-white/10" />
+                                            <OptimizedImage src={ing.image} alt={ing.name} className="w-10 h-10 rounded-lg object-cover border border-white/10" wrapperClassName="w-10 h-10 rounded-lg" eager />
                                         ) : (
                                             <div className="w-10 h-10 rounded-lg bg-dark-900 border border-white/10 flex items-center justify-center">
                                                 <Package size={16} className="text-slate-500" />

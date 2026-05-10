@@ -7,6 +7,7 @@ import { useCurrency } from '../utils/useCurrency';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { triggerHaptic, hapticPatterns } from '../utils/haptics';
+import OptimizedImage from '../components/OptimizedImage';
 
 export default function Checkout() {
     const { cart, selectedStore, clearCart, activeReservation, userRole } = useAppStore();
@@ -341,11 +342,12 @@ export default function Checkout() {
                                                     <div key={pm.id} className="bg-dark-900/50 border border-white/10 rounded-2xl p-4 flex flex-col items-center text-center shadow-xl">
                                                         {(pm.image_url || pm.image) && (
                                                             <div className="w-24 h-24 mb-3 rounded-xl bg-white flex items-center justify-center p-2 shrink-0 overflow-hidden shadow-inner">
-                                                                <img 
+                                                                <OptimizedImage 
                                                                     src={pm.image_url || pm.image} 
                                                                     alt={pm.provider} 
                                                                     className="w-full h-full object-contain"
-                                                                    onError={(e) => e.target.style.display = 'none'}
+                                                                    wrapperClassName="w-full h-full"
+                                                                    eager
                                                                 />
                                                             </div>
                                                         )}
@@ -405,7 +407,7 @@ export default function Checkout() {
                                         <div key={rec.id} className="flex justify-between items-center bg-dark-950/50 p-3 rounded-xl border border-white/5 group">
                                             <div className="flex items-center gap-3">
                                                 {rec.image_url ? (
-                                                    <img src={rec.image_url} alt={rec.name} className="w-10 h-10 rounded-lg object-cover" />
+                                                    <OptimizedImage src={rec.image_url} alt={rec.name} className="w-10 h-10 rounded-lg object-cover" wrapperClassName="w-10 h-10 rounded-lg" eager />
                                                 ) : (
                                                     <div className="w-10 h-10 rounded-lg bg-dark-900 border border-white/5 flex items-center justify-center">
                                                         <Utensils size={16} className="text-white/20" />

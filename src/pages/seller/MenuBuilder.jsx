@@ -3,6 +3,7 @@ import apiClient from '../../api/client';
 import { Plus, Edit2, Trash2, Save, X, Tag, Package, Image as ImageIcon } from 'lucide-react';
 import { useCurrency } from '../../utils/useCurrency';
 import toast from 'react-hot-toast';
+import OptimizedImage from '../../components/OptimizedImage';
 
 export default function MenuBuilder() {
     const [categories, setCategories] = useState([]);
@@ -225,7 +226,7 @@ export default function MenuBuilder() {
                                         <label className="text-xs text-slate-400 mb-1 block">Product Image 1</label>
                                         {editingProduct.image_url && !productImageFile && (
                                             <div className="mb-2 w-24 h-24 rounded-xl overflow-hidden border border-white/10">
-                                                <img src={editingProduct.image_url} alt="Current" className="w-full h-full object-cover" />
+                                                <OptimizedImage src={editingProduct.image_url} alt="Current" className="w-full h-full object-cover" wrapperClassName="w-full h-full" eager />
                                             </div>
                                         )}
                                         <input
@@ -266,7 +267,7 @@ export default function MenuBuilder() {
                                 <div key={p.id} className="bg-dark-900/50 border border-white/5 rounded-2xl p-4 hover:border-white/10 transition-colors flex flex-col">
                                     {p.image_url && (
                                         <div className="w-full h-32 mb-3 rounded-xl overflow-hidden border border-white/5">
-                                            <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />
+                                            <OptimizedImage src={p.image_url} alt={p.name} className="w-full h-full object-cover" wrapperClassName="w-full h-full" />
                                         </div>
                                     )}
                                     <div className="flex justify-between items-start mb-2">

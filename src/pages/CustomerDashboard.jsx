@@ -2,11 +2,12 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import apiClient from '../api/client';
 import { useAppStore } from '../store/useStore';
-import { ShoppingCart, ChefHat, Plus, Minus, CreditCard, UtensilsCrossed, Trash2, ArrowLeft, Star, Search, ShoppingBag, X, Phone, Mail } from 'lucide-react';
+import { ShoppingCart, ChefHat, Plus, Minus, CreditCard, UtensilsCrossed, Trash2, ArrowLeft, Star, Search, ShoppingBag, X, Phone, Mail, ChevronUp } from 'lucide-react';
 import { useCurrency } from '../utils/useCurrency';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { triggerHaptic, hapticPatterns } from '../utils/haptics';
+import OptimizedImage from '../components/OptimizedImage';
 
 export default function CustomerDashboard() {
     const [products, setProducts] = useState([]);
@@ -17,10 +18,29 @@ export default function CustomerDashboard() {
     const [activeCategory, setActiveCategory] = useState(null);
     const [showMobileCart, setShowMobileCart] = useState(false);
     const [previewImageProduct, setPreviewImageProduct] = useState(null);
+    const [previewImageIndex, setPreviewImageIndex] = useState(0);
+    const [cartCollapsed, setCartCollapsed] = useState(false);
     const { cart, addToCart, updateQuantity, removeFromCart, selectedStore } = useAppStore();
     const navigate = useNavigate();
     const { formatPrice } = useCurrency();
     const categoryRefs = useRef({});
+    const lastScrollY = useRef(0);
+
+    // Auto-collapse cart bar on scroll down, expand on scroll up
+    useEffect(() => {
+        if (cart.length === 0) return;
+        const handleScroll = () => {
+            const y = window.scrollY;
+            if (y > lastScrollY.current + 30) {
+                setCartCollapsed(true);
+            } else if (y < lastScrollY.current - 15) {
+                setCartCollapsed(false);
+            }
+            lastScrollY.current = y;
+        };
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, [cart.length]);
 
     useEffect(() => {
         apiClient.get('/auth/users/me/')
@@ -92,7 +112,7 @@ export default function CustomerDashboard() {
             {/* Store Image Underlay */}
             {selectedStore.image_url && (
                 <div className="absolute top-0 left-0 w-full h-72 -mx-4 sm:-mx-6 lg:-mx-8 md:-mt-8 -z-10 overflow-hidden pointer-events-none rounded-b-[3rem]">
-                    <img src={selectedStore.image_url} alt={selectedStore.name} className="w-full h-full object-cover opacity-20" />
+                    <OptimizedImage src={selectedStore.image_url} alt={selectedStore.name} className="w-full h-full object-cover opacity-20" wrapperClassName="w-full h-full" eager />
                     <div className="absolute inset-0 bg-gradient-to-b from-dark-950/10 via-dark-950/60 to-dark-950"></div>
                 </div>
             )}
@@ -112,7 +132,7 @@ export default function CustomerDashboard() {
                         <div className="flex-1 flex justify-between items-start">
                             <div className="flex items-start gap-4">
                                 {selectedStore.image_url && (
-                                    <img src={selectedStore.image_url} alt={selectedStore.name} className="w-16 h-16 rounded-2xl object-cover border border-white/10 shadow-lg hidden sm:block" />
+                                    <OptimizedImage src={selectedStore.image_url} alt={selectedStore.name} className="w-16 h-16 rounded-2xl object-cover border border-white/10 shadow-lg" wrapperClassName="w-16 h-16 rounded-2xl hidden sm:block" eager />
                                 )}
                                 <div>
                                     <h2 className="text-2xl md:text-3xl font-bold tracking-tight bg-gradient-to-r from-primary-400 to-primary-600 bg-clip-text text-transparent flex items-center gap-3">
@@ -234,9 +254,9 @@ export default function CustomerDashboard() {
                                                     className={`glass-dark rounded-2xl border border-white/5 hover:border-primary-500/30 transition-all flex flex-col overflow-hidden group ${!isAvailable ? 'opacity-60 grayscale-[50%]' : ''}`}
                                                 >
                                                     {/* Product Image */}
-                                                    <div className="relative w-full aspect-[4/3] bg-dark-900 overflow-hidden cursor-pointer" onClick={() => setPreviewImageProduct(p)}>
+                                                    <div className="relative w-full aspect-[4/3] bg-dark-900 overflow-hidden cursor-pointer" onClick={() => { setPreviewImageIndex(0); setPreviewImageProduct(p); }}>
                                                         {p.image_url ? (
-                                                            <img src={p.image_url} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                                            <OptimizedImage src={p.image_url} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" wrapperClassName="w-full h-full" />
                                                         ) : (
                                                             <div className="w-full h-full flex items-center justify-center">
                                                                 <UtensilsCrossed size={28} className="text-white/10" />
@@ -298,21 +318,39 @@ export default function CustomerDashboard() {
                     )}
                 </div>
             </div>
-            {/* Mobile Floating Cart Bar */}
+            {/* Mobile Floating Cart Bar — collapses to pill on scroll */}
             {cart.length > 0 && (
-                <div className="fixed bottom-20 left-4 right-4 lg:hidden z-40">
-                    <button
-                        onClick={() => navigate('/checkout')}
-                        className="w-full bg-primary-500 text-dark-950 font-bold py-4 px-6 rounded-2xl flex items-center justify-between shadow-2xl shadow-primary-500/30"
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className="bg-dark-900/20 rounded-lg p-1.5">
-                                <ShoppingCart size={18} />
+                <div className={`fixed lg:hidden z-40 transition-all duration-300 ease-out ${
+                    cartCollapsed
+                        ? 'bottom-24 right-4 left-auto'
+                        : 'bottom-20 left-4 right-4'
+                }`}>
+                    {cartCollapsed ? (
+                        /* Collapsed pill */
+                        <button
+                            onClick={() => setCartCollapsed(false)}
+                            className="bg-primary-500 text-dark-950 font-bold w-14 h-14 rounded-full flex items-center justify-center shadow-2xl shadow-primary-500/40 relative"
+                        >
+                            <ShoppingCart size={20} />
+                            <span className="absolute -top-1 -right-1 bg-dark-900 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-primary-500">
+                                {cart.reduce((s, i) => s + i.quantity, 0)}
+                            </span>
+                        </button>
+                    ) : (
+                        /* Expanded bar */
+                        <button
+                            onClick={() => navigate('/checkout')}
+                            className="w-full bg-primary-500 text-dark-950 font-bold py-4 px-6 rounded-2xl flex items-center justify-between shadow-2xl shadow-primary-500/30"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="bg-dark-900/20 rounded-lg p-1.5">
+                                    <ShoppingCart size={18} />
+                                </div>
+                                <span>{cart.reduce((s, i) => s + i.quantity, 0)} items</span>
                             </div>
-                            <span>{cart.reduce((s, i) => s + i.quantity, 0)} items</span>
-                        </div>
-                        <span className="text-lg">{formatPrice(cartTotal)} →</span>
-                    </button>
+                            <span className="text-lg">{formatPrice(cartTotal)} →</span>
+                        </button>
+                    )}
                 </div>
             )}
 
@@ -360,29 +398,106 @@ export default function CustomerDashboard() {
                 </div>
             )}
 
-            {/* Full Picture Modal */}
+            {/* Full Picture Modal — Mobile-optimized */}
             <AnimatePresence>
-                {previewImageProduct && (
-                    <motion.div 
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-dark-950/90 backdrop-blur-sm"
-                        onClick={() => setPreviewImageProduct(null)}
-                    >
-                        <button className="absolute top-6 right-6 text-white bg-white/10 hover:bg-white/20 p-2 rounded-full transition-colors" onClick={() => setPreviewImageProduct(null)}>
-                            <X size={24} />
-                        </button>
-                        <div className="relative max-w-5xl w-full h-[80vh] flex flex-col md:flex-row items-center justify-center gap-4" onClick={e => e.stopPropagation()}>
-                            {previewImageProduct.image_url && (
-                                <img src={previewImageProduct.image_url} alt={previewImageProduct.name} className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl border border-white/10" />
-                            )}
-                            {previewImageProduct.image2_url && (
-                                <img src={previewImageProduct.image2_url} alt={`${previewImageProduct.name} alternate`} className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl border border-white/10" />
-                            )}
-                        </div>
-                    </motion.div>
-                )}
+                {previewImageProduct && (() => {
+                    const images = [previewImageProduct.image_url, previewImageProduct.image2_url].filter(Boolean);
+                    return (
+                        <motion.div 
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 z-[100] bg-dark-950/95 backdrop-blur-md flex flex-col"
+                            onClick={() => setPreviewImageProduct(null)}
+                        >
+                            {/* Top bar */}
+                            <div className="flex items-center justify-between px-4 py-3 safe-area-top shrink-0" onClick={e => e.stopPropagation()}>
+                                <button 
+                                    className="text-white bg-white/10 hover:bg-white/20 p-2.5 rounded-full transition-colors"
+                                    onClick={() => setPreviewImageProduct(null)}
+                                >
+                                    <X size={20} />
+                                </button>
+                                {images.length > 1 && (
+                                    <div className="flex gap-1.5">
+                                        {images.map((_, i) => (
+                                            <button
+                                                key={i}
+                                                onClick={() => setPreviewImageIndex(i)}
+                                                className={`w-2 h-2 rounded-full transition-all ${previewImageIndex === i ? 'bg-primary-500 w-6' : 'bg-white/30'}`}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
+                                <div className="w-10" /> {/* spacer for centering dots */}
+                            </div>
+
+                            {/* Image area — fills available space */}
+                            <div 
+                                className="flex-1 flex items-center justify-center px-2 pb-2 min-h-0 overflow-hidden"
+                                onClick={e => e.stopPropagation()}
+                            >
+                                <AnimatePresence mode="wait">
+                                    <motion.div
+                                        key={previewImageIndex}
+                                        initial={{ opacity: 0, scale: 0.95 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        exit={{ opacity: 0, scale: 0.95 }}
+                                        transition={{ duration: 0.2 }}
+                                        className="w-full h-full flex items-center justify-center"
+                                    >
+                                        {images[previewImageIndex] && (
+                                            <OptimizedImage 
+                                                src={images[previewImageIndex]} 
+                                                alt={previewImageProduct.name} 
+                                                className="max-w-full max-h-full object-contain rounded-2xl" 
+                                                wrapperClassName="w-full h-full flex items-center justify-center"
+                                                eager 
+                                            />
+                                        )}
+                                    </motion.div>
+                                </AnimatePresence>
+                            </div>
+
+                            {/* Product info overlay at bottom */}
+                            <div 
+                                className="shrink-0 px-5 pb-6 pt-3 bg-gradient-to-t from-dark-950 via-dark-950/80 to-transparent"
+                                onClick={e => e.stopPropagation()}
+                            >
+                                <h3 className="text-xl font-bold text-white mb-1 line-clamp-1">{previewImageProduct.name}</h3>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-lg font-bold text-primary-400">{formatPrice(previewImageProduct.price)}</span>
+                                    {previewImageProduct.description && (
+                                        <p className="text-xs text-slate-400 ml-4 line-clamp-1 flex-1 text-right">{previewImageProduct.description}</p>
+                                    )}
+                                </div>
+                                {/* Quick add to cart from preview */}
+                                {(() => {
+                                    const isAvailable = previewImageProduct.computed_is_available !== undefined ? previewImageProduct.computed_is_available : previewImageProduct.is_active;
+                                    const cartItem = cart.find(i => i.product.id === previewImageProduct.id);
+                                    if (!isAvailable) return null;
+                                    return (
+                                        <button
+                                            onClick={() => {
+                                                triggerHaptic(hapticPatterns.light);
+                                                if (cartItem) {
+                                                    updateQuantity(previewImageProduct.id, cartItem.quantity + 1);
+                                                } else {
+                                                    addToCart(previewImageProduct, 1);
+                                                }
+                                                toast.success(`Added ${previewImageProduct.name}`, { position: 'bottom-center', duration: 1500 });
+                                            }}
+                                            className="mt-3 w-full bg-primary-500 text-dark-950 font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-primary-500/20"
+                                        >
+                                            <Plus size={18} />
+                                            {cartItem ? `Add Another (${cartItem.quantity} in cart)` : 'Add to Cart'}
+                                        </button>
+                                    );
+                                })()}
+                            </div>
+                        </motion.div>
+                    );
+                })()}
             </AnimatePresence>
         </div>
     );

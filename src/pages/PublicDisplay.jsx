@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Utensils, CheckCircle, Clock } from 'lucide-react';
 import apiClient from '../api/client';
 import { formatPriceStatic } from '../utils/useCurrency';
+import OptimizedImage from '../components/OptimizedImage';
 
 export default function PublicDisplay() {
     const { storeId } = useParams();
@@ -189,7 +190,7 @@ export default function PublicDisplay() {
                                     {ads[currentAdIndex].media.endsWith('.mp4') ? (
                                         <video src={ads[currentAdIndex].media} autoPlay muted loop className="w-full h-full object-cover" />
                                     ) : (
-                                        <img src={ads[currentAdIndex].media} alt="Ad" className="w-full h-full object-cover" />
+                                        <OptimizedImage src={ads[currentAdIndex].media} alt="Ad" className="w-full h-full object-cover" wrapperClassName="w-full h-full" eager />
                                     )}
                                     <div className="absolute bottom-12 left-12 z-20">
                                         <h2 className="text-6xl font-black drop-shadow-2xl">{ads[currentAdIndex].title}</h2>
