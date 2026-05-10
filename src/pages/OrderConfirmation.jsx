@@ -49,10 +49,24 @@ export default function OrderConfirmation() {
 
     const handleSendSMS = () => {
         triggerHaptic(hapticPatterns.medium);
-        const phoneNumber = order.store_phone || '';
-        // Use standard sms: URI. Some platforms use & or ; for the body separator. 
-        // We'll use ?body= which is most widely compatible.
-        const smsUri = `sms:${phoneNumber}?body=${encodeURIComponent(confirmationMessage)}`;
+        
+        // 1. Sanitize phone number (remove spaces, dashes, etc., keep +)
+        const rawPhone = order.store_phone || '';
+        const sanitizedPhone = rawPhone.replace(/[^\d+]/g, '');
+        
+        if (!sanitizedPhone) {
+            toast.error("Seller phone number not found.");
+            return;
+        }
+
+        // 2. Detect platform for correct body separator
+        // iOS uses &body= while Android/Desktop use ?body=
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        const separator = isIOS ? '&' : '?';
+        
+        const smsUri = `sms:${sanitizedPhone}${separator}body=${encodeURIComponent(confirmationMessage)}`;
+        
+        // 3. Trigger redirect
         window.location.href = smsUri;
     };
 
