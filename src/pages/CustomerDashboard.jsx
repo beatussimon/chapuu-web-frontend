@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import apiClient from '../api/client';
 import { useAppStore } from '../store/useStore';
-import { ShoppingCart, ChefHat, Plus, Minus, CreditCard, UtensilsCrossed, Trash2, ArrowLeft, Star, Search, ShoppingBag, X, Phone, Mail, ChevronUp } from 'lucide-react';
+import { ShoppingCart, ChefHat, Plus, Minus, CreditCard, UtensilsCrossed, Trash2, ArrowLeft, Star, Search, ShoppingBag, X, Phone, Mail, ChevronUp, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useCurrency } from '../utils/useCurrency';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -440,23 +440,63 @@ export default function CustomerDashboard() {
 
                             {/* Image area — fills available space */}
                             <div 
-                                className="flex-1 flex items-center justify-center px-2 pb-2 min-h-0 overflow-hidden"
+                                className="flex-1 flex items-center justify-center px-2 pb-2 min-h-0 overflow-hidden relative group"
                                 onClick={e => e.stopPropagation()}
                             >
+                                {/* Desktop Navigation Arrows */}
+                                {images.length > 1 && (
+                                    <>
+                                        <button 
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                triggerHaptic(hapticPatterns.light);
+                                                setPreviewImageIndex(prev => (prev - 1 + images.length) % images.length);
+                                            }}
+                                            className="absolute left-4 z-20 p-3 rounded-full bg-black/40 text-white hover:bg-black/60 transition-all opacity-0 group-hover:opacity-100 hidden md:block"
+                                        >
+                                            <ChevronLeft size={24} />
+                                        </button>
+                                        <button 
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                triggerHaptic(hapticPatterns.light);
+                                                setPreviewImageIndex(prev => (prev + 1) % images.length);
+                                            }}
+                                            className="absolute right-4 z-20 p-3 rounded-full bg-black/40 text-white hover:bg-black/60 transition-all opacity-0 group-hover:opacity-100 hidden md:block"
+                                        >
+                                            <ChevronRight size={24} />
+                                        </button>
+                                    </>
+                                )}
+
                                 <AnimatePresence mode="wait">
                                     <motion.div
                                         key={previewImageIndex}
-                                        initial={{ opacity: 0, scale: 0.95 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        exit={{ opacity: 0, scale: 0.95 }}
-                                        transition={{ duration: 0.2 }}
-                                        className="w-full h-full flex items-center justify-center"
+                                        drag="x"
+                                        dragConstraints={{ left: 0, right: 0 }}
+                                        onDragEnd={(e, { offset, velocity }) => {
+                                            const swipeThreshold = 50;
+                                            if (images.length > 1) {
+                                                if (offset.x < -swipeThreshold) {
+                                                    triggerHaptic(hapticPatterns.light);
+                                                    setPreviewImageIndex(prev => (prev + 1) % images.length);
+                                                } else if (offset.x > swipeThreshold) {
+                                                    triggerHaptic(hapticPatterns.light);
+                                                    setPreviewImageIndex(prev => (prev - 1 + images.length) % images.length);
+                                                }
+                                            }
+                                        }}
+                                        initial={{ opacity: 0, x: 20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        exit={{ opacity: 0, x: -20 }}
+                                        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                                        className="w-full h-full flex items-center justify-center touch-none cursor-grab active:cursor-grabbing"
                                     >
                                         {images[previewImageIndex] && (
                                             <OptimizedImage 
                                                 src={images[previewImageIndex]} 
                                                 alt={previewImageProduct.name} 
-                                                className="max-w-full max-h-full object-contain rounded-2xl" 
+                                                className="max-w-full max-h-full object-contain rounded-2xl pointer-events-none shadow-2xl" 
                                                 wrapperClassName="w-full h-full flex items-center justify-center"
                                                 eager 
                                             />
