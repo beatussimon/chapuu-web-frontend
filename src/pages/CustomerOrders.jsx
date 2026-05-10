@@ -163,7 +163,7 @@ export default function CustomerOrders() {
                                                     {new Date(order.created_at).toLocaleDateString()} at {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                 </p>
                                                 <div className="mt-3 flex gap-2 overflow-x-auto pb-2 scrollbar-none no-scrollbar">
-                                                    {order.items.map((item, idx) => (
+                                                    {(Array.isArray(order.items) ? order.items : []).map((item, idx) => (
                                                         <span key={idx} className="whitespace-nowrap text-[10px] bg-dark-900 border border-white/5 text-slate-300 px-2 py-1 rounded-md">
                                                             {item.quantity}x {item.product?.name || 'Item'}
                                                         </span>

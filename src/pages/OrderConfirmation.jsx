@@ -36,7 +36,7 @@ export default function OrderConfirmation() {
         return <div className="text-center py-20 text-white">Order not found.</div>;
     }
 
-    const itemsText = order.items.map(i => `${i.quantity}x ${i.product.name || 'Item'}`).join(', ');
+    const itemsText = (Array.isArray(order.items) ? order.items : []).map(i => `${i.quantity}x ${i.product.name || 'Item'}`).join(', ');
 
     // Formatting the message to copy
     const confirmationMessage = `Hello, I just placed Order #${order.id} on Chapuu for ${formatPrice(order.total_amount)}. \n\nItems: ${itemsText}\nFulfillment: ${order.fulfillment_mode} ${order.table_number ? `(Table ${order.table_number})` : ''}\n\nHere is my payment confirmation to begin my order processing.`;

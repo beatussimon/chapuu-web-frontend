@@ -98,7 +98,7 @@ export default function Checkout() {
             ...(fulfillmentMode === 'DELIVERY' && { customer_phone: customerPhone, delivery_location: deliveryLocation }),
             payment_message: isInstantPayment ? `Instant Payment (Walk-in)` : paymentMessage,
             is_instant_payment: isInstantPayment,
-            items: cart.map(i => ({ product: i.product.id, quantity: i.quantity, unit_price: i.product.price }))
+            items: (Array.isArray(cart) ? cart : []).map(i => ({ product: i.product.id, quantity: i.quantity, unit_price: i.product.price })),
         }
 
         if (isReservationOrder) {
