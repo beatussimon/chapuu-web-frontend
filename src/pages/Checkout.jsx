@@ -94,6 +94,11 @@ export default function Checkout() {
             }
         }
 
+        if (!isInstantPayment && !paymentMessage.trim()) {
+            toast.error("Please provide a Transaction ID or Proof of Payment.", { icon: '💳' });
+            return;
+        }
+
         setIsCheckingOut(true);
         const toastId = toast.loading('Placing your order...');
 
