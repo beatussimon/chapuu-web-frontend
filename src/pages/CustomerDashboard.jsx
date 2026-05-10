@@ -113,7 +113,7 @@ export default function CustomerDashboard() {
 
             {/* Store Image Underlay */}
             {selectedStore.image_url && (
-                <div className="absolute top-0 left-0 w-full h-72 -mx-4 sm:-mx-6 lg:-mx-8 md:-mt-8 -z-10 overflow-hidden pointer-events-none rounded-b-[3rem]">
+                <div className="absolute top-0 left-0 w-full h-48 md:h-72 -mx-4 sm:-mx-6 lg:-mx-8 md:-mt-8 -z-10 overflow-hidden pointer-events-none rounded-b-[2rem] md:rounded-b-[3rem]">
                     <OptimizedImage src={selectedStore.image_url} alt={selectedStore.name} className="w-full h-full object-cover opacity-20" wrapperClassName="w-full h-full" eager />
                     <div className="absolute inset-0 bg-gradient-to-b from-dark-950/10 via-dark-950/60 to-dark-950"></div>
                 </div>
@@ -121,9 +121,9 @@ export default function CustomerDashboard() {
 
             <div className="flex flex-col lg:flex-row gap-8">
                 {/* Main Menu Section */}
-                <div className={`flex-grow ${selectedStore.image_url ? 'pt-8' : ''}`}>
+                <div className={`flex-grow ${selectedStore.image_url ? 'pt-4 md:pt-8' : ''}`}>
                     {/* Header */}
-                    <div className="flex items-center gap-4 mb-6">
+                    <div className="flex items-center gap-3 md:gap-4 mb-4 md:mb-6">
                         <button
                             onClick={() => navigate('/stores')}
                             className="p-2 bg-white/5 hover:bg-white/10 rounded-xl transition-colors text-slate-400 hover:text-white"
@@ -134,28 +134,28 @@ export default function CustomerDashboard() {
                         <div className="flex-1 flex justify-between items-start">
                             <div className="flex items-start gap-4">
                                 {selectedStore.image_url && (
-                                    <OptimizedImage src={selectedStore.image_url} alt={selectedStore.name} className="w-16 h-16 rounded-2xl object-cover border border-white/10 shadow-lg" wrapperClassName="w-16 h-16 rounded-2xl hidden sm:block" eager />
+                                    <OptimizedImage src={selectedStore.image_url} alt={selectedStore.name} className="w-16 h-16 rounded-2xl object-cover border border-white/10 shadow-lg" wrapperClassName="w-16 h-16 rounded-2xl hidden md:block" eager />
                                 )}
                                 <div>
-                                    <h2 className="text-2xl md:text-3xl font-bold tracking-tight bg-gradient-to-r from-primary-400 to-primary-600 bg-clip-text text-transparent flex items-center gap-3">
-                                        {!selectedStore.image_url && (isShop ? <ShoppingBag className="text-purple-500 w-7 h-7" /> : <ChefHat className="text-primary-500 w-7 h-7" />)}
+                                    <h2 className="text-xl md:text-3xl font-bold tracking-tight bg-gradient-to-r from-primary-400 to-primary-600 bg-clip-text text-transparent flex items-center gap-2 md:gap-3">
+                                        {!selectedStore.image_url && (isShop ? <ShoppingBag className="text-purple-500 w-6 h-6 md:w-7 md:h-7" /> : <ChefHat className="text-primary-500 w-6 h-6 md:w-7 md:h-7" />)}
                                         {selectedStore.name}
                                     </h2>
-                                    <div className="flex flex-wrap items-center gap-3 mt-1.5">
+                                    <div className="flex flex-wrap items-center gap-2 md:gap-3 mt-1 md:mt-1.5">
                                         {selectedStore.location && (
-                                            <span className="text-slate-400 text-sm flex items-center gap-1">
+                                            <span className="text-slate-400 text-[10px] md:text-sm flex items-center gap-1">
                                                 {selectedStore.location}
                                             </span>
                                         )}
                                         {selectedStore.location && <span className="w-1 h-1 rounded-full bg-white/20"></span>}
 
-                                        <div className="flex items-center gap-3">
-                                            <a href={`tel:${selectedStore.phone || '+255000000000'}`} className="text-primary-400 hover:text-primary-300 text-sm font-medium flex items-center gap-1 transition-colors" title="Call Store">
-                                                <Phone size={12} /> Call
+                                        <div className="flex items-center gap-2 md:gap-3">
+                                            <a href={`tel:${selectedStore.phone || '+255000000000'}`} className="text-primary-400 hover:text-primary-300 text-[10px] md:text-sm font-medium flex items-center gap-1 transition-colors" title="Call Store">
+                                                <Phone size={10} className="md:w-3 md:h-3" /> Call
                                             </a>
                                             <span className="w-1 h-1 rounded-full bg-white/20"></span>
-                                            <a href={`mailto:${selectedStore.email || `contact@${selectedStore.name.replace(/\s+/g, '').toLowerCase()}.chapuu.test`}?subject=Inquiry from Chapuu`} className="text-slate-300 hover:text-white text-sm font-medium flex items-center gap-1 transition-colors" title="Email Store">
-                                                <Mail size={12} /> Email
+                                            <a href={`mailto:${selectedStore.email || `contact@${selectedStore.name.replace(/\s+/g, '').toLowerCase()}.chapuu.test`}?subject=Inquiry from Chapuu`} className="text-slate-300 hover:text-white text-[10px] md:text-sm font-medium flex items-center gap-1 transition-colors" title="Email Store">
+                                                <Mail size={10} className="md:w-3 md:h-3" /> Email
                                             </a>
                                         </div>
                                     </div>
