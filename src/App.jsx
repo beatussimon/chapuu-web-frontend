@@ -59,7 +59,7 @@ function TopNavigation() {
   if (isTvMode && !scrolled) return null;
 
   return (
-    <nav className="sticky top-0 z-50 glass-dark border-b border-white/5 h-16 md:h-20 px-4 md:px-12 flex items-center justify-between transition-opacity duration-300">
+    <nav className="sticky top-0 z-50 bg-dark-950/95 backdrop-blur-md border-b border-white/5 h-16 md:h-20 px-4 md:px-12 flex items-center justify-between transition-opacity duration-300">
       <Link to="/" className="flex items-center h-full text-primary-500 hover:text-primary-400 transition-colors cursor-pointer group py-2 gap-2 md:gap-3">
         <img src="/logo.png" alt="Chapuu Logo" className="h-8 md:h-full object-contain" />
         <h1 className="text-xl md:text-2xl font-bold tracking-wider text-white">CHAPUU</h1>
@@ -157,7 +157,7 @@ function BottomNav() {
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden glass-dark border-t border-white/10 flex items-center justify-around px-2 py-2 safe-area-pb">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-dark-950/95 backdrop-blur-md border-t border-white/10 flex items-center justify-around px-2 py-2 safe-area-pb">
       {userRole === 'CUSTOMER' && (
         <>
           <Link to="/" className={`flex flex-col items-center p-2 ${isActive('/') ? 'text-primary-500' : 'text-slate-400'}`}><Compass size={20} /><span className="text-[10px] mt-1">Discover</span></Link>
