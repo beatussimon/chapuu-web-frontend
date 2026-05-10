@@ -32,12 +32,16 @@ export default function SellerAnalytics() {
     const { formatPrice } = useCurrency();
 
     const getDateRange = (presetIdx) => {
+        if (presetIdx < 0) return null;
         const to = new Date();
         const from = new Date();
         if (presetIdx === 0) {
             // Today only
         } else {
-            from.setDate(from.getDate() - PRESETS[presetIdx].days);
+            const preset = PRESETS[presetIdx];
+            if (preset) {
+                from.setDate(from.getDate() - preset.days);
+            }
         }
         return {
             from: from.toISOString().split('T')[0],
@@ -46,6 +50,7 @@ export default function SellerAnalytics() {
     };
 
     const fetchAnalytics = (fromDate, toDate) => {
+        if (!fromDate || !toDate) return;
         setLoading(true);
         apiClient.get(`/analytics/seller/?from=${fromDate}&to=${toDate}`)
             .then(res => {
@@ -59,19 +64,23 @@ export default function SellerAnalytics() {
     };
 
     useEffect(() => {
-        const range = getDateRange(activePreset);
-        fetchAnalytics(range.from, range.to);
+        if (activePreset >= 0) {
+            const range = getDateRange(activePreset);
+            fetchAnalytics(range.from, range.to);
+        }
     }, [activePreset]);
 
     const handleCustomRange = () => {
         if (customFrom && customTo) {
-            fetchAnalytics(customFrom, customTo);
             setActivePreset(-1);
+            fetchAnalytics(customFrom, customTo);
+        } else {
+            toast.error('Please select both start and end dates');
         }
     };
 
     const handleExportCSV = () => {
-        if (!data) return;
+        if (!data || !data.date_range) return;
         const rows = [['Date', 'Revenue', 'Orders']];
         const revenueData = Array.isArray(data.revenue_by_day) ? data.revenue_by_day : [];
         revenueData.forEach(d => rows.push([d.day, d.revenue, d.count]));
@@ -101,7 +110,14 @@ export default function SellerAnalytics() {
                 </div>
                 <div className="flex items-center gap-2">
                     <button
-                        onClick={() => { const range = getDateRange(activePreset >= 0 ? activePreset : 2); fetchAnalytics(range.from, range.to); }}
+                        onClick={() => {
+                            if (activePreset < 0) {
+                                fetchAnalytics(customFrom, customTo);
+                            } else {
+                                const range = getDateRange(activePreset);
+                                fetchAnalytics(range.from, range.to);
+                            }
+                        }}
                         className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
                         title="Refresh"
                     >
