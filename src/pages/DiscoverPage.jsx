@@ -76,7 +76,7 @@ export default function DiscoverPage() {
                         {isAuthenticated ? "What are you craving?" : "Discover & Order."}
                     </h1>
                     <p className="text-sm md:text-base text-slate-400">
-                        {stats.metrics.total_stores} spots delivering {stats.metrics.total_meals_served} meals.
+                        {stats.metrics?.total_stores || 0} spots delivering {stats.metrics?.total_meals_served || 0} meals.
                     </p>
                     {!isAuthenticated && (
                         <div className="mt-4 flex gap-3 justify-center md:justify-start">
