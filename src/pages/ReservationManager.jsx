@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Users, Clock, Check, X, Calendar as CalendarIcon, LogIn, LogOut, AlertTriangle } from 'lucide-react';
+import { Users, Clock, Check, X, Calendar as CalendarIcon, LogIn, LogOut, AlertTriangle, Wifi, WifiOff } from 'lucide-react';
 import toast from 'react-hot-toast';
-import apiClient from '../api/client';
+import apiClient, { getWebSocketURL } from '../api/client';
 
 export default function ReservationManager() {
     const [reservations, setReservations] = useState([]);
     const [now, setNow] = useState(new Date());
+    const [wsConnected, setWsConnected] = useState(false);
 
     const fetchReservations = () => {
         apiClient.get('/reservations/')
@@ -16,10 +17,40 @@ export default function ReservationManager() {
 
     useEffect(() => {
         fetchReservations();
-        const interval = setInterval(fetchReservations, 30000);
+        
+        let socket = null;
+        let reconnectTimeout = null;
+
+        const connectWS = () => {
+            const url = getWebSocketURL('/ws/orders/'); // Listen for global order/res updates
+            socket = new WebSocket(url);
+
+            socket.onopen = () => setWsConnected(true);
+            socket.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    // Any order or reservation update should trigger a re-fetch for the host stand
+                    if (data.type === 'order_update') {
+                        fetchReservations();
+                    }
+                } catch (e) { console.error("[Host WS] Parse error", e); }
+            };
+            socket.onclose = () => {
+                setWsConnected(false);
+                reconnectTimeout = setTimeout(connectWS, 5000);
+            };
+        };
+
+        connectWS();
+
         // Live clock for elapsed time
         const clockInterval = setInterval(() => setNow(new Date()), 10000);
-        return () => { clearInterval(interval); clearInterval(clockInterval); };
+        
+        return () => { 
+            if (socket) socket.close();
+            if (reconnectTimeout) clearTimeout(reconnectTimeout);
+            clearInterval(clockInterval); 
+        };
     }, []);
 
     const handleConfirm = (id) => {
@@ -29,9 +60,13 @@ export default function ReservationManager() {
     }
 
     const handleCheckIn = (id) => {
+        const toastId = toast.loading("Checking in guest...");
         apiClient.post(`/reservations/${id}/check_in/`)
-            .then(() => { toast.success("Customer checked in. Table active!"); fetchReservations(); })
-            .catch(err => toast.error("Check-in failed."));
+            .then(res => { 
+                toast.success("Guest checked in! Kitchen notified of pre-orders.", { id: toastId }); 
+                fetchReservations(); 
+            })
+            .catch(err => toast.error("Check-in failed: " + (err.response?.data?.error || err.message), { id: toastId }));
     }
 
     const handleCheckOut = (res) => {

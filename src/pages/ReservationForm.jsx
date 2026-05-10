@@ -344,7 +344,7 @@ export default function ReservationForm() {
                                             <p className="text-slate-400 text-xs">Try a different time, date, or fewer guests.</p>
                                             <div className="mt-3 flex items-center gap-2 text-xs">
                                                 <Phone size={12} className="text-primary-400" />
-                                                <span className="text-primary-400 font-medium">Need help? Call {currentStore?.contact_phone || '+255 700 000 000'}</span>
+                                                <span className="text-primary-400 font-medium">Need help? Call {currentStore?.contact_phone || currentStore?.phone || 'No phone provided'}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -376,7 +376,7 @@ export default function ReservationForm() {
                                 <p className="text-xs text-slate-500 mt-1">Contact support for assistance.</p>
                                 <div className="mt-3 flex items-center justify-center gap-2 text-xs">
                                     <Phone size={12} className="text-primary-400" />
-                                    <span className="text-primary-400 font-medium">{currentStore?.contact_phone || '+255 700 000 000'}</span>
+                                    <span className="text-primary-400 font-medium">{currentStore?.contact_phone || currentStore?.phone || ''}</span>
                                 </div>
                             </div>
                         ) : (
@@ -436,11 +436,11 @@ export default function ReservationForm() {
                         </h3>
                         <p className="text-xs text-slate-400 mb-3">Having trouble booking? Our team is here to assist.</p>
                         <a
-                            href={`tel:${currentStore?.contact_phone || '+255700000000'}`}
-                            className="flex items-center justify-center gap-2 w-full py-2.5 bg-green-500/10 border border-green-500/20 rounded-xl text-green-400 text-sm font-medium hover:bg-green-500/20 transition-colors"
+                            href={`tel:${currentStore?.contact_phone || currentStore?.phone || ''}`}
+                            className={`flex items-center justify-center gap-2 w-full py-2.5 bg-green-500/10 border border-green-500/20 rounded-xl text-green-400 text-sm font-medium hover:bg-green-500/20 transition-colors ${!(currentStore?.contact_phone || currentStore?.phone) ? 'pointer-events-none opacity-50' : ''}`}
                         >
                             <Phone size={14} />
-                            {currentStore?.contact_phone || '+255 700 000 000'}
+                            {currentStore?.contact_phone || currentStore?.phone || 'No phone available'}
                         </a>
                     </div>
                 </div>

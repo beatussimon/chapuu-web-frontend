@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Utensils, CheckCircle, Clock } from 'lucide-react';
-import apiClient from '../api/client';
+import { Utensils, CheckCircle, Clock, Wifi, WifiOff } from 'lucide-react';
+import apiClient, { getWebSocketURL } from '../api/client';
 import { formatPriceStatic } from '../utils/useCurrency';
 import OptimizedImage from '../components/OptimizedImage';
 
@@ -14,6 +14,7 @@ export default function PublicDisplay() {
     const [orders, setOrders] = useState([]);
     const [ads, setAds] = useState([]);
     const [featuredProducts, setFeaturedProducts] = useState([]);
+    const [wsConnected, setWsConnected] = useState(false);
 
     // Cycle state: 0 = Queue Board, 1 = Ad/Featured Board
     const [viewMode, setViewMode] = useState(0);
@@ -53,7 +54,39 @@ export default function PublicDisplay() {
 
     useEffect(() => {
         fetchData();
-        const dataInterval = setInterval(fetchData, 15000); // 15 sec Polling
+        
+        let socket = null;
+        let reconnectTimeout = null;
+
+        const connectWS = () => {
+            const path = storeId ? `/ws/orders/${storeId}/` : '/ws/orders/';
+            const url = getWebSocketURL(path);
+            socket = new WebSocket(url);
+
+            socket.onopen = () => {
+                console.log("[TV WS] Connected");
+                setWsConnected(true);
+            };
+
+            socket.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'order_update') {
+                        // Real-time trigger for re-fetch
+                        fetchData();
+                    }
+                } catch (e) { console.error("[TV WS] Parse error", e); }
+            };
+
+            socket.onclose = () => {
+                setWsConnected(false);
+                reconnectTimeout = setTimeout(connectWS, 5000);
+            };
+
+            socket.onerror = (err) => console.error("[TV WS] Error", err);
+        };
+
+        connectWS();
 
         // Cycle View Logic (10 seconds order board, 10 seconds ad board)
         const viewInterval = setInterval(() => {
@@ -68,7 +101,8 @@ export default function PublicDisplay() {
         }, 12000);
 
         return () => {
-            clearInterval(dataInterval);
+            if (socket) socket.close();
+            if (reconnectTimeout) clearTimeout(reconnectTimeout);
             clearInterval(viewInterval);
         };
     }, [storeId, ads.length]);
