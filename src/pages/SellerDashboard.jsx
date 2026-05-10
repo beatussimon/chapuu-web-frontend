@@ -29,6 +29,20 @@ export default function SellerDashboard() {
     const [wsConnected, setWsConnected] = useState(false);
     const [selectedOrders, setSelectedOrders] = useState([]);
 
+    // Notification Badge Calculations
+    const kitchenCount = orders.filter(o => ['QUEUED', 'PAID', 'PREPARING'].includes(o.state)).length;
+    const accountingCount = orders.filter(o => o.state === 'AWAITING_PAYMENT').length;
+    const deliveryCount = orders.filter(o => ['READY', 'OUT_FOR_DELIVERY'].includes(o.state)).length;
+    const unreadNoticesCount = notices.filter(n => !n.is_read).length;
+
+    const handleMarkAsRead = (noticeId) => {
+        apiClient.post(`/notices/${noticeId}/mark_as_read/`)
+            .then(() => {
+                setNotices(prev => prev.map(n => n.id === noticeId ? { ...n, is_read: true } : n));
+            })
+            .catch(e => console.error("Failed to mark notice as read", e));
+    };
+
     const toggleOrderSelection = (orderId) => {
         setSelectedOrders(prev => 
             prev.includes(orderId) ? prev.filter(id => id !== orderId) : [...prev, orderId]
@@ -344,25 +358,29 @@ export default function SellerDashboard() {
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
                     <div className="flex bg-dark-900 border border-white/10 rounded-xl p-1 overflow-x-auto lg:justify-center scrollbar-none no-scrollbar">
                         {canSeeKitchen && (
-                            <button onClick={() => setActiveView('KITCHEN')} className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap ${activeView === 'KITCHEN' ? 'bg-primary-500 text-dark-950' : 'text-slate-400 hover:text-white'}`}>
+                            <button onClick={() => setActiveView('KITCHEN')} className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all relative ${activeView === 'KITCHEN' ? 'bg-primary-500 text-dark-950 shadow-lg shadow-primary-500/20' : 'text-slate-400 hover:text-white'}`}>
                                 <Utensils size={14} /> Kitchen
+                                {kitchenCount > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full border-2 border-dark-900 animate-bounce font-black">{kitchenCount}</span>}
                             </button>
                         )}
                         {canSeeAccounting && (
-                            <button onClick={() => setActiveView('ACCOUNTING')} className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap ${activeView === 'ACCOUNTING' ? 'bg-primary-500 text-dark-950' : 'text-slate-400 hover:text-white'}`}>
+                            <button onClick={() => setActiveView('ACCOUNTING')} className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all relative ${activeView === 'ACCOUNTING' ? 'bg-primary-500 text-dark-950 shadow-lg shadow-primary-500/20' : 'text-slate-400 hover:text-white'}`}>
                                 <CreditCard size={14} /> Accountant
+                                {accountingCount > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full border-2 border-dark-900 font-black">{accountingCount}</span>}
                             </button>
                         )}
                         {canSeeDelivery && (
-                            <button onClick={() => setActiveView('DELIVERY')} className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap ${activeView === 'DELIVERY' ? 'bg-primary-500 text-dark-950' : 'text-slate-400 hover:text-white'}`}>
+                            <button onClick={() => setActiveView('DELIVERY')} className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all relative ${activeView === 'DELIVERY' ? 'bg-primary-500 text-dark-950 shadow-lg shadow-primary-500/20' : 'text-slate-400 hover:text-white'}`}>
                                 <Truck size={14} /> Delivery
+                                {deliveryCount > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full border-2 border-dark-900 font-black">{deliveryCount}</span>}
                             </button>
                         )}
-                        <button onClick={() => setActiveView('NOTICES')} className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap ${activeView === 'NOTICES' ? 'bg-primary-500 text-dark-950' : 'text-slate-400 hover:text-white'}`}>
-                            <Bell size={14} /> Notices {notices.length > 0 && <span className="bg-red-500 text-white rounded-full px-1.5 text-[10px]">{notices.length}</span>}
+                        <button onClick={() => setActiveView('NOTICES')} className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all relative ${activeView === 'NOTICES' ? 'bg-primary-500 text-dark-950 shadow-lg shadow-primary-500/20' : 'text-slate-400 hover:text-white'}`}>
+                            <Bell size={14} /> Notices
+                            {unreadNoticesCount > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full border-2 border-dark-900 font-black">{unreadNoticesCount}</span>}
                         </button>
                         {canSeeAdminStuff && (
-                            <button onClick={() => setActiveView('SETTINGS')} className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap ${activeView === 'SETTINGS' ? 'bg-primary-500 text-dark-950' : 'text-slate-400 hover:text-white'}`}>
+                            <button onClick={() => setActiveView('SETTINGS')} className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all ${activeView === 'SETTINGS' ? 'bg-primary-500 text-dark-950' : 'text-slate-400 hover:text-white'}`}>
                                 <Store size={14} /> Settings
                             </button>
                         )}
@@ -653,10 +671,21 @@ export default function SellerDashboard() {
                     <h2 className="text-2xl font-bold text-white flex items-center gap-2 mb-6"><Bell className="text-primary-400" /> Staff Notices</h2>
                     <div className="space-y-4">
                         {notices.map(n => (
-                            <div key={n.id} className="bg-dark-900 border border-white/10 rounded-xl p-4">
+                            <div key={n.id} className={`bg-dark-900 border transition-all rounded-xl p-4 relative ${!n.is_read ? 'border-primary-500/30' : 'border-white/10'}`}>
+                                {!n.is_read && <span className="absolute top-4 right-4 bg-primary-500 text-dark-950 text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse shadow-lg shadow-primary-500/20">NEW</span>}
                                 <h3 className="text-lg font-bold text-primary-400">{n.title}</h3>
                                 <p className="text-slate-300 mt-2 whitespace-pre-wrap">{n.message}</p>
-                                <span className="text-xs text-slate-500 block mt-3">From: Admin | {new Date(n.created_at).toLocaleString()}</span>
+                                <div className="flex justify-between items-center mt-4">
+                                    <span className="text-xs text-slate-500">From: Admin | {new Date(n.created_at).toLocaleString()}</span>
+                                    {!n.is_read && (
+                                        <button 
+                                            onClick={() => handleMarkAsRead(n.id)}
+                                            className="text-[10px] font-black uppercase text-primary-400 hover:text-white transition-colors flex items-center gap-1"
+                                        >
+                                            <CheckCircle2 size={12} /> Mark as Read
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         ))}
                         {notices.length === 0 && <EmptyState icon={<Bell size={48} />} text="No notices currently." />}
