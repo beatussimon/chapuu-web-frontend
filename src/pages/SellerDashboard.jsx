@@ -313,7 +313,7 @@ export default function SellerDashboard() {
                 </div>
 
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
-                    <div className="flex bg-dark-900 border border-white/10 rounded-xl p-1 overflow-x-auto scrollbar-none no-scrollbar">
+                    <div className="flex bg-dark-900 border border-white/10 rounded-xl p-1 overflow-x-auto lg:justify-center scrollbar-none no-scrollbar">
                         {canSeeKitchen && (
                             <button onClick={() => setActiveView('KITCHEN')} className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap ${activeView === 'KITCHEN' ? 'bg-primary-500 text-dark-950' : 'text-slate-400 hover:text-white'}`}>
                                 <Utensils size={14} /> Kitchen

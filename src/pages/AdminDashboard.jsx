@@ -161,7 +161,7 @@ export default function AdminDashboard() {
                     <Shield className="text-purple-500" size={28} /> Platform Admin
                 </h1>
 
-                <div className="flex bg-dark-900 border border-white/10 rounded-xl p-1 overflow-x-auto w-full lg:w-auto scrollbar-none no-scrollbar">
+                <div className="flex bg-dark-900 border border-white/10 rounded-xl p-1 overflow-x-auto w-full lg:w-auto lg:justify-center scrollbar-none no-scrollbar">
                     <button onClick={() => setActiveTab('MANAGEMENT')} className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap ${activeTab === 'MANAGEMENT' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'}`}>
                         <Store size={14} /> Stores
                     </button>

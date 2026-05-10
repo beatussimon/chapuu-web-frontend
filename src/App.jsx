@@ -77,7 +77,7 @@ function TopNavigation() {
         ) : (
           <>
             {/* Desktop Navigation */}
-            <div className="hidden lg:flex flex-wrap items-center justify-end gap-1 xl:gap-2 max-w-[75vw]">
+            <div className="hidden lg:flex flex-wrap items-center justify-center gap-1 xl:gap-2 max-w-[75vw]">
               <div className="flex items-center gap-2 text-sm text-slate-400 mr-4 border-r border-white/10 pr-4 h-6">
                 <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
                 <span className="font-medium">{userRole}</span>
