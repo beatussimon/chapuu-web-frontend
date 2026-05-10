@@ -80,8 +80,10 @@ export default function SellerDashboard() {
         apiClient.post('/orders/', payload)
             .then(res => {
                 const orderId = res.data.id;
-                if (posSkipKitchen) {
-                    // Force to READY if requested by staff
+                const currentState = res.data.state;
+                
+                // Only advance if not already READY/COMPLETED and staff requested skip kitchen
+                if (posSkipKitchen && currentState !== 'READY' && currentState !== 'COMPLETED') {
                     return apiClient.post(`/orders/${orderId}/advance_state/`, { state: 'PREPARING' })
                         .then(() => apiClient.post(`/orders/${orderId}/advance_state/`, { state: 'READY' }));
                 }
