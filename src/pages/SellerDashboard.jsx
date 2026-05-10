@@ -27,6 +27,31 @@ export default function SellerDashboard() {
     const [reviews, setReviews] = useState([]);
     const [notices, setNotices] = useState([]);
     const [wsConnected, setWsConnected] = useState(false);
+    const [selectedOrders, setSelectedOrders] = useState([]);
+
+    const toggleOrderSelection = (orderId) => {
+        setSelectedOrders(prev => 
+            prev.includes(orderId) ? prev.filter(id => id !== orderId) : [...prev, orderId]
+        );
+    };
+
+    const handleBulkAdvance = (newState) => {
+        if (selectedOrders.length === 0) return;
+        const toastId = toast.loading(`Updating ${selectedOrders.length} orders...`);
+        
+        apiClient.post('/orders/bulk_advance_state/', {
+            order_ids: selectedOrders,
+            state: newState
+        })
+        .then(res => {
+            toast.success('Bulk update complete!', { id: toastId });
+            setSelectedOrders([]);
+            fetchDashboard();
+        })
+        .catch(err => {
+            toast.error('Bulk update failed: ' + (err.response?.data?.error || err.message), { id: toastId });
+        });
+    };
 
     // Profile State
     const [storeDetails, setStoreDetails] = useState(null);
@@ -352,6 +377,37 @@ export default function SellerDashboard() {
                 </div>
             </div>
 
+            {/* Floating Bulk Actions Bar */}
+            <AnimatePresence>
+                {selectedOrders.length > 0 && (
+                    <motion.div 
+                        initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 100, opacity: 0 }}
+                        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[90] bg-dark-900/90 backdrop-blur-xl border border-primary-500/30 rounded-3xl p-4 shadow-2xl flex items-center gap-6"
+                    >
+                        <div className="flex flex-col">
+                            <span className="text-[10px] font-black uppercase text-primary-500 tracking-widest">Bulk Actions</span>
+                            <span className="text-white font-bold text-sm">{selectedOrders.length} orders selected</span>
+                        </div>
+                        <div className="h-8 w-px bg-white/10"></div>
+                        <div className="flex gap-2">
+                            {activeView === 'KITCHEN' && (
+                                <>
+                                    <button onClick={() => handleBulkAdvance('PREPARING')} className="px-4 py-2 bg-dark-800 hover:bg-dark-700 text-white rounded-xl text-xs font-bold transition-all">Start Prep</button>
+                                    <button onClick={() => handleBulkAdvance('READY')} className="px-4 py-2 bg-primary-500 hover:bg-primary-400 text-dark-900 rounded-xl text-xs font-bold transition-all">Mark Ready</button>
+                                </>
+                            )}
+                            {activeView === 'DELIVERY' && (
+                                <button onClick={() => handleBulkAdvance('OUT_FOR_DELIVERY')} className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold transition-all">Dispatch All</button>
+                            )}
+                            {activeView === 'KITCHEN' && (
+                                <button onClick={() => handleBulkAdvance('COMPLETED')} className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-xl text-xs font-bold transition-all">Complete All</button>
+                            )}
+                            <button onClick={() => setSelectedOrders([])} className="p-2 text-slate-400 hover:text-white transition-colors"><X size={20} /></button>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             {activeView === 'KITCHEN' && canSeeKitchen && (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6 flex-grow">
                     <div className="glass-dark rounded-2xl md:rounded-3xl p-4 md:p-6 border border-primary-500/20 flex flex-col h-[500px] xl:h-auto">
@@ -361,7 +417,7 @@ export default function SellerDashboard() {
                             <span className="ml-auto bg-primary-500/20 text-primary-400 px-2 py-0.5 rounded-full text-[10px] font-bold border border-primary-500/30">{reservationOrders.length}</span>
                         </div>
                         <div className="overflow-y-auto pr-1 space-y-3 flex-grow custom-scrollbar">
-                            {loading ? <LoadingSkeleton /> : <AnimatePresence>{reservationOrders.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} />)}</AnimatePresence>}
+                            {loading ? <LoadingSkeleton /> : <AnimatePresence>{reservationOrders.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} />)}</AnimatePresence>}
                             {!loading && reservationOrders.length === 0 && <EmptyState icon={<Calendar size={40} />} text="No reserved orders" />}
                         </div>
                     </div>
@@ -374,7 +430,7 @@ export default function SellerDashboard() {
                                 <span className="ml-auto bg-dark-800 text-slate-400 px-2 py-0.5 rounded-full text-[10px] font-bold border border-white/5">{queuedOrders.length}</span>
                             </div>
                             <div className="overflow-y-auto pr-1 space-y-3 flex-grow custom-scrollbar">
-                                {loading ? <LoadingSkeleton /> : <AnimatePresence>{queuedOrders.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} />)}</AnimatePresence>}
+                                {loading ? <LoadingSkeleton /> : <AnimatePresence>{queuedOrders.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} />)}</AnimatePresence>}
                                 {!loading && queuedOrders.length === 0 && <EmptyState icon={<ListOrdered size={40} />} text="Queue is empty" />}
                             </div>
                         </div>
@@ -386,7 +442,7 @@ export default function SellerDashboard() {
                             <span className="ml-auto bg-primary-500/20 text-primary-400 px-2 py-0.5 rounded-full text-[10px] font-bold border border-primary-500/30">{preparingOrders.length}</span>
                         </div>
                         <div className="overflow-y-auto pr-1 space-y-3 flex-grow z-10 custom-scrollbar">
-                            {loading ? <LoadingSkeleton /> : <AnimatePresence>{preparingOrders.map(order => <OrderCard key={order.id} order={order} markItemReadyFn={markItemReady} advanceOrderStateFn={advanceOrderState} userRole={userRole} />)}</AnimatePresence>}
+                            {loading ? <LoadingSkeleton /> : <AnimatePresence>{preparingOrders.map(order => <OrderCard key={order.id} order={order} markItemReadyFn={markItemReady} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} />)}</AnimatePresence>}
                             {!loading && preparingOrders.length === 0 && <EmptyState active icon={<Utensils size={40} />} text="Kitchen is waiting" />}
                         </div>
                     </div>
@@ -398,7 +454,7 @@ export default function SellerDashboard() {
                             <span className="ml-auto bg-dark-800 text-slate-400 px-2 py-0.5 rounded-full text-[10px] font-bold border border-white/5">{readyForKitchen.length}</span>
                         </div>
                         <div className="overflow-y-auto pr-1 space-y-3 flex-grow custom-scrollbar">
-                            {loading ? <LoadingSkeleton /> : <AnimatePresence>{readyForKitchen.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} />)}</AnimatePresence>}
+                            {loading ? <LoadingSkeleton /> : <AnimatePresence>{readyForKitchen.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} />)}</AnimatePresence>}
                             {!loading && readyForKitchen.length === 0 && <EmptyState icon={<CheckCircle2 size={40} />} text="No items to dispatch" />}
                         </div>
                     </div>
@@ -413,7 +469,7 @@ export default function SellerDashboard() {
                         <span className="ml-auto bg-indigo-500/20 text-indigo-400 px-3 py-1 rounded-full text-xs font-bold border border-indigo-500/30">{awaitingPaymentOrders.length}</span>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {loading ? <LoadingSkeleton /> : <AnimatePresence>{awaitingPaymentOrders.map(order => <OrderCard key={order.id} order={order} onVerifyPayment={() => setVerifyModal({ open: true, order, fee: '' })} userRole={userRole} />)}</AnimatePresence>}
+                        {loading ? <LoadingSkeleton /> : <AnimatePresence>{awaitingPaymentOrders.map(order => <OrderCard key={order.id} order={order} onVerifyPayment={() => setVerifyModal({ open: true, order, fee: '' })} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} />)}</AnimatePresence>}
                         {!loading && awaitingPaymentOrders.length === 0 && <div className="col-span-full"><EmptyState icon={<CreditCard size={48} />} text="No pending payments" /></div>}
                     </div>
                 </div>
@@ -425,10 +481,10 @@ export default function SellerDashboard() {
                         <div className="flex items-center gap-2 mb-6 pb-4 border-b border-green-500/10">
                             <CheckCircle2 className="text-green-500" />
                             <h3 className="font-bold text-lg text-white tracking-wide">READY FOR PICKUP/DELIVERY</h3>
-                            <span className="ml-auto bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-xs font-bold border border-indigo-500/30">{readyForDelivery.length}</span>
+                            <span className="ml-auto bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-xs font-bold border border-green-500/30">{readyForDelivery.length}</span>
                         </div>
                         <div className="overflow-y-auto pr-2 space-y-4 flex-grow">
-                            {loading ? <LoadingSkeleton /> : <AnimatePresence>{readyForDelivery.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} />)}</AnimatePresence>}
+                            {loading ? <LoadingSkeleton /> : <AnimatePresence>{readyForDelivery.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} />)}</AnimatePresence>}
                             {!loading && readyForDelivery.length === 0 && <EmptyState icon={<CheckCircle2 size={48} />} text="No orders awaiting dispatch" />}
                         </div>
                     </div>
@@ -439,7 +495,7 @@ export default function SellerDashboard() {
                             <span className="ml-auto bg-purple-500/20 text-purple-400 px-3 py-1 rounded-full text-xs font-bold border border-purple-500/30">{outForDeliveryOrders.length}</span>
                         </div>
                         <div className="overflow-y-auto pr-2 space-y-4 flex-grow">
-                            {loading ? <LoadingSkeleton /> : <AnimatePresence>{outForDeliveryOrders.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} />)}</AnimatePresence>}
+                            {loading ? <LoadingSkeleton /> : <AnimatePresence>{outForDeliveryOrders.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} />)}</AnimatePresence>}
                             {!loading && outForDeliveryOrders.length === 0 && <EmptyState icon={<Truck size={48} />} text="No active deliveries" />}
                         </div>
                     </div>
@@ -817,7 +873,7 @@ export default function SellerDashboard() {
     );
 }
 
-const OrderCard = ({ order, markItemReadyFn, advanceOrderStateFn, onVerifyPayment, userRole }) => {
+const OrderCard = ({ order, markItemReadyFn, advanceOrderStateFn, onVerifyPayment, userRole, isSelected, onSelect }) => {
     const isAwaitingPayment = order.state === 'AWAITING_PAYMENT';
     const isQueued = order.state === 'QUEUED' || order.state === 'PAID';
     const isPreparing = order.state === 'PREPARING';
@@ -828,8 +884,16 @@ const OrderCard = ({ order, markItemReadyFn, advanceOrderStateFn, onVerifyPaymen
         <motion.div
             layout
             initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: -10 }}
-            className={`bg-dark-950/80 rounded-2xl p-5 border shadow-lg ${isReadyColumn ? 'border-green-500/30' : isPreparing ? 'border-primary-500/30' : isAwaitingPayment ? 'border-indigo-500/30' : 'border-white/5'}`}
+            className={`bg-dark-950/80 rounded-2xl p-5 border shadow-lg relative group ${isSelected ? 'ring-2 ring-primary-500 border-primary-500' : isReadyColumn ? 'border-green-500/30' : isPreparing ? 'border-primary-500/30' : isAwaitingPayment ? 'border-indigo-500/30' : 'border-white/5'}`}
         >
+            {/* Selection Overlay/Checkbox */}
+            <div 
+                onClick={onSelect}
+                className={`absolute top-3 right-3 w-6 h-6 rounded-full border-2 cursor-pointer z-10 flex items-center justify-center transition-all ${isSelected ? 'bg-primary-500 border-primary-500' : 'border-white/20 bg-black/20 opacity-0 group-hover:opacity-100'}`}
+            >
+                {isSelected && <CheckCircle2 size={16} className="text-dark-950" />}
+            </div>
+
             <div className="flex justify-between items-start mb-4">
                 <div>
                     <h4 className="text-xl font-black text-white">#{order.id}</h4>
