@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import apiClient, { getWebSocketURL } from '../api/client';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChefHat, CheckCircle2, Clock, ListOrdered, Utensils, CreditCard, Play, SquareTerminal, Star, MessageSquare, Truck, Bell, QrCode, Calendar, Store, Plus, Edit2, Trash2, X, ShoppingBag, ShoppingCart } from 'lucide-react';
+import { ChefHat, CheckCircle2, Clock, ListOrdered, Utensils, CreditCard, Play, SquareTerminal, Star, MessageSquare, Truck, Bell, QrCode, Calendar, Store, Plus, Edit2, Trash2, X, ShoppingBag, ShoppingCart, Users, UserPlus, Key, Power, Search, BarChart3, Settings, Save, Phone, Mail, TerminalSquare, Shield } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAppStore } from '../store/useStore';
 import { useCurrency, formatPriceStatic } from '../utils/useCurrency';
@@ -28,6 +28,61 @@ export default function SellerDashboard() {
     const [notices, setNotices] = useState([]);
     const [wsConnected, setWsConnected] = useState(false);
     const [selectedOrders, setSelectedOrders] = useState([]);
+    
+    // Team Management State
+    const [staffList, setStaffList] = useState([]);
+    const [showHireModal, setShowHireModal] = useState(false);
+    const [hireForm, setHireForm] = useState({ username: '', password: '', role: 'CHEF', first_name: '', last_name: '' });
+
+    // Role-Based "Tunnel Vision" Redirects
+    useEffect(() => {
+        if (userRole === 'CHEF' && activeView !== 'KITCHEN') setActiveView('KITCHEN');
+        if (userRole === 'ACCOUNTANT' && activeView !== 'ACCOUNTING') setActiveView('ACCOUNTING');
+        if (userRole === 'DELIVERY' && activeView !== 'DELIVERY') setActiveView('DELIVERY');
+    }, [userRole, activeView]);
+
+    const fetchStaff = () => {
+        if (userRole === 'SELLER' || userRole === 'ADMIN') {
+            apiClient.get('/staff/')
+                .then(res => setStaffList(Array.isArray(res.data) ? res.data : []))
+                .catch(e => console.error("Staff fetch failed"));
+        }
+    };
+
+    const handleHire = (e) => {
+        e.preventDefault();
+        const toastId = toast.loading("Adding team member...");
+        apiClient.post('/staff/', hireForm)
+            .then(() => {
+                toast.success("Staff added successfully!", { id: toastId });
+                setShowHireModal(false);
+                setHireForm({ username: '', password: '', role: 'CHEF', first_name: '', last_name: '' });
+                fetchStaff();
+            })
+            .catch(err => {
+                toast.error("Hiring failed: " + (err.response?.data?.username || "Invalid data"), { id: toastId });
+            });
+    };
+
+    const handleDeactivateStaff = (id) => {
+        if (!confirm("Are you sure? This will instantly terminate all active sessions for this worker.")) return;
+        const toastId = toast.loading("Deactivating...");
+        apiClient.post(`/staff/${id}/deactivate/`)
+            .then(() => {
+                toast.success("Worker deactivated.", { id: toastId });
+                fetchStaff();
+            })
+            .catch(() => toast.error("Action failed.", { id: toastId }));
+    };
+
+    const handleResetStaffPassword = (id) => {
+        const newPass = prompt("Enter new temporary password:");
+        if (!newPass) return;
+        const toastId = toast.loading("Resetting password...");
+        apiClient.post(`/staff/${id}/reset_password/`, { password: newPass })
+            .then(() => toast.success("Password reset!", { id: toastId }))
+            .catch(() => toast.error("Reset failed.", { id: toastId }));
+    };
 
     // Notification Badge Calculations
     const kitchenCount = orders.filter(o => ['QUEUED', 'PAID', 'PREPARING'].includes(o.state)).length;
@@ -223,7 +278,8 @@ export default function SellerDashboard() {
 
     useEffect(() => {
         fetchDashboard();
-        const interval = setInterval(fetchDashboard, 30000);
+        fetchStaff();
+        const syncInterval = setInterval(fetchDashboard, 30000);
         
         let socket = null;
         let reconnectTimeout = null;
@@ -357,29 +413,38 @@ export default function SellerDashboard() {
 
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
                     <div className="flex bg-dark-900 border border-white/10 rounded-xl p-1 overflow-x-auto lg:justify-center scrollbar-none no-scrollbar">
-                        {canSeeKitchen && (
+                        {/* Operational Tabs */}
+                        {(userRole === 'SELLER' || userRole === 'ADMIN' || userRole === 'CHEF') && (
                             <button onClick={() => setActiveView('KITCHEN')} className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all relative ${activeView === 'KITCHEN' ? 'bg-primary-500 text-dark-950 shadow-lg shadow-primary-500/20' : 'text-slate-400 hover:text-white'}`}>
                                 <Utensils size={14} /> Kitchen
                                 {kitchenCount > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full border-2 border-dark-900 animate-bounce font-black">{kitchenCount}</span>}
                             </button>
                         )}
-                        {canSeeAccounting && (
+                        {(userRole === 'SELLER' || userRole === 'ADMIN' || userRole === 'ACCOUNTANT') && (
                             <button onClick={() => setActiveView('ACCOUNTING')} className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all relative ${activeView === 'ACCOUNTING' ? 'bg-primary-500 text-dark-950 shadow-lg shadow-primary-500/20' : 'text-slate-400 hover:text-white'}`}>
                                 <CreditCard size={14} /> Accountant
                                 {accountingCount > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full border-2 border-dark-900 font-black">{accountingCount}</span>}
                             </button>
                         )}
-                        {canSeeDelivery && (
+                        {(userRole === 'SELLER' || userRole === 'ADMIN' || userRole === 'DELIVERY') && (
                             <button onClick={() => setActiveView('DELIVERY')} className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all relative ${activeView === 'DELIVERY' ? 'bg-primary-500 text-dark-950 shadow-lg shadow-primary-500/20' : 'text-slate-400 hover:text-white'}`}>
                                 <Truck size={14} /> Delivery
                                 {deliveryCount > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full border-2 border-dark-900 font-black">{deliveryCount}</span>}
                             </button>
                         )}
+
+                        {/* Management Tabs */}
+                        {(userRole === 'SELLER' || userRole === 'ADMIN') && (
+                            <button onClick={() => setActiveView('TEAM')} className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all ${activeView === 'TEAM' ? 'bg-primary-500 text-dark-950 shadow-lg shadow-primary-500/20' : 'text-slate-400 hover:text-white'}`}>
+                                <Users size={14} /> Team
+                            </button>
+                        )}
+
                         <button onClick={() => setActiveView('NOTICES')} className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all relative ${activeView === 'NOTICES' ? 'bg-primary-500 text-dark-950 shadow-lg shadow-primary-500/20' : 'text-slate-400 hover:text-white'}`}>
                             <Bell size={14} /> Notices
                             {unreadNoticesCount > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full border-2 border-dark-900 font-black">{unreadNoticesCount}</span>}
                         </button>
-                        {canSeeAdminStuff && (
+                        {(userRole === 'SELLER' || userRole === 'ADMIN') && (
                             <button onClick={() => setActiveView('SETTINGS')} className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all ${activeView === 'SETTINGS' ? 'bg-primary-500 text-dark-950' : 'text-slate-400 hover:text-white'}`}>
                                 <Store size={14} /> Settings
                             </button>
@@ -666,6 +731,115 @@ export default function SellerDashboard() {
             )}
 
             {/* Other views omitted for brevity, adding back QR and NOTICES */}
+            {activeView === 'TEAM' && (userRole === 'SELLER' || userRole === 'ADMIN') && (
+                <div className="glass-dark border border-white/5 rounded-3xl p-6 max-w-6xl mx-auto w-full">
+                    <div className="flex justify-between items-center mb-8 pb-4 border-b border-white/5">
+                        <div>
+                            <h2 className="text-2xl font-bold text-white flex items-center gap-2 uppercase tracking-tighter">
+                                <Users className="text-primary-500" /> Team Management
+                            </h2>
+                            <p className="text-xs text-slate-500 mt-1">Manage worker accounts and permissions for {storeDetails?.name}</p>
+                        </div>
+                        <button onClick={() => setShowHireModal(true)} className="bg-primary-500 hover:bg-primary-400 text-dark-950 font-bold px-4 py-2 rounded-xl flex items-center gap-2 text-sm transition-all shadow-lg shadow-primary-500/20">
+                            <UserPlus size={18} /> Hire Staff
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {staffList.map(staff => (
+                            <div key={staff.id} className={`bg-dark-900 border rounded-2xl p-5 relative overflow-hidden transition-all ${!staff.is_active ? 'opacity-50 grayscale border-white/5' : 'border-white/10 hover:border-primary-500/30'}`}>
+                                <div className="flex justify-between items-start mb-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-dark-800 flex items-center justify-center text-primary-500 border border-white/5 font-bold">
+                                            {staff.first_name?.[0] || staff.username[0].toUpperCase()}
+                                        </div>
+                                        <div>
+                                            <h3 className="font-bold text-white text-sm">{staff.first_name} {staff.last_name}</h3>
+                                            <p className="text-[10px] text-slate-500 font-mono">@{staff.username}</p>
+                                        </div>
+                                    </div>
+                                    <div className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase ${
+                                        staff.role === 'CHEF' ? 'bg-orange-500/20 text-orange-400' :
+                                        staff.role === 'ACCOUNTANT' ? 'bg-indigo-500/20 text-indigo-400' :
+                                        'bg-purple-500/20 text-purple-400'
+                                    }`}>
+                                        {staff.role}
+                                    </div>
+                                </div>
+                                
+                                <div className="space-y-2 mb-6">
+                                    <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                                        <Phone size={12} /> {staff.phone_number || 'No phone'}
+                                    </div>
+                                    <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                                        <div className={`w-1.5 h-1.5 rounded-full ${staff.is_active ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                                        {staff.is_active ? 'Active on Duty' : 'Deactivated / Fired'}
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-2">
+                                    <button onClick={() => handleResetStaffPassword(staff.id)} className="flex-1 bg-white/5 hover:bg-white/10 text-slate-300 py-2 rounded-lg text-[10px] font-black uppercase transition-all flex items-center justify-center gap-2">
+                                        <Key size={12} /> Reset Pass
+                                    </button>
+                                    {staff.is_active && (
+                                        <button onClick={() => handleDeactivateStaff(staff.id)} className="px-3 bg-red-500/10 hover:bg-red-500/20 text-red-500 py-2 rounded-lg transition-colors border border-red-500/20">
+                                            <Power size={14} />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                        {staffList.length === 0 && <div className="col-span-full py-12 text-center text-slate-600"><Users size={48} className="mx-auto mb-4 opacity-20" /><p>No staff accounts found.</p></div>}
+                    </div>
+                </div>
+            )}
+
+            {/* Hire Staff Modal */}
+            <AnimatePresence>
+                {showHireModal && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowHireModal(false)} className="absolute inset-0 bg-dark-950/80 backdrop-blur-sm" />
+                        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-dark-900 border border-white/10 rounded-[2.5rem] p-8 w-full max-w-md relative z-10 shadow-2xl">
+                            <h2 className="text-2xl font-black text-white uppercase italic tracking-tight mb-2">Onboard Staff</h2>
+                            <p className="text-sm text-slate-400 mb-6">Create a secure account for your team member.</p>
+                            
+                            <form onSubmit={handleHire} className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-[10px] font-black uppercase text-slate-500 mb-1 block">First Name</label>
+                                        <input required type="text" className="w-full bg-dark-950 border border-white/5 rounded-xl px-4 py-3 text-sm focus:border-primary-500 outline-none" value={hireForm.first_name} onChange={e => setHireForm({...hireForm, first_name: e.target.value})} />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black uppercase text-slate-500 mb-1 block">Last Name</label>
+                                        <input required type="text" className="w-full bg-dark-950 border border-white/5 rounded-xl px-4 py-3 text-sm focus:border-primary-500 outline-none" value={hireForm.last_name} onChange={e => setHireForm({...hireForm, last_name: e.target.value})} />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-black uppercase text-slate-500 mb-1 block">Username</label>
+                                    <input required type="text" placeholder="e.g. juma_chef" className="w-full bg-dark-950 border border-white/5 rounded-xl px-4 py-3 text-sm focus:border-primary-500 outline-none" value={hireForm.username} onChange={e => setHireForm({...hireForm, username: e.target.value})} />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-black uppercase text-slate-500 mb-1 block">Initial Password</label>
+                                    <input required type="password" placeholder="Min 8 characters" className="w-full bg-dark-950 border border-white/5 rounded-xl px-4 py-3 text-sm focus:border-primary-500 outline-none" value={hireForm.password} onChange={e => setHireForm({...hireForm, password: e.target.value})} />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-black uppercase text-slate-500 mb-1 block">Operational Role</label>
+                                    <select className="w-full bg-dark-950 border border-white/5 rounded-xl px-4 py-3 text-sm focus:border-primary-500 outline-none text-white" value={hireForm.role} onChange={e => setHireForm({...hireForm, role: e.target.value})}>
+                                        <option value="CHEF">KITCHEN / CHEF</option>
+                                        <option value="ACCOUNTANT">CASHIER / ACCOUNTANT</option>
+                                        <option value="DELIVERY">DELIVERY DRIVER</option>
+                                    </select>
+                                </div>
+                                <div className="pt-4 flex gap-3">
+                                    <button type="button" onClick={() => setShowHireModal(false)} className="flex-1 bg-white/5 hover:bg-white/10 text-white font-bold py-4 rounded-2xl transition-all">Cancel</button>
+                                    <button type="submit" className="flex-[2] bg-primary-500 hover:bg-primary-400 text-dark-950 font-bold py-4 rounded-2xl transition-all shadow-lg shadow-primary-500/20">Add to Team</button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
             {activeView === 'NOTICES' && (
                 <div className="glass-dark border border-white/5 rounded-3xl p-6 max-w-4xl mx-auto w-full">
                     <h2 className="text-2xl font-bold text-white flex items-center gap-2 mb-6"><Bell className="text-primary-400" /> Staff Notices</h2>
