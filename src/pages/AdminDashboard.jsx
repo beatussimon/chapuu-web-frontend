@@ -156,12 +156,16 @@ export default function AdminDashboard() {
 
     return (
         <div className="w-full min-h-screen py-4 md:py-6 px-2 md:px-4 text-white overflow-x-hidden">
-            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-4">
-                <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-3 text-white">
-                    <Shield className="text-purple-500" size={28} /> Platform Admin
-                </h1>
+            <div className="flex flex-col lg:grid lg:grid-cols-3 items-center mb-8 gap-4">
+                {/* Left: Title */}
+                <div className="flex justify-start w-full lg:w-auto">
+                    <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-3 text-white">
+                        <Shield className="text-purple-500" size={28} /> Platform Admin
+                    </h1>
+                </div>
 
-                <div className="flex bg-dark-900 border border-white/10 rounded-xl p-1 overflow-x-auto w-full lg:w-auto lg:justify-center scrollbar-none no-scrollbar">
+                {/* Center: Tabs */}
+                <div className="flex bg-dark-900 border border-white/10 rounded-xl p-1 overflow-x-auto w-full justify-center scrollbar-none no-scrollbar">
                     <button onClick={() => setActiveTab('MANAGEMENT')} className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap ${activeTab === 'MANAGEMENT' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'}`}>
                         <Store size={14} /> Stores
                     </button>
@@ -175,6 +179,9 @@ export default function AdminDashboard() {
                         <BarChart3 size={14} /> Analytics
                     </button>
                 </div>
+
+                {/* Right: Spacer */}
+                <div className="hidden lg:block"></div>
             </div>
 
             {activeTab === 'MANAGEMENT' && (
