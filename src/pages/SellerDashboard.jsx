@@ -325,7 +325,7 @@ export default function SellerDashboard() {
         connectWebSocket();
 
         return () => {
-            clearInterval(interval);
+            if (syncInterval) clearInterval(syncInterval);
             if (socket) socket.close();
             if (reconnectTimeout) clearTimeout(reconnectTimeout);
         };
