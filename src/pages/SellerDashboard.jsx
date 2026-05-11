@@ -245,6 +245,31 @@ export default function SellerDashboard() {
         }
     }, [userRole]);
 
+    const advanceOrderState = useCallback((orderId, newState, payload = {}) => {
+        const toastId = toast.loading(`Updating order to ${newState}...`);
+        apiClient.post(`/orders/${orderId}/advance_state/`, { state: newState, ...payload })
+            .then(() => {
+                toast.success(`Order #${orderId} is now ${newState}`, { id: toastId });
+                fetchDashboard(true);
+                if (newState === 'PAID') setVerifyModal({ open: false, order: null, fee: '' });
+            })
+            .catch(err => {
+                toast.error(`Update failed: ${err.response?.data?.error || err.message}`, { id: toastId });
+            });
+    }, [fetchDashboard]);
+
+    const markItemReady = useCallback((orderId, itemId) => {
+        const toastId = toast.loading("Marking item as ready...");
+        apiClient.post(`/orders/${orderId}/items/${itemId}/ready/`)
+            .then(() => {
+                toast.success("Item ready!", { id: toastId });
+                fetchDashboard(true);
+            })
+            .catch(err => {
+                toast.error("Failed to update item: " + (err.response?.data?.error || err.message), { id: toastId });
+            });
+    }, [fetchDashboard]);
+
     // STATIC DATA: Fetch only once on mount or when userRole changes
     useEffect(() => {
         const fetchStaticData = async () => {
