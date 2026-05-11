@@ -215,54 +215,62 @@ export default function SellerDashboard() {
         isFetchingRef.current = true;
         
         try {
-            // 1. Fetch User Profile
-            const meRes = await apiClient.get('/auth/users/me/');
-            setUserProfile(meRes.data);
-
-            // 2. Fetch Orders
+            // DYNAMIC DATA: Fetch every sync cycle
             const ordersRes = await apiClient.get('/orders/');
             setOrders(Array.isArray(ordersRes.data) ? ordersRes.data : []);
 
-            // 3. Fetch Store Info
-            const storeRes = await apiClient.get('/stores/my_store/');
-            if (storeRes.data && storeRes.data.id) {
-                const store = storeRes.data;
-                setStoreDetails(store);
-                setStoreType(store.store_type || 'RESTAURANT');
-                
-                // Scoped fetches
-                if (['SELLER', 'ADMIN', 'CHEF'].includes(userRole)) {
-                    apiClient.get(`/stores/${store.id}/kitchen_queue/`)
-                        .then(r => setQueueSize(r.data.queue_size))
-                        .catch(e => console.warn("Queue sync failed"));
-                }
-                if (['SELLER', 'ADMIN'].includes(userRole)) {
-                    apiClient.get(`/stores/${store.id}/reviews/`)
-                        .then(r => setReviews(Array.isArray(r.data) ? r.data : []))
-                        .catch(e => console.warn("Review sync failed"));
-                }
-            }
-
-            // 4. Products for POS
-            if (['SELLER', 'ADMIN'].includes(userRole)) {
-                const prodRes = await apiClient.get('/products/');
-                setPosProducts(Array.isArray(prodRes.data) ? prodRes.data : []);
-            }
-
-            // 5. Notices
             const noticesRes = await apiClient.get('/notices/');
             setNotices(Array.isArray(noticesRes.data) ? noticesRes.data : []);
 
-        } catch (error) {
-            console.error("Dashboard sync failed", error);
-            if (error.response?.status !== 429) {
-                toast.error("Live dashboard sync failed. Reconnecting...");
+            // Role-scoped dynamic data
+            if (storeIdRef.current) {
+                if (['SELLER', 'ADMIN', 'CHEF'].includes(userRole)) {
+                    apiClient.get(`/stores/${storeIdRef.current}/kitchen_queue/`)
+                        .then(r => setQueueSize(r.data.queue_size))
+                        .catch(() => {});
+                }
             }
+
+        } catch (error) {
+            console.error("Dashboard dynamic sync failed", error);
         } finally {
             setLoading(false);
             isFetchingRef.current = false;
         }
-    }, [userRole]); // Only depend on userRole, use refs for others
+    }, [userRole]);
+
+    // STATIC DATA: Fetch only once on mount or when userRole changes
+    useEffect(() => {
+        const fetchStaticData = async () => {
+            try {
+                const meRes = await apiClient.get('/auth/users/me/');
+                setUserProfile(meRes.data);
+
+                const storeRes = await apiClient.get('/stores/my_store/');
+                if (storeRes.data && storeRes.data.id) {
+                    const store = storeRes.data;
+                    setStoreDetails(store);
+                    setStoreType(store.store_type || 'RESTAURANT');
+                    
+                    if (['SELLER', 'ADMIN'].includes(userRole)) {
+                        apiClient.get(`/stores/${store.id}/reviews/`)
+                            .then(r => setReviews(Array.isArray(r.data) ? r.data : []))
+                            .catch(() => {});
+                    }
+                }
+
+                if (['SELLER', 'ADMIN'].includes(userRole)) {
+                    apiClient.get('/products/')
+                        .then(res => setPosProducts(Array.isArray(res.data) ? res.data : []))
+                        .catch(() => {});
+                }
+            } catch (e) {
+                console.error("Static data fetch failed", e);
+            }
+        };
+
+        fetchStaticData();
+    }, [userRole]);
 
     // WebSocket Logic
     useEffect(() => {
