@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import apiClient, { getWebSocketURL } from '../api/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChefHat, CheckCircle2, Clock, ListOrdered, Utensils, CreditCard, Play, SquareTerminal, Star, MessageSquare, Truck, Bell, QrCode, Calendar, Store, Plus, Edit2, Trash2, X, ShoppingBag, ShoppingCart, Users, UserPlus, Key, Power, Search, BarChart3, Settings, Save, Phone, Mail, TerminalSquare, Shield } from 'lucide-react';
