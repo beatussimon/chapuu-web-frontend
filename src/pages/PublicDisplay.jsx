@@ -31,7 +31,7 @@ export default function PublicDisplay() {
             const orderRes = await apiClient.get(storeId ? `/orders/?store=${storeId}` : '/orders/');
             // Only show active kitchen orders (exclude delivery/cart states)
             const orderData = Array.isArray(orderRes.data) ? orderRes.data : [];
-            const activeOrders = orderData.filter(o => ['QUEUED', 'PREPARING', 'READY'].includes(o.state));
+            const activeOrders = orderData.filter(o => ['PAID', 'QUEUED', 'PREPARING', 'READY'].includes(o.state));
             setOrders(activeOrders);
 
             // Fetch ads 
