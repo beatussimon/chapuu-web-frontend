@@ -202,134 +202,116 @@ export default function SellerDashboard() {
             });
     };
 
-    const fetchDashboard = useCallback(() => {
-        apiClient.get('/auth/users/me/')
-            .then(res => setUserProfile(res.data))
-            .catch(e => console.error("Profile sync error"));
-
-        apiClient.get('/orders/')
-            .then(res => {
-                setOrders(Array.isArray(res.data) ? res.data : []);
-            })
-            .catch(err => {
-                toast.error("Error syncing live dashboard");
-            })
-            .finally(() => setLoading(false));
-
-        apiClient.get('/stores/my_store/')
-            .then(res => {
-                if (res.data && res.data.id) {
-                    const store = res.data;
-                    setStoreDetails(store);
-                    setStoreType(store.store_type || 'RESTAURANT');
-                    if (['SELLER', 'ADMIN', 'CHEF'].includes(userRole)) {
-                        apiClient.get(`/stores/${store.id}/kitchen_queue/`)
-                            .then(r => setQueueSize(r.data.queue_size))
-                            .catch(e => console.error("Queue sync error:", e));
-                    }
-                    if (['SELLER', 'ADMIN'].includes(userRole)) {
-                        apiClient.get(`/stores/${store.id}/reviews/`)
-                            .then(r => setReviews(Array.isArray(r.data) ? r.data : []))
-                            .catch(e => console.error("Review sync error:", e));
-                    }
-                }
-            })
-            .catch(e => {
-                console.error("Store sync error:", e);
-                // Even if store fetch fails, we should stop loading
-                setLoading(false);
-            });
-
-        if (['SELLER', 'ADMIN'].includes(userRole)) {
-            apiClient.get('/products/')
-                .then(res => setPosProducts(Array.isArray(res.data) ? res.data : []))
-                .catch(e => console.error("Products sync error:", e));
-        }
-
-        apiClient.get('/notices/')
-            .then(res => setNotices(Array.isArray(res.data) ? res.data : []))
-            .catch(e => console.log("Notices sync failed"));
-    }, [userRole, storeDetails?.id]); // Dependencies for stability
-
-    const markItemReady = (orderId, itemId) => {
-        const toastId = toast.loading('Marking item ready...');
-        apiClient.post(`/orders/${orderId}/items/${itemId}/ready/`)
-            .then(() => {
-                toast.success('Kitchen item completed!', { id: toastId });
-                fetchDashboard();
-            })
-            .catch(err => toast.error("Error updating item: " + err.message, { id: toastId }));
-    }
-
-    const advanceOrderState = (orderId, newState, extraData = {}) => {
-        // IDEMPOTENCY: Skip if already in the target state
-        const order = orders.find(o => o.id === orderId);
-        if (order && order.state === newState) return;
-
-        const toastId = toast.loading('Updating order...');
-        apiClient.post(`/orders/${orderId}/advance_state/`, { state: newState, ...extraData })
-            .then(() => {
-                toast.success('Order advanced!', { id: toastId });
-                setVerifyModal({ open: false, order: null, fee: '' });
-                fetchDashboard();
-            })
-            .catch(err => toast.error("Error updating order: " + (err.response?.data?.error || err.message), { id: toastId }));
-    }
-
+    // Use refs for stable access to state within async callbacks and intervals
+    const isFetchingRef = useRef(false);
+    const storeIdRef = useRef(storeDetails?.id);
+    
     useEffect(() => {
-        fetchDashboard();
-        fetchStaff();
-        const syncInterval = setInterval(fetchDashboard, 30000);
+        storeIdRef.current = storeDetails?.id;
+    }, [storeDetails?.id]);
+
+    const fetchDashboard = useCallback(async (force = false) => {
+        if (isFetchingRef.current && !force) return;
+        isFetchingRef.current = true;
+        
+        try {
+            // 1. Fetch User Profile
+            const meRes = await apiClient.get('/auth/users/me/');
+            setUserProfile(meRes.data);
+
+            // 2. Fetch Orders
+            const ordersRes = await apiClient.get('/orders/');
+            setOrders(Array.isArray(ordersRes.data) ? ordersRes.data : []);
+
+            // 3. Fetch Store Info
+            const storeRes = await apiClient.get('/stores/my_store/');
+            if (storeRes.data && storeRes.data.id) {
+                const store = storeRes.data;
+                setStoreDetails(store);
+                setStoreType(store.store_type || 'RESTAURANT');
+                
+                // Scoped fetches
+                if (['SELLER', 'ADMIN', 'CHEF'].includes(userRole)) {
+                    apiClient.get(`/stores/${store.id}/kitchen_queue/`)
+                        .then(r => setQueueSize(r.data.queue_size))
+                        .catch(e => console.warn("Queue sync failed"));
+                }
+                if (['SELLER', 'ADMIN'].includes(userRole)) {
+                    apiClient.get(`/stores/${store.id}/reviews/`)
+                        .then(r => setReviews(Array.isArray(r.data) ? r.data : []))
+                        .catch(e => console.warn("Review sync failed"));
+                }
+            }
+
+            // 4. Products for POS
+            if (['SELLER', 'ADMIN'].includes(userRole)) {
+                const prodRes = await apiClient.get('/products/');
+                setPosProducts(Array.isArray(prodRes.data) ? prodRes.data : []);
+            }
+
+            // 5. Notices
+            const noticesRes = await apiClient.get('/notices/');
+            setNotices(Array.isArray(noticesRes.data) ? noticesRes.data : []);
+
+        } catch (error) {
+            console.error("Dashboard sync failed", error);
+            if (error.response?.status !== 429) {
+                toast.error("Live dashboard sync failed. Reconnecting...");
+            }
+        } finally {
+            setLoading(false);
+            isFetchingRef.current = false;
+        }
+    }, [userRole]); // Only depend on userRole, use refs for others
+
+    // WebSocket Logic
+    useEffect(() => {
+        if (!userRole) return;
         
         let socket = null;
         let reconnectTimeout = null;
 
-        const connectWebSocket = () => {
+        const connectWS = () => {
             let wsPath = '/ws/orders/';
-            if (storeDetails?.id) {
-                wsPath += `${storeDetails.id}/`;
+            // Use storeId from ref to avoid effect restart loop
+            if (storeIdRef.current) {
+                wsPath += `${storeIdRef.current}/`;
             }
             
             const wsUrl = getWebSocketURL(wsPath);
-            console.log("[WS] Connecting to:", wsUrl);
             socket = new WebSocket(wsUrl);
 
-            socket.onopen = () => {
-                console.log("[WS] Connected");
-                setWsConnected(true);
-            };
-
+            socket.onopen = () => setWsConnected(true);
             socket.onmessage = (event) => {
                 try {
                     const data = JSON.parse(event.data);
                     if (data.type === 'order_update') {
-                        console.log("[WS] Realtime update:", data.message);
-                        fetchDashboard();
+                        fetchDashboard(true); // Force fetch on WS trigger
                     }
-                } catch (e) { console.error("[WS] Parse error", e); }
+                } catch (e) {}
             };
 
-            socket.onclose = (e) => {
-                console.log("[WS] Socket closed. Reconnecting in 5s...", e.reason);
+            socket.onclose = () => {
                 setWsConnected(false);
-                reconnectTimeout = setTimeout(connectWebSocket, 5000);
+                reconnectTimeout = setTimeout(connectWS, 10000); // Slower reconnect
             };
-
-            socket.onerror = (err) => {
-                console.error("[WS] Socket error", err);
-                setWsConnected(false);
-                socket.close();
-            };
+            socket.onerror = () => socket.close();
         };
 
-        connectWebSocket();
-
+        connectWS();
         return () => {
-            if (syncInterval) clearInterval(syncInterval);
             if (socket) socket.close();
             if (reconnectTimeout) clearTimeout(reconnectTimeout);
         };
-    }, [storeDetails?.id, userRole]);
+    }, [userRole]); // DON'T depend on storeDetails.id here
+
+    // Polling & Initial Fetch
+    useEffect(() => {
+        fetchDashboard();
+        fetchStaff();
+        const interval = setInterval(fetchDashboard, 45000); // 45s interval
+        return () => clearInterval(interval);
+    }, [userRole, fetchDashboard]);
 
     const ordersArray = Array.isArray(orders) ? orders : [];
     const activeOrders = ordersArray.filter(o => o.state !== 'COMPLETED' && o.state !== 'CANCELLED' && o.state !== 'CREATED' && o.state !== 'REFUNDED');
