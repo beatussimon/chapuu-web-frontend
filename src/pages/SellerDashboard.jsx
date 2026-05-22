@@ -6,7 +6,7 @@ import {
     SquareTerminal, Star, MessageSquare, Truck, Bell, QrCode, Calendar, 
     Store, Plus, Edit2, Trash2, X, ShoppingBag, ShoppingCart, Users, 
     UserPlus, Key, Power, Search, BarChart3, Settings, Save, Phone, Mail, 
-    TerminalSquare, Shield 
+    TerminalSquare, Shield, RefreshCw
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAppStore } from '../store/useStore';
@@ -15,6 +15,20 @@ import { QRCodeSVG } from 'qrcode.react';
 import OptimizedImage from '../components/OptimizedImage';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
+
+const softChime = new Audio('/media/sounds/soft_chime.mp3');
+softChime.preload = 'auto';
+
+const playCachedChime = () => {
+    try {
+        softChime.currentTime = 0; // Reset playhead
+        softChime.play().catch(err => {
+            console.log("Audio playback deferred until user interaction", err);
+        });
+    } catch (e) {
+        console.error("Audio trigger failed", e);
+    }
+};
 
 export default function SellerDashboard() {
     const [orders, setOrders] = useState([]);
@@ -34,6 +48,16 @@ export default function SellerDashboard() {
     const [notices, setNotices] = useState([]);
     const [wsConnected, setWsConnected] = useState(false);
     const [selectedOrders, setSelectedOrders] = useState([]);
+    
+    // Billing States
+    const [invoices, setInvoices] = useState([]);
+    const [ledgerEntries, setLedgerEntries] = useState([]);
+    const [platformPaymentMethods, setPlatformPaymentMethods] = useState([]);
+    const [showPaymentModal, setShowPaymentModal] = useState({ open: false, invoice: null });
+    const [paymentForm, setPaymentForm] = useState({ amount: '', transactionId: '', receiptScreenshot: null });
+
+    // Handoff Verification PIN State
+    const [handoffPinModal, setHandoffPinModal] = useState({ open: false, orderId: null, pin: '', loading: false });
     
     // Team Management State
     const [staffList, setStaffList] = useState([]);
@@ -270,6 +294,93 @@ export default function SellerDashboard() {
             });
     }, [fetchDashboard]);
 
+    const handleConfirmHandoffPin = () => {
+        if (handoffPinModal.pin.length !== 6) {
+            toast.error("Please enter a 6-digit PIN.");
+            return;
+        }
+        setHandoffPinModal(prev => ({ ...prev, loading: true }));
+        apiClient.post(`/orders/${handoffPinModal.orderId}/confirm_delivery/`, { code: handoffPinModal.pin })
+            .then(() => {
+                toast.success("Order handoff completed successfully!");
+                setHandoffPinModal({ open: false, orderId: null, pin: '', loading: false });
+                fetchDashboard(true);
+            })
+            .catch(err => {
+                console.error("Handoff pin verification failed", err);
+                const msg = err.response?.data?.error || "Failed to verify handoff code.";
+                toast.error(msg);
+                setHandoffPinModal(prev => ({ ...prev, loading: false }));
+            });
+    };
+
+    const handleRespondReschedule = (orderId, approve) => {
+        const toastId = toast.loading(`${approve ? 'Approving' : 'Rejecting'} reschedule request...`);
+        apiClient.post(`/orders/${orderId}/respond_reschedule/`, { approve })
+            .then(() => {
+                toast.success(`Reschedule request ${approve ? 'approved' : 'rejected'}!`, { id: toastId });
+                fetchDashboard(true);
+            })
+            .catch(err => {
+                toast.error(`Action failed: ${err.response?.data?.error || err.message}`, { id: toastId });
+            });
+    };
+
+    const fetchBillingData = useCallback(() => {
+        if (userRole !== 'SELLER' && userRole !== 'ADMIN') return;
+        
+        apiClient.get('/billing/invoices/')
+            .then(res => setInvoices(Array.isArray(res.data) ? res.data : []))
+            .catch(e => console.error("Failed to fetch invoices", e));
+
+        apiClient.get('/billing/ledger/')
+            .then(res => setLedgerEntries(Array.isArray(res.data) ? res.data : []))
+            .catch(e => console.error("Failed to fetch ledger", e));
+
+        apiClient.get('/billing/payment-methods/')
+            .then(res => setPlatformPaymentMethods(Array.isArray(res.data) ? res.data : []))
+            .catch(e => console.error("Failed to fetch platform payment methods", e));
+    }, [userRole]);
+
+    const handleSubmitPaymentProof = (e) => {
+        e.preventDefault();
+        const invoiceId = showPaymentModal.invoice.id;
+        if (!paymentForm.transactionId || !paymentForm.amount || !paymentForm.receiptScreenshot) {
+            toast.error("Please fill in all payment details and upload a screenshot.");
+            return;
+        }
+
+        const toastId = toast.loading("Submitting payment proof...");
+        const formData = new FormData();
+        formData.append('invoice', invoiceId);
+        formData.append('amount', paymentForm.amount);
+        formData.append('transaction_id', paymentForm.transactionId);
+        formData.append('receipt_screenshot', paymentForm.receiptScreenshot);
+
+        apiClient.post('/billing/payments/', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        })
+        .then(() => {
+            toast.success("Payment proof submitted successfully! Pending admin review.", { id: toastId });
+            setShowPaymentModal({ open: false, invoice: null });
+            setPaymentForm({ amount: '', transactionId: '', receiptScreenshot: null });
+            fetchBillingData();
+        })
+        .catch(err => {
+            console.error("Payment proof submission failed", err);
+            const msg = err.response?.data?.error || err.response?.data?.detail || "Failed to submit proof.";
+            toast.error(msg, { id: toastId });
+        });
+    };
+
+    useEffect(() => {
+        if (activeView === 'BILLING') {
+            fetchBillingData();
+        }
+    }, [activeView, fetchBillingData]);
+
     // STATIC DATA: Fetch only once on mount or when userRole changes
     useEffect(() => {
         const fetchStaticData = async () => {
@@ -325,6 +436,7 @@ export default function SellerDashboard() {
                 try {
                     const data = JSON.parse(event.data);
                     if (data.type === 'order_update') {
+                        playCachedChime(); // Play the cached soft chime
                         fetchDashboard(true); // Force fetch on WS trigger
                     }
                 } catch (e) {}
@@ -353,7 +465,11 @@ export default function SellerDashboard() {
     }, [userRole, fetchDashboard]);
 
     const ordersArray = Array.isArray(orders) ? orders : [];
-    const activeOrders = ordersArray.filter(o => o.state !== 'COMPLETED' && o.state !== 'CANCELLED' && o.state !== 'CREATED' && o.state !== 'REFUNDED');
+    const isFutureScheduled = (o) => {
+        return o.state === 'PAID' && o.scheduled_start_time && new Date(o.scheduled_start_time) > new Date();
+    };
+    const upcomingScheduledOrders = ordersArray.filter(isFutureScheduled);
+    const activeOrders = ordersArray.filter(o => o.state !== 'COMPLETED' && o.state !== 'CANCELLED' && o.state !== 'CREATED' && o.state !== 'REFUNDED' && !isFutureScheduled(o));
     const awaitingPaymentOrders = activeOrders.filter(o => o.state === 'AWAITING_PAYMENT');
     const queuedOrders = activeOrders.filter(o => (o.state === 'QUEUED' || o.state === 'PAID') && o.fulfillment_mode !== 'RESERVATION');
     const reservationOrders = activeOrders.filter(o => (o.state === 'QUEUED' || o.state === 'PAID') && o.fulfillment_mode === 'RESERVATION');
@@ -460,6 +576,11 @@ export default function SellerDashboard() {
                                 <Users size={14} /> Team
                             </button>
                         )}
+                        {(userRole === 'SELLER' || userRole === 'ADMIN') && (
+                            <button onClick={() => setActiveView('BILLING')} className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all ${activeView === 'BILLING' ? 'bg-primary-500 text-dark-950 shadow-lg shadow-primary-500/20' : 'text-slate-400 hover:text-white'}`}>
+                                <CreditCard size={14} /> Billing
+                            </button>
+                        )}
 
                         <button onClick={() => setActiveView('NOTICES')} className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all relative ${activeView === 'NOTICES' ? 'bg-primary-500 text-dark-950 shadow-lg shadow-primary-500/20' : 'text-slate-400 hover:text-white'}`}>
                             <Bell size={14} /> Notices
@@ -517,53 +638,73 @@ export default function SellerDashboard() {
             </AnimatePresence>
 
             {activeView === 'KITCHEN' && canSeeKitchen && (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6 flex-grow">
-                    <div className="glass-dark rounded-2xl md:rounded-3xl p-4 md:p-6 border border-primary-500/20 flex flex-col h-[500px] xl:h-auto">
-                        <div className="flex items-center gap-2 mb-4 md:mb-6 pb-3 border-b border-primary-500/10">
-                            <Calendar className="text-primary-400" size={18} />
-                            <h3 className="font-bold text-base md:text-lg text-slate-200 uppercase tracking-wider">Reservations</h3>
-                            <span className="ml-auto bg-primary-500/20 text-primary-400 px-2 py-0.5 rounded-full text-[10px] font-bold border border-primary-500/30">{reservationOrders.length}</span>
-                        </div>
-                        <div className="overflow-y-auto pr-1 space-y-3 flex-grow custom-scrollbar">
-                            {loading ? <LoadingSkeleton /> : <AnimatePresence>{reservationOrders.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} />)}</AnimatePresence>}
-                            {!loading && reservationOrders.length === 0 && <EmptyState icon={<Calendar size={40} />} text="No reserved orders" />}
-                        </div>
-                    </div>
-
-                    {storeType !== 'SHOP' && (
-                        <div className="glass-dark rounded-2xl md:rounded-3xl p-4 md:p-6 border border-white/5 flex flex-col h-[500px] xl:h-auto">
-                            <div className="flex items-center gap-2 mb-4 md:mb-6 pb-3 border-b border-white/5">
-                                <ListOrdered className="text-slate-400" size={18} />
-                                <h3 className="font-bold text-base md:text-lg text-slate-200 uppercase tracking-wider">Kitchen Queue</h3>
-                                <span className="ml-auto bg-dark-800 text-slate-400 px-2 py-0.5 rounded-full text-[10px] font-bold border border-white/5">{queuedOrders.length}</span>
-                            </div>
-                            <div className="overflow-y-auto pr-1 space-y-3 flex-grow custom-scrollbar">
-                                {loading ? <LoadingSkeleton /> : <AnimatePresence>{queuedOrders.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} />)}</AnimatePresence>}
-                                {!loading && queuedOrders.length === 0 && <EmptyState icon={<ListOrdered size={40} />} text="Queue is empty" />}
+                <div className="flex flex-col gap-6 flex-grow animate-fadeIn">
+                    {upcomingScheduledOrders.length > 0 && (
+                        <div className="glass-dark border border-primary-500/20 bg-primary-500/5 rounded-3xl p-6 mb-2">
+                            <h3 className="text-sm font-black uppercase text-primary-400 mb-4 tracking-widest flex items-center gap-2">
+                                <Clock size={16} className="animate-pulse" /> Upcoming Scheduled Orders
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                {upcomingScheduledOrders.map(order => (
+                                    <ScheduledOrderCard 
+                                        key={order.id} 
+                                        order={order} 
+                                        onStartNow={() => advanceOrderState(order.id, storeType === 'SHOP' ? 'READY' : 'QUEUED')}
+                                        onRespondReschedule={handleRespondReschedule}
+                                    />
+                                ))}
                             </div>
                         </div>
                     )}
-                    <div className="bg-gradient-to-b from-dark-900/80 to-dark-800/40 backdrop-blur-xl rounded-2xl md:rounded-3xl p-4 md:p-6 border border-primary-500/20 shadow-2xl flex flex-col h-[500px] xl:h-auto relative overflow-hidden">
-                        <div className="flex items-center gap-2 mb-4 md:mb-6 pb-3 border-b border-primary-500/10 z-10">
-                            <ChefHat className="text-primary-500 animate-pulse" size={18} />
-                            <h3 className="font-bold text-base md:text-lg text-white uppercase tracking-wider">Preparing</h3>
-                            <span className="ml-auto bg-primary-500/20 text-primary-400 px-2 py-0.5 rounded-full text-[10px] font-bold border border-primary-500/30">{preparingOrders.length}</span>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6 flex-grow">
+                        <div className="glass-dark rounded-2xl md:rounded-3xl p-4 md:p-6 border border-primary-500/20 flex flex-col h-[500px] xl:h-auto">
+                            <div className="flex items-center gap-2 mb-4 md:mb-6 pb-3 border-b border-primary-500/10">
+                                <Calendar className="text-primary-400" size={18} />
+                                <h3 className="font-bold text-base md:text-lg text-slate-200 uppercase tracking-wider">Reservations</h3>
+                                <span className="ml-auto bg-primary-500/20 text-primary-400 px-2 py-0.5 rounded-full text-[10px] font-bold border border-primary-500/30">{reservationOrders.length}</span>
+                            </div>
+                            <div className="overflow-y-auto pr-1 space-y-3 flex-grow custom-scrollbar">
+                                {loading ? <LoadingSkeleton /> : <AnimatePresence>{reservationOrders.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} onOpenHandoffPinModal={(id) => setHandoffPinModal({ open: true, orderId: id, pin: '', loading: false })} />)}</AnimatePresence>}
+                                {!loading && reservationOrders.length === 0 && <EmptyState icon={<Calendar size={40} />} text="No reserved orders" />}
+                            </div>
                         </div>
-                        <div className="overflow-y-auto pr-1 space-y-3 flex-grow z-10 custom-scrollbar">
-                            {loading ? <LoadingSkeleton /> : <AnimatePresence>{preparingOrders.map(order => <OrderCard key={order.id} order={order} markItemReadyFn={markItemReady} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} />)}</AnimatePresence>}
-                            {!loading && preparingOrders.length === 0 && <EmptyState active icon={<Utensils size={40} />} text="Kitchen is waiting" />}
+
+                        {storeType !== 'SHOP' && (
+                            <div className="glass-dark rounded-2xl md:rounded-3xl p-4 md:p-6 border border-white/5 flex flex-col h-[500px] xl:h-auto">
+                                <div className="flex items-center gap-2 mb-4 md:mb-6 pb-3 border-b border-white/5">
+                                    <ListOrdered className="text-slate-400" size={18} />
+                                    <h3 className="font-bold text-base md:text-lg text-slate-200 uppercase tracking-wider">Kitchen Queue</h3>
+                                    <span className="ml-auto bg-dark-800 text-slate-400 px-2 py-0.5 rounded-full text-[10px] font-bold border border-white/5">{queuedOrders.length}</span>
+                                </div>
+                                <div className="overflow-y-auto pr-1 space-y-3 flex-grow custom-scrollbar">
+                                    {loading ? <LoadingSkeleton /> : <AnimatePresence>{queuedOrders.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} onOpenHandoffPinModal={(id) => setHandoffPinModal({ open: true, orderId: id, pin: '', loading: false })} />)}</AnimatePresence>}
+                                    {!loading && queuedOrders.length === 0 && <EmptyState icon={<ListOrdered size={40} />} text="Queue is empty" />}
+                                </div>
+                            </div>
+                        )}
+                        <div className="bg-gradient-to-b from-dark-900/80 to-dark-800/40 backdrop-blur-xl rounded-2xl md:rounded-3xl p-4 md:p-6 border border-primary-500/20 shadow-2xl flex flex-col h-[500px] xl:h-auto relative overflow-hidden">
+                            <div className="flex items-center gap-2 mb-4 md:mb-6 pb-3 border-b border-primary-500/10 z-10">
+                                <ChefHat className="text-primary-500 animate-pulse" size={18} />
+                                <h3 className="font-bold text-base md:text-lg text-white uppercase tracking-wider">Preparing</h3>
+                                <span className="ml-auto bg-primary-500/20 text-primary-400 px-2 py-0.5 rounded-full text-[10px] font-bold border border-primary-500/30">{preparingOrders.length}</span>
+                            </div>
+                            <div className="overflow-y-auto pr-1 space-y-3 flex-grow z-10 custom-scrollbar">
+                                {loading ? <LoadingSkeleton /> : <AnimatePresence>{preparingOrders.map(order => <OrderCard key={order.id} order={order} markItemReadyFn={markItemReady} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} onOpenHandoffPinModal={(id) => setHandoffPinModal({ open: true, orderId: id, pin: '', loading: false })} />)}</AnimatePresence>}
+                                {!loading && preparingOrders.length === 0 && <EmptyState active icon={<Utensils size={40} />} text="Kitchen is waiting" />}
+                            </div>
                         </div>
-                    </div>
-                    {/* DISPATCH COLUMN for non-delivery items */}
-                    <div className="glass-dark rounded-2xl md:rounded-3xl p-4 md:p-6 border border-white/5 flex flex-col h-[500px] xl:h-auto">
-                        <div className="flex items-center gap-2 mb-4 md:mb-6 pb-3 border-b border-white/5">
-                            <CheckCircle2 className="text-green-500" size={18} />
-                            <h3 className="font-bold text-base md:text-lg text-white uppercase tracking-wider">Ready to Dispatch</h3>
-                            <span className="ml-auto bg-dark-800 text-slate-400 px-2 py-0.5 rounded-full text-[10px] font-bold border border-white/5">{readyForKitchen.length}</span>
-                        </div>
-                        <div className="overflow-y-auto pr-1 space-y-3 flex-grow custom-scrollbar">
-                            {loading ? <LoadingSkeleton /> : <AnimatePresence>{readyForKitchen.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} />)}</AnimatePresence>}
-                            {!loading && readyForKitchen.length === 0 && <EmptyState icon={<CheckCircle2 size={40} />} text="No items to dispatch" />}
+                        {/* DISPATCH COLUMN for non-delivery items */}
+                        <div className="glass-dark rounded-2xl md:rounded-3xl p-4 md:p-6 border border-white/5 flex flex-col h-[500px] xl:h-auto">
+                            <div className="flex items-center gap-2 mb-4 md:mb-6 pb-3 border-b border-white/5">
+                                <CheckCircle2 className="text-green-500" size={18} />
+                                <h3 className="font-bold text-base md:text-lg text-white uppercase tracking-wider">Ready to Dispatch</h3>
+                                <span className="ml-auto bg-dark-800 text-slate-400 px-2 py-0.5 rounded-full text-[10px] font-bold border border-white/5">{readyForKitchen.length}</span>
+                            </div>
+                            <div className="overflow-y-auto pr-1 space-y-3 flex-grow custom-scrollbar">
+                                {loading ? <LoadingSkeleton /> : <AnimatePresence>{readyForKitchen.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} onOpenHandoffPinModal={(id) => setHandoffPinModal({ open: true, orderId: id, pin: '', loading: false })} />)}</AnimatePresence>}
+                                {!loading && readyForKitchen.length === 0 && <EmptyState icon={<CheckCircle2 size={40} />} text="No items to dispatch" />}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -577,14 +718,14 @@ export default function SellerDashboard() {
                         <span className="ml-auto bg-indigo-500/20 text-indigo-400 px-3 py-1 rounded-full text-xs font-bold border border-indigo-500/30">{awaitingPaymentOrders.length}</span>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {loading ? <LoadingSkeleton /> : <AnimatePresence>{awaitingPaymentOrders.map(order => <OrderCard key={order.id} order={order} onVerifyPayment={() => setVerifyModal({ open: true, order, fee: '' })} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} />)}</AnimatePresence>}
+                        {loading ? <LoadingSkeleton /> : <AnimatePresence>{awaitingPaymentOrders.map(order => <OrderCard key={order.id} order={order} onVerifyPayment={() => setVerifyModal({ open: true, order, fee: '' })} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} onOpenHandoffPinModal={(id) => setHandoffPinModal({ open: true, orderId: id, pin: '', loading: false })} />)}</AnimatePresence>}
                         {!loading && awaitingPaymentOrders.length === 0 && <div className="col-span-full"><EmptyState icon={<CreditCard size={48} />} text="No pending payments" /></div>}
                     </div>
                 </div>
             )}
 
             {activeView === 'DELIVERY' && canSeeDelivery && (
-                <div className="flex flex-col xl:flex-row gap-6 flex-grow overflow-x-auto pb-4 custom-scrollbar">
+                <div className="flex flex-col xl:flex-row gap-6 flex-grow overflow-x-auto pb-4 custom-scrollbar animate-fadeIn">
                     <div className="glass-dark rounded-3xl p-6 border border-green-500/20 flex flex-col min-w-[300px] xl:min-w-[320px] flex-1 min-h-[400px]">
                         <div className="flex items-center gap-2 mb-6 pb-4 border-b border-green-500/10">
                             <CheckCircle2 className="text-green-500" />
@@ -592,7 +733,7 @@ export default function SellerDashboard() {
                             <span className="ml-auto bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-xs font-bold border border-green-500/30">{readyForDelivery.length}</span>
                         </div>
                         <div className="overflow-y-auto pr-2 space-y-4 flex-grow">
-                            {loading ? <LoadingSkeleton /> : <AnimatePresence>{readyForDelivery.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} />)}</AnimatePresence>}
+                            {loading ? <LoadingSkeleton /> : <AnimatePresence>{readyForDelivery.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} onOpenHandoffPinModal={(id) => setHandoffPinModal({ open: true, orderId: id, pin: '', loading: false })} />)}</AnimatePresence>}
                             {!loading && readyForDelivery.length === 0 && <EmptyState icon={<CheckCircle2 size={48} />} text="No orders awaiting dispatch" />}
                         </div>
                     </div>
@@ -603,8 +744,173 @@ export default function SellerDashboard() {
                             <span className="ml-auto bg-purple-500/20 text-purple-400 px-3 py-1 rounded-full text-xs font-bold border border-purple-500/30">{outForDeliveryOrders.length}</span>
                         </div>
                         <div className="overflow-y-auto pr-2 space-y-4 flex-grow">
-                            {loading ? <LoadingSkeleton /> : <AnimatePresence>{outForDeliveryOrders.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} />)}</AnimatePresence>}
+                            {loading ? <LoadingSkeleton /> : <AnimatePresence>{outForDeliveryOrders.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} onOpenHandoffPinModal={(id) => setHandoffPinModal({ open: true, orderId: id, pin: '', loading: false })} />)}</AnimatePresence>}
                             {!loading && outForDeliveryOrders.length === 0 && <EmptyState icon={<Truck size={48} />} text="No active deliveries" />}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {activeView === 'BILLING' && canSeeAdminStuff && (
+                <div className="glass-dark border border-white/5 rounded-3xl p-6 max-w-6xl mx-auto w-full space-y-8 animate-fadeIn">
+                    <div className="flex justify-between items-center pb-4 border-b border-white/5">
+                        <div>
+                            <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                                <CreditCard className="text-primary-400" /> Platform Billing & Commissions
+                            </h2>
+                            <p className="text-xs text-slate-400 mt-1">Manage your platform fees, invoices, and payment confirmations.</p>
+                        </div>
+                        <button onClick={fetchBillingData} className="p-2 bg-white/5 hover:bg-white/10 rounded-xl text-slate-400 hover:text-white transition-colors">
+                            <RefreshCw size={16} />
+                        </button>
+                    </div>
+
+                    {/* KPI Balances Overview */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between">
+                            <span className="text-xs font-black uppercase text-slate-500 tracking-wider">Outstanding Dues</span>
+                            <span className="text-2xl font-black text-white mt-2 font-mono">
+                                {formatPrice(
+                                    invoices
+                                        .filter(inv => ['UNPAID', 'OVERDUE'].includes(inv.status))
+                                        .reduce((sum, inv) => sum + parseFloat(inv.total_commission), 0)
+                                )}
+                            </span>
+                            <span className="text-[10px] text-slate-400 mt-1">Sum of unpaid & overdue invoices</span>
+                        </div>
+
+                        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between">
+                            <span className="text-xs font-black uppercase text-slate-500 tracking-wider">Total Commission Paid</span>
+                            <span className="text-2xl font-black text-slate-300 mt-2 font-mono">
+                                {formatPrice(
+                                    invoices
+                                        .filter(inv => inv.status === 'PAID')
+                                        .reduce((sum, inv) => sum + parseFloat(inv.total_commission), 0)
+                                )}
+                            </span>
+                            <span className="text-[10px] text-slate-400 mt-1">Accrued platform fee verified by admin</span>
+                        </div>
+
+                        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between">
+                            <span className="text-xs font-black uppercase text-slate-500 tracking-wider">Platform Order Volume</span>
+                            <span className="text-2xl font-black text-slate-300 mt-2 font-mono">
+                                {formatPrice(
+                                    invoices.reduce((sum, inv) => sum + parseFloat(inv.total_order_amount), 0)
+                                )}
+                            </span>
+                            <span className="text-[10px] text-slate-400 mt-1">Historical total of invoiced order amounts</span>
+                        </div>
+                    </div>
+
+                    {/* Monthly Invoices Table */}
+                    <div className="bg-dark-900 border border-white/10 rounded-2xl p-6">
+                        <h3 className="text-base font-bold text-white mb-4">Monthly Statements</h3>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-xs md:text-sm text-slate-300">
+                                <thead>
+                                    <tr className="border-b border-white/5 text-[10px] uppercase font-black tracking-wider text-slate-500">
+                                        <th className="pb-3">Period</th>
+                                        <th className="pb-3">Order Count</th>
+                                        <th className="pb-3">Gross Sales</th>
+                                        <th className="pb-3">Commission (3%)</th>
+                                        <th className="pb-3">Due Date</th>
+                                        <th className="pb-3">Status</th>
+                                        <th className="pb-3 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {invoices.map(inv => (
+                                        <tr key={inv.id} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+                                            <td className="py-4 font-bold text-white">
+                                                {new Date(inv.year, inv.month - 1).toLocaleString('default', { month: 'long', year: 'numeric' })}
+                                            </td>
+                                            <td className="py-4">{inv.order_count}</td>
+                                            <td className="py-4 font-mono">{formatPrice(inv.total_order_amount)}</td>
+                                            <td className="py-4 font-mono text-primary-400 font-bold">{formatPrice(inv.total_commission)}</td>
+                                            <td className="py-4">{new Date(inv.due_date).toLocaleDateString()}</td>
+                                            <td className="py-4">
+                                                <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
+                                                    inv.status === 'PAID' ? 'bg-green-500/20 text-green-400' :
+                                                    inv.status === 'PENDING_REVIEW' ? 'bg-yellow-500/20 text-yellow-400' :
+                                                    inv.status === 'OVERDUE' ? 'bg-red-500/20 text-red-400' :
+                                                    'bg-slate-700/20 text-slate-400'
+                                                }`}>
+                                                    {inv.status}
+                                                </span>
+                                            </td>
+                                            <td className="py-4 text-right">
+                                                {['UNPAID', 'OVERDUE'].includes(inv.status) ? (
+                                                    <button
+                                                        onClick={() => {
+                                                            setShowPaymentModal({ open: true, invoice: inv });
+                                                            setPaymentForm({ amount: inv.total_commission, transactionId: '', receiptScreenshot: null });
+                                                        }}
+                                                        className="bg-primary-500 hover:bg-primary-400 text-dark-950 text-xs font-black uppercase px-3 py-1.5 rounded-lg transition-all"
+                                                    >
+                                                        Upload Receipt
+                                                    </button>
+                                                ) : (
+                                                    <span className="text-slate-500 text-xs">-</span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {invoices.length === 0 && (
+                                        <tr>
+                                            <td colSpan="7" className="py-12 text-center text-slate-500">
+                                                No monthly invoices generated yet.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {/* Transaction Splits Ledger */}
+                    <div className="bg-dark-900 border border-white/10 rounded-2xl p-6">
+                        <h3 className="text-base font-bold text-white mb-2">Transaction Split Ledger</h3>
+                        <p className="text-xs text-slate-400 mb-4">Detailed audit trail of accrued platform fees and compensation charges.</p>
+                        <div className="overflow-x-auto max-h-96 custom-scrollbar">
+                            <table className="w-full text-left text-xs md:text-sm text-slate-300 text-nowrap">
+                                <thead className="sticky top-0 bg-dark-900 z-10">
+                                    <tr className="border-b border-white/5 text-[10px] uppercase font-black tracking-wider text-slate-500">
+                                        <th className="pb-3">Date</th>
+                                        <th className="pb-3">Order ID</th>
+                                        <th className="pb-3">Type</th>
+                                        <th className="pb-3">Order Amount</th>
+                                        <th className="pb-3">Rate</th>
+                                        <th className="pb-3 text-right">Platform Cut</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {ledgerEntries.map(entry => (
+                                        <tr key={entry.id} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+                                            <td className="py-3">{new Date(entry.created_at).toLocaleString()}</td>
+                                            <td className="py-3 font-bold text-white">#{entry.order_id}</td>
+                                            <td className="py-3">
+                                                <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
+                                                    entry.entry_type === 'COMMISSION' ? 'bg-cyan-500/10 text-cyan-400' : 'bg-rose-500/10 text-rose-400'
+                                                }`}>
+                                                    {entry.entry_type === 'COMMISSION' ? 'Order Comm.' : 'Cancel Fee'}
+                                                </span>
+                                            </td>
+                                            <td className="py-3 font-mono">{formatPrice(entry.order_amount)}</td>
+                                            <td className="py-3 font-mono">{entry.commission_rate}%</td>
+                                            <td className="py-3 font-mono text-right font-bold text-slate-200">
+                                                {formatPrice(entry.commission_amount)}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {ledgerEntries.length === 0 && (
+                                        <tr>
+                                            <td colSpan="6" className="py-12 text-center text-slate-500">
+                                                No ledger transactions recorded yet.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -1097,16 +1403,163 @@ export default function SellerDashboard() {
                     </div>
                 </div>
             )}
+
+            {/* Handoff Verification PIN Entry Modal */}
+            <AnimatePresence>
+                {handoffPinModal.open && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-dark-950/80 backdrop-blur-sm"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.95, y: 20 }}
+                            className="bg-dark-900 border border-white/10 rounded-3xl p-6 max-w-sm w-full shadow-2xl relative"
+                        >
+                            <button
+                                onClick={() => setHandoffPinModal({ open: false, orderId: null, pin: '', loading: false })}
+                                className="absolute top-4 right-4 p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
+                            >
+                                <X size={18} />
+                            </button>
+
+                            <h3 className="text-xl font-bold text-white mb-2 text-center">Fulfillment Handoff</h3>
+                            <p className="text-xs text-slate-400 text-center mb-6">
+                                Enter the 6-digit confirmation code provided by the customer for Order #{handoffPinModal.orderId}.
+                            </p>
+
+                            <div className="flex justify-center mb-6">
+                                <input
+                                    type="text"
+                                    maxLength="6"
+                                    value={handoffPinModal.pin}
+                                    onChange={(e) => {
+                                        const val = e.target.value.replace(/\D/g, '');
+                                        setHandoffPinModal(prev => ({ ...prev, pin: val }));
+                                    }}
+                                    placeholder="000000"
+                                    className="bg-dark-950 border border-white/10 rounded-xl px-4 py-3 text-center text-3xl font-black font-mono tracking-widest text-primary-500 focus:outline-none focus:border-primary-500 w-48 transition-all"
+                                    autoFocus
+                                />
+                            </div>
+
+                            <button
+                                onClick={handleConfirmHandoffPin}
+                                disabled={handoffPinModal.loading || handoffPinModal.pin.length !== 6}
+                                className="w-full bg-primary-500 hover:bg-primary-400 disabled:opacity-50 text-dark-950 font-bold py-3 rounded-xl shadow-lg transition-all"
+                            >
+                                {handoffPinModal.loading ? 'Verifying...' : 'Verify & Complete'}
+                            </button>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Invoice Payment Upload Modal */}
+            <AnimatePresence>
+                {showPaymentModal.open && showPaymentModal.invoice && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowPaymentModal({ open: false, invoice: null })} className="absolute inset-0 bg-dark-950/80 backdrop-blur-sm" />
+                        <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-dark-900 border border-white/10 rounded-3xl p-6 w-full max-w-lg relative z-10 shadow-2xl">
+                            <button
+                                onClick={() => setShowPaymentModal({ open: false, invoice: null })}
+                                className="absolute top-4 right-4 p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
+                            >
+                                <X size={18} />
+                            </button>
+
+                            <h3 className="text-xl font-bold text-white mb-2 uppercase tracking-tight">Invoice Settlement</h3>
+                            <p className="text-xs text-slate-400 mb-6">
+                                Submit proof of payment for the monthly statement of {new Date(showPaymentModal.invoice.year, showPaymentModal.invoice.month - 1).toLocaleString('default', { month: 'long', year: 'numeric' })}.
+                            </p>
+
+                            {/* Render active platform payment methods */}
+                            {platformPaymentMethods.length > 0 && (
+                                <div className="mb-6 space-y-3 bg-dark-950 p-4 rounded-2xl border border-white/5 text-left">
+                                    <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-500">Deposit Accounts</h4>
+                                    <div className="grid grid-cols-1 gap-3">
+                                        {platformPaymentMethods.map(pm => (
+                                            <div key={pm.id} className="text-xs border-b border-white/5 last:border-0 pb-2 last:pb-0">
+                                                <div className="font-bold text-primary-400">{pm.provider}</div>
+                                                <div className="text-slate-300 font-mono mt-0.5">Account: {pm.account_number} ({pm.account_name})</div>
+                                                {pm.instructions && <div className="text-[10px] text-slate-500 italic mt-1">{pm.instructions}</div>}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            <form onSubmit={handleSubmitPaymentProof} className="space-y-4">
+                                <div className="text-left">
+                                    <label className="text-[10px] font-black uppercase text-slate-500 mb-1.5 block">Amount Deposited</label>
+                                    <input 
+                                        required 
+                                        type="number" step="0.01"
+                                        value={paymentForm.amount}
+                                        onChange={e => setPaymentForm({ ...paymentForm, amount: e.target.value })}
+                                        className="w-full bg-dark-950 border border-white/5 rounded-xl px-4 py-3 text-white text-sm focus:border-primary-500 outline-none"
+                                    />
+                                </div>
+                                <div className="text-left">
+                                    <label className="text-[10px] font-black uppercase text-slate-500 mb-1.5 block">Transaction ID / Reference Number</label>
+                                    <input 
+                                        required 
+                                        type="text" 
+                                        placeholder="e.g. PP260522..."
+                                        value={paymentForm.transactionId}
+                                        onChange={e => setPaymentForm({ ...paymentForm, transactionId: e.target.value })}
+                                        className="w-full bg-dark-950 border border-white/5 rounded-xl px-4 py-3 text-white text-sm focus:border-primary-500 outline-none"
+                                    />
+                                </div>
+                                <div className="text-left">
+                                    <label className="text-[10px] font-black uppercase text-slate-500 mb-1.5 block">Payment Screenshot / Receipt File</label>
+                                    <input 
+                                        required 
+                                        type="file" 
+                                        accept="image/*"
+                                        onChange={e => setPaymentForm({ ...paymentForm, receiptScreenshot: e.target.files[0] })}
+                                        className="w-full bg-dark-950 border border-white/5 rounded-xl px-4 py-3 text-white text-sm focus:border-primary-500 outline-none file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-primary-500/10 file:text-primary-500"
+                                    />
+                                </div>
+
+                                <div className="pt-4 flex gap-3">
+                                    <button 
+                                        type="button" 
+                                        onClick={() => setShowPaymentModal({ open: false, invoice: null })}
+                                        className="flex-1 py-3.5 rounded-xl bg-white/5 text-white font-bold text-sm hover:bg-white/10 transition-all border border-white/5"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button 
+                                        type="submit" 
+                                        className="flex-[2] py-3.5 rounded-xl bg-primary-500 text-dark-900 font-black text-sm hover:bg-primary-400 transition-all shadow-[0_10px_30px_rgba(249,115,22,0.3)]"
+                                    >
+                                        SUBMIT PAYMENT
+                                    </button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
 
-const OrderCard = ({ order, markItemReadyFn, advanceOrderStateFn, onVerifyPayment, userRole, isSelected, onSelect }) => {
+const OrderCard = ({ order, markItemReadyFn, advanceOrderStateFn, onVerifyPayment, userRole, isSelected, onSelect, onOpenHandoffPinModal }) => {
     const isAwaitingPayment = order.state === 'AWAITING_PAYMENT';
     const isQueued = order.state === 'QUEUED' || order.state === 'PAID';
     const isPreparing = order.state === 'PREPARING';
     const isReadyColumn = order.state === 'READY';
     const isOutForDelivery = order.state === 'OUT_FOR_DELIVERY';
+
+    const requiresPinToComplete = (o) => {
+        return ['DELIVERY', 'PICKUP', 'TAKEAWAY'].includes(o.fulfillment_mode) &&
+               (['OUT_FOR_DELIVERY', 'READY'].includes(o.state));
+    };
 
     return (
         <motion.div
@@ -1122,7 +1575,7 @@ const OrderCard = ({ order, markItemReadyFn, advanceOrderStateFn, onVerifyPaymen
                 {isSelected && <CheckCircle2 size={16} className="text-dark-950" />}
             </div>
 
-            <div className="flex justify-between items-start mb-4">
+            <div className="flex justify-between items-start mb-4 text-left">
                 <div>
                     <h4 className="text-xl font-black text-white">#{order.id}</h4>
                     <span className="text-xs text-primary-400 font-bold block mt-1">{formatPriceStatic(order.total_amount)} {order.delivery_fee > 0 && `(Fee: ${order.delivery_fee})`}</span>
@@ -1131,6 +1584,15 @@ const OrderCard = ({ order, markItemReadyFn, advanceOrderStateFn, onVerifyPaymen
                             <Calendar size={12} className="shrink-0" />
                             <span className="text-[10px] font-black uppercase tracking-tight">
                                 Reserved: {new Date(order.reservation_time).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                {" "}(<CountdownTimer targetTime={order.reservation_time} />)
+                            </span>
+                        </div>
+                    )}
+                    {order.scheduled_time && (
+                        <div className="flex items-center gap-1.5 mt-2 bg-cyan-500/10 text-cyan-400 px-2 py-1 rounded-md border border-cyan-500/20 w-fit">
+                            <Clock size={12} className="shrink-0" />
+                            <span className="text-[10px] font-black uppercase tracking-tight">
+                                Scheduled For: {new Date(order.scheduled_time).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                             </span>
                         </div>
                     )}
@@ -1149,7 +1611,7 @@ const OrderCard = ({ order, markItemReadyFn, advanceOrderStateFn, onVerifyPaymen
             </div>
 
             {/* Items */}
-            <div className="space-y-2 mt-4">
+            <div className="space-y-2 mt-4 text-left">
                 {order.items?.map(item => (
                     <div key={item.id} className="flex justify-between items-center bg-dark-800/50 rounded-lg p-2 border border-white/5">
                         <span className={`text-sm ${item.is_ready ? 'text-slate-500 line-through' : 'text-slate-200'}`}>{item.quantity}x {item.product.name}</span>
@@ -1177,15 +1639,134 @@ const OrderCard = ({ order, markItemReadyFn, advanceOrderStateFn, onVerifyPaymen
             )}
 
             {isReadyColumn && advanceOrderStateFn && ['SELLER', 'ADMIN', 'CHEF'].includes(userRole) && order.fulfillment_mode !== 'DELIVERY' && (
-                <button onClick={() => advanceOrderStateFn(order.id, 'COMPLETED')} className="w-full mt-4 bg-green-500 text-dark-900 font-bold py-2 rounded-xl">Complete Order</button>
+                <button 
+                    onClick={() => {
+                        if (requiresPinToComplete(order)) {
+                            onOpenHandoffPinModal(order.id);
+                        } else {
+                            advanceOrderStateFn(order.id, 'COMPLETED');
+                        }
+                    }} 
+                    className="w-full mt-4 bg-green-500 text-dark-900 font-bold py-2 rounded-xl"
+                >
+                    Complete Order
+                </button>
             )}
 
             {isOutForDelivery && advanceOrderStateFn && ['DELIVERY', 'SELLER', 'ADMIN'].includes(userRole) && (
-                <button onClick={() => advanceOrderStateFn(order.id, 'COMPLETED')} className="w-full mt-4 bg-green-500 text-dark-900 font-bold py-2 rounded-xl">Mark Delivered</button>
+                <button 
+                    onClick={() => {
+                        if (requiresPinToComplete(order)) {
+                            onOpenHandoffPinModal(order.id);
+                        } else {
+                            advanceOrderStateFn(order.id, 'COMPLETED');
+                        }
+                    }} 
+                    className="w-full mt-4 bg-green-500 text-dark-900 font-bold py-2 rounded-xl"
+                >
+                    Mark Delivered
+                </button>
             )}
         </motion.div>
     );
 }
+
+const CountdownTimer = ({ targetTime }) => {
+    const [timeLeft, setTimeLeft] = useState('');
+
+    useEffect(() => {
+        const updateTimer = () => {
+            const diff = new Date(targetTime) - new Date();
+            if (diff <= 0) {
+                setTimeLeft('Start prep now');
+                return;
+            }
+            const hours = Math.floor(diff / 3600000);
+            const minutes = Math.floor((diff % 3600000) / 60000);
+            const seconds = Math.floor((diff % 60000) / 1000);
+            
+            const hStr = hours > 0 ? `${hours}h ` : '';
+            const mStr = minutes > 0 || hours > 0 ? `${minutes}m ` : '';
+            setTimeLeft(`${hStr}${mStr}${seconds}s`);
+        };
+
+        updateTimer();
+        const timer = setInterval(updateTimer, 1000);
+        return () => clearInterval(timer);
+    }, [targetTime]);
+
+    return <span>{timeLeft}</span>;
+};
+
+const ScheduledOrderCard = ({ order, onStartNow, onRespondReschedule }) => {
+    const isPendingReschedule = order.reschedule_status === 'PENDING';
+    
+    return (
+        <div className="bg-dark-950/80 rounded-2xl p-4 border border-white/10 shadow-lg flex flex-col justify-between">
+            <div>
+                <div className="flex justify-between items-start mb-2">
+                    <span className="text-sm font-black text-white">Order #{order.id}</span>
+                    <span className="bg-primary-500/10 text-primary-400 px-2 py-0.5 rounded text-[10px] font-bold border border-primary-500/20">
+                        {order.fulfillment_mode}
+                    </span>
+                </div>
+                
+                <div className="space-y-1.5 text-xs text-slate-300 mb-3">
+                    <div className="flex justify-between">
+                        <span className="text-slate-500">Scheduled For:</span>
+                        <span className="font-bold text-white">
+                            {new Date(order.scheduled_time).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                    </div>
+                    <div className="flex justify-between items-center text-primary-400">
+                        <span className="text-slate-500">Prep Starts In:</span>
+                        <span className="font-black font-mono">
+                            <CountdownTimer targetTime={order.scheduled_start_time} />
+                        </span>
+                    </div>
+                </div>
+
+                {isPendingReschedule && (
+                    <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl mb-3 space-y-2">
+                        <p className="text-[10px] font-bold text-amber-400 uppercase tracking-wider text-left">Reschedule Requested</p>
+                        <p className="text-xs text-slate-200 text-left">
+                            Requested Time: {new Date(order.reschedule_requested_time).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                        <div className="flex gap-2">
+                            <button 
+                                onClick={() => onRespondReschedule(order.id, false)}
+                                className="flex-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 font-bold py-1.5 rounded-lg text-[10px] uppercase transition-all"
+                            >
+                                Reject
+                            </button>
+                            <button 
+                                onClick={() => onRespondReschedule(order.id, true)}
+                                className="flex-1 bg-green-500/20 hover:bg-green-500/30 text-green-400 font-bold py-1.5 rounded-lg text-[10px] uppercase transition-all"
+                            >
+                                Approve
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                <div className="space-y-1 mb-4 border-t border-white/5 pt-2 max-h-24 overflow-y-auto custom-scrollbar text-left">
+                    {order.items?.map(item => (
+                        <div key={item.id} className="text-xs text-slate-400 flex justify-between">
+                            <span>{item.quantity}x {item.product.name}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            <button 
+                onClick={onStartNow}
+                className="w-full bg-primary-500 hover:bg-primary-400 text-dark-950 font-black py-2 rounded-xl text-xs uppercase transition-all"
+            >
+                Start Cooking Now
+            </button>
+        </div>
+    );
+};
 
 const LoadingSkeleton = () => <div className="bg-dark-950/50 rounded-2xl p-5 border border-white/5 animate-pulse h-40"></div>;
 const EmptyState = ({ icon, text }) => <div className="flex flex-col items-center py-10 opacity-50">{icon}<p className="mt-2 font-medium">{text}</p></div>;

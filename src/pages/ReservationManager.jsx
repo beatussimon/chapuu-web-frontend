@@ -157,6 +157,30 @@ export default function ReservationManager() {
                     <Clock size={16} /> {new Date(res.reservation_time).toLocaleString()}
                 </div>
 
+                {res.linked_order && (
+                    <div className="mt-3 mb-3 bg-dark-950/60 rounded-xl p-3 border border-white/5 text-left text-xs">
+                        <div className="flex justify-between items-center mb-2 pb-1.5 border-b border-white/5">
+                            <span className="text-slate-400 font-bold">Meal Pre-order</span>
+                            <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-black uppercase tracking-wider
+                                ${res.linked_order.state === 'CANCELLED' ? 'bg-red-500/20 text-red-400 border border-red-500/10' :
+                                  res.linked_order.state === 'COMPLETED' ? 'bg-green-500/20 text-green-400 border border-green-500/10' :
+                                  ['QUEUED', 'PREPARING'].includes(res.linked_order.state) ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/10 animate-pulse' :
+                                  res.linked_order.state === 'READY' ? 'bg-teal-500/20 text-teal-400 border border-teal-500/10 animate-bounce' :
+                                  'bg-white/5 text-slate-300'}`}
+                            >
+                                {res.linked_order.state.replace('_', ' ')}
+                            </span>
+                        </div>
+                        <div className="space-y-1.5">
+                            {(res.linked_order.items || []).map((item, idx) => (
+                                <div key={idx} className="text-slate-300 flex justify-between">
+                                    <span>{item.quantity}x {item.product_name}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
                 {!isHistory && (
                     <div className="flex gap-2">
                         {res.status === 'PENDING' && (

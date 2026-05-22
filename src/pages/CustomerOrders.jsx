@@ -232,6 +232,34 @@ export default function CustomerOrders() {
                                                     <span>Duration: <strong className="text-white">{res.duration_minutes}m</strong></span>
                                                     {res.table_number && <span className="bg-dark-900 px-2 py-0.5 rounded border border-white/5 text-primary-400 font-bold">Table {res.table_number}</span>}
                                                 </div>
+                                                {res.linked_order && (
+                                                    <div className="mt-4 bg-dark-950/40 border border-white/5 rounded-2xl p-4 text-left">
+                                                        <div className="flex justify-between items-center mb-3 pb-2 border-b border-white/5">
+                                                            <span className="text-xs font-black text-slate-400 uppercase tracking-wider">Pre-ordered Meal</span>
+                                                            <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-black uppercase tracking-wider
+                                                                ${res.linked_order.state === 'CANCELLED' ? 'bg-red-500/20 text-red-400 border border-red-500/10' :
+                                                                  res.linked_order.state === 'COMPLETED' ? 'bg-green-500/20 text-green-400 border border-green-500/10' :
+                                                                  ['QUEUED', 'PREPARING'].includes(res.linked_order.state) ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/10 animate-pulse' :
+                                                                  res.linked_order.state === 'READY' ? 'bg-teal-500/20 text-teal-400 border border-teal-500/10 animate-bounce' :
+                                                                  'bg-white/5 text-slate-300'}`}
+                                                            >
+                                                                {res.linked_order.state.replace('_', ' ')}
+                                                            </span>
+                                                        </div>
+                                                        <div className="space-y-1.5 mb-2">
+                                                            {(res.linked_order.items || []).map((item, idx) => (
+                                                                <div key={idx} className="flex justify-between text-xs text-slate-300">
+                                                                    <span>{item.quantity}x {item.product_name}</span>
+                                                                    <span className="text-slate-400 font-semibold">{formatPrice(item.unit_price * item.quantity)}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                        <div className="pt-2 border-t border-white/5 flex justify-between items-center text-xs">
+                                                            <span className="text-slate-500 font-medium">Meal Total</span>
+                                                            <strong className="text-primary-400 font-bold">{formatPrice(res.linked_order.total_amount)}</strong>
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                             <div className="flex md:flex-col items-center gap-2 w-full md:w-auto mt-4 md:mt-0">
                                                 {res.can_modify ? (
@@ -323,6 +351,7 @@ function RescheduleModal({ reservation, onClose, onSuccess }) {
                             value={newTime}
                             onChange={e => setNewTime(e.target.value)}
                             className="w-full bg-dark-950 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-500"
+                            style={{ colorScheme: 'dark' }}
                             min={new Date().toISOString().slice(0, 16)}
                         />
                     </div>

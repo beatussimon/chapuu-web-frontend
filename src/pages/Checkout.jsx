@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import apiClient from '../api/client';
 import { useAppStore } from '../store/useStore';
-import { CreditCard, ShoppingCart, MapPin, Store, Utensils, ArrowLeft, Send, ShoppingBag } from 'lucide-react';
+import { CreditCard, ShoppingCart, MapPin, Store, Utensils, ArrowLeft, Send, ShoppingBag, Clock } from 'lucide-react';
 import { useCurrency } from '../utils/useCurrency';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -25,6 +25,12 @@ export default function Checkout() {
     const [paymentReceipt, setPaymentReceipt] = useState(null);
     const [isCheckingOut, setIsCheckingOut] = useState(false);
     const [isInstantPayment, setIsInstantPayment] = useState(false);
+
+    // Scheduling States
+    const [isScheduled, setIsScheduled] = useState(false);
+    const [scheduledTime, setScheduledTime] = useState('');
+    const [prepTimeOption, setPrepTimeOption] = useState('DYNAMIC');
+    const [scheduledStartTime, setScheduledStartTime] = useState('');
 
     // AI Recommendations
     const [recommendations, setRecommendations] = useState([]);
@@ -99,6 +105,33 @@ export default function Checkout() {
             return;
         }
 
+        if (isScheduled) {
+            if (!scheduledTime) {
+                toast.error("Please select a target completion time for scheduling.", { icon: '⏰' });
+                return;
+            }
+            const targetDate = new Date(scheduledTime);
+            if (targetDate <= new Date()) {
+                toast.error("Scheduled time must be in the future.", { icon: '⏰' });
+                return;
+            }
+            if (prepTimeOption === 'CUSTOM') {
+                if (!scheduledStartTime) {
+                    toast.error("Please select a preparation start time.", { icon: '⏰' });
+                    return;
+                }
+                const startDate = new Date(scheduledStartTime);
+                if (startDate <= new Date()) {
+                    toast.error("Preparation start time must be in the future.", { icon: '⏰' });
+                    return;
+                }
+                if (startDate >= targetDate) {
+                    toast.error("Preparation start time must be before the target delivery/pickup time.", { icon: '⏰' });
+                    return;
+                }
+            }
+        }
+
         setIsCheckingOut(true);
         const toastId = toast.loading('Placing your order...');
 
@@ -112,6 +145,11 @@ export default function Checkout() {
             payment_message: isInstantPayment ? `Instant Payment (Walk-in)` : paymentMessage,
             is_instant_payment: isInstantPayment,
             items: storeCart.map(i => ({ product: i.product.id, quantity: i.quantity, unit_price: i.product.price })),
+            ...(isScheduled && {
+                scheduled_time: new Date(scheduledTime).toISOString(),
+                prep_time_option: prepTimeOption,
+                ...(prepTimeOption === 'CUSTOM' && { scheduled_start_time: new Date(scheduledStartTime).toISOString() })
+            })
         }
 
         if (isReservationOrder) {
@@ -244,6 +282,98 @@ export default function Checkout() {
                                     </div>
                                 )}
                             </div>
+
+                            {/* Scheduled for Later Toggle & Options */}
+                            {!activeReservation && (
+                                <div className="pt-4 border-t border-white/5 space-y-4">
+                                    <div className="flex items-center gap-3 p-4 bg-white/5 border border-white/10 rounded-2xl cursor-pointer hover:bg-white/10 transition-colors" onClick={() => setIsScheduled(!isScheduled)}>
+                                        <input
+                                            type="checkbox"
+                                            checked={isScheduled}
+                                            onChange={(e) => setIsScheduled(e.target.checked)}
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="w-5 h-5 accent-primary-500 rounded-md"
+                                        />
+                                        <div className="flex-1">
+                                            <p className="text-sm font-bold text-slate-200 flex items-center gap-2">
+                                                <Clock size={16} className="text-primary-500" /> Schedule Order for Later
+                                            </p>
+                                            <p className="text-xs text-slate-400">
+                                                Place order now and receive/pickup at your preferred time.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <AnimatePresence>
+                                        {isScheduled && (
+                                            <motion.div
+                                                initial={{ opacity: 0, height: 0 }}
+                                                animate={{ opacity: 1, height: 'auto' }}
+                                                exit={{ opacity: 0, height: 0 }}
+                                                className="space-y-4 overflow-hidden bg-dark-900/40 p-4 rounded-2xl border border-white/5"
+                                            >
+                                                <div>
+                                                    <label className="text-sm font-medium text-slate-300 block mb-1">Target Delivery/Pickup Time</label>
+                                                    <input
+                                                        type="datetime-local"
+                                                        value={scheduledTime}
+                                                        onChange={(e) => setScheduledTime(e.target.value)}
+                                                        className="w-full bg-dark-950 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-primary-500 transition-all"
+                                                        style={{ colorScheme: 'dark' }}
+                                                        required
+                                                    />
+                                                </div>
+
+                                                <div>
+                                                    <label className="text-sm font-medium text-slate-300 block mb-2">Preparation Strategy</label>
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setPrepTimeOption('DYNAMIC')}
+                                                            className={`py-2 px-3 rounded-lg text-xs font-bold transition-all ${prepTimeOption === 'DYNAMIC' ? 'bg-primary-500 text-dark-900 shadow-md' : 'bg-white/5 text-slate-300 hover:bg-white/10'}`}
+                                                        >
+                                                            Dynamic (System Calcs)
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setPrepTimeOption('CUSTOM')}
+                                                            className={`py-2 px-3 rounded-lg text-xs font-bold transition-all ${prepTimeOption === 'CUSTOM' ? 'bg-primary-500 text-dark-900 shadow-md' : 'bg-white/5 text-slate-300 hover:bg-white/10'}`}
+                                                        >
+                                                            Custom Start Time
+                                                        </button>
+                                                    </div>
+                                                    <p className="text-[10px] text-slate-400 mt-2">
+                                                        {prepTimeOption === 'DYNAMIC' 
+                                                            ? "The store will automatically start prep based on items' preparation time so it is ready on time."
+                                                            : "Explicitly choose the time when the kitchen should start preparing your order."}
+                                                    </p>
+                                                </div>
+
+                                                <AnimatePresence>
+                                                    {prepTimeOption === 'CUSTOM' && (
+                                                        <motion.div
+                                                            initial={{ opacity: 0, height: 0 }}
+                                                            animate={{ opacity: 1, height: 'auto' }}
+                                                            exit={{ opacity: 0, height: 0 }}
+                                                            className="space-y-1 mt-3"
+                                                        >
+                                                            <label className="text-sm font-medium text-slate-300 block mb-1">Start Prep Time</label>
+                                                            <input
+                                                                type="datetime-local"
+                                                                value={scheduledStartTime}
+                                                                onChange={(e) => setScheduledStartTime(e.target.value)}
+                                                                className="w-full bg-dark-950 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-primary-500 transition-all"
+                                                                style={{ colorScheme: 'dark' }}
+                                                                required
+                                                            />
+                                                        </motion.div>
+                                                    )}
+                                                </AnimatePresence>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+                            )}
 
                             <AnimatePresence>
                                 {fulfillmentMode === 'DINE_IN' && (

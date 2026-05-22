@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../../api/client';
 import { useAppStore } from '../../store/useStore';
-import { MapPin, Phone, CheckCircle, Clock, Package, Navigation, LogOut } from 'lucide-react';
+import { MapPin, Phone, CheckCircle, Clock, Package, Navigation, LogOut, X, Truck } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function DeliveryDashboard() {
     const { userRole, clearAuth } = useAppStore();
@@ -12,47 +12,71 @@ export default function DeliveryDashboard() {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
 
+    const [selectedOrderForPin, setSelectedOrderForPin] = useState(null);
+    const [pin, setPin] = useState('');
+    const [confirmingPin, setConfirmingPin] = useState(false);
+
+    const fetchOrders = () => {
+        apiClient.get('/orders/')
+            .then(res => {
+                const data = Array.isArray(res.data) ? res.data : [];
+                const deliveryOrders = data.filter(o =>
+                    o.fulfillment_mode === 'DELIVERY' &&
+                    ['PREPARING', 'READY', 'OUT_FOR_DELIVERY'].includes(o.state)
+                );
+                setOrders(deliveryOrders);
+                setLoading(false);
+            })
+            .catch(err => {
+                console.error("Failed to load delivery orders", err);
+                setLoading(false);
+            });
+    };
+
     useEffect(() => {
         if (userRole !== 'DELIVERY' && userRole !== 'ADMIN') {
             navigate('/');
             return;
         }
 
-        const fetchOrders = () => {
-            apiClient.get('/orders/')
-                .then(res => {
-                    // Filter for active delivery orders (READY or strictly PREPARING if they want to wait)
-                    // Usually delivery picks up when READY. We'll show READY and PREPARING for awareness.
-                    const data = Array.isArray(res.data) ? res.data : [];
-                    const deliveryOrders = data.filter(o =>
-                        o.fulfillment_mode === 'DELIVERY' &&
-                        ['PREPARING', 'READY'].includes(o.state)
-                    );
-                    setOrders(deliveryOrders);
-                    setLoading(false);
-                })
-                .catch(err => {
-                    console.error("Failed to load delivery orders", err);
-                    setLoading(false);
-                });
-        };
-
         fetchOrders();
         const interval = setInterval(fetchOrders, 30000);
         return () => clearInterval(interval);
     }, [userRole, navigate]);
 
-    const handleMarkDelivered = (orderId) => {
-        if (!window.confirm("Confirm order has been delivered to customer?")) return;
-
-        apiClient.patch(`/orders/${orderId}/`, { state: 'COMPLETED' })
+    const handleStartDelivery = (orderId) => {
+        apiClient.post(`/orders/${orderId}/advance_state/`, { state: 'OUT_FOR_DELIVERY' })
             .then(() => {
-                toast.success("Order marked as Delivered!");
-                setOrders(orders.filter(o => o.id !== orderId));
+                toast.success("Order is now Out for Delivery!");
+                fetchOrders();
             })
             .catch(err => {
-                console.error("Failed to update order", err);
-                toast.error("Failed to mark delivered.");
+                console.error("Failed to start delivery", err);
+                const msg = err.response?.data?.error || "Failed to start delivery.";
+                toast.error(msg);
+            });
+    };
+
+    const handleConfirmDeliveryCode = () => {
+        if (pin.length !== 6) {
+            toast.error("Please enter a 6-digit PIN.");
+            return;
+        }
+        setConfirmingPin(true);
+        apiClient.post(`/orders/${selectedOrderForPin}/confirm_delivery/`, { code: pin })
+            .then(() => {
+                toast.success("Order delivered and completed!");
+                setPin('');
+                setSelectedOrderForPin(null);
+                fetchOrders();
+            })
+            .catch(err => {
+                console.error("Failed to confirm delivery", err);
+                const msg = err.response?.data?.error || "Failed to verify code.";
+                toast.error(msg);
+            })
+            .finally(() => {
+                setConfirmingPin(false);
             });
     };
 
@@ -93,9 +117,9 @@ export default function DeliveryDashboard() {
                             key={order.id}
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
-                            className={`glass-dark border rounded-3xl p-6 shadow-xl relative overflow-hidden flex flex-col ${order.state === 'READY' ? 'border-primary-500/50' : 'border-white/10'}`}
+                            className={`glass-dark border rounded-3xl p-6 shadow-xl relative overflow-hidden flex flex-col ${order.state === 'READY' || order.state === 'OUT_FOR_DELIVERY' ? 'border-primary-500/50' : 'border-white/10'}`}
                         >
-                            {order.state === 'READY' && (
+                            {(order.state === 'READY' || order.state === 'OUT_FOR_DELIVERY') && (
                                 <div className="absolute top-0 left-0 w-full h-1 bg-primary-500 shadow-[0_0_10px_rgba(249,115,22,0.8)]"></div>
                             )}
 
@@ -104,8 +128,14 @@ export default function DeliveryDashboard() {
                                     <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">Order #{order.id}</span>
                                     <h3 className="text-xl font-bold">{order.store_name || `Store #${order.store}`}</h3>
                                 </div>
-                                <span className={`px-3 py-1 rounded-lg text-xs font-bold ${order.state === 'READY' ? 'bg-primary-500/20 text-primary-400' : 'bg-white/10 text-slate-300'}`}>
-                                    {order.state === 'READY' ? 'Ready for Pickup' : 'Cooking...'}
+                                <span className={`px-3 py-1 rounded-lg text-xs font-bold ${
+                                    order.state === 'READY' ? 'bg-primary-500/20 text-primary-400' : 
+                                    order.state === 'OUT_FOR_DELIVERY' ? 'bg-cyan-500/20 text-cyan-400' : 
+                                    'bg-white/10 text-slate-300'
+                                }`}>
+                                    {order.state === 'READY' ? 'Ready' : 
+                                     order.state === 'OUT_FOR_DELIVERY' ? 'In Transit' : 
+                                     'Preparing'}
                                 </span>
                             </div>
 
@@ -136,31 +166,89 @@ export default function DeliveryDashboard() {
                                             </div>
                                         ))}
                                     </div>
-                                    <div className="flex justify-between mt-2 font-bold text-primary-400">
-                                        <span>Total to Collect (if unpaid):</span>
-                                        <span>${order.total_amount}</span>
-                                    </div>
                                 </div>
                             </div>
 
-                            <button
-                                onClick={() => handleMarkDelivered(order.id)}
-                                disabled={order.state !== 'READY'}
-                                className={`w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${order.state === 'READY'
-                                    ? 'bg-green-500 hover:bg-green-400 text-dark-900 shadow-[0_0_15px_rgba(34,197,94,0.3)] hover:-translate-y-1'
-                                    : 'bg-white/5 text-slate-500 cursor-not-allowed'
-                                    }`}
-                            >
-                                {order.state === 'READY' ? (
-                                    <><CheckCircle size={20} /> Mark Delivered</>
-                                ) : (
-                                    <><Clock size={20} /> Waiting on Kitchen</>
-                                )}
-                            </button>
+                            {order.state === 'READY' ? (
+                                <button
+                                    onClick={() => handleStartDelivery(order.id)}
+                                    className="w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all bg-primary-500 hover:bg-primary-400 text-dark-900 shadow-[0_0_15px_rgba(249,115,22,0.3)] hover:-translate-y-1"
+                                >
+                                    <Truck size={20} /> Out For Delivery
+                                </button>
+                            ) : order.state === 'OUT_FOR_DELIVERY' ? (
+                                <button
+                                    onClick={() => setSelectedOrderForPin(order.id)}
+                                    className="w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all bg-green-500 hover:bg-green-400 text-dark-900 shadow-[0_0_15px_rgba(34,197,94,0.3)] hover:-translate-y-1"
+                                >
+                                    <CheckCircle size={20} /> Mark Delivered (Enter Code)
+                                </button>
+                            ) : (
+                                <button
+                                    disabled
+                                    className="w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all bg-white/5 text-slate-500 cursor-not-allowed"
+                                >
+                                    <Clock size={20} /> Kitchen Preparing...
+                                </button>
+                            )}
                         </motion.div>
                     ))}
                 </div>
             )}
+
+            {/* PIN Entry Modal */}
+            <AnimatePresence>
+                {selectedOrderForPin && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-dark-950/80 backdrop-blur-sm"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.95, y: 20 }}
+                            className="bg-dark-900 border border-white/10 rounded-3xl p-6 max-w-sm w-full shadow-2xl relative"
+                        >
+                            <button
+                                onClick={() => { setSelectedOrderForPin(null); setPin(''); }}
+                                className="absolute top-4 right-4 p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
+                            >
+                                <X size={18} />
+                            </button>
+
+                            <h3 className="text-xl font-bold text-white mb-2 text-center">Fulfillment Handoff</h3>
+                            <p className="text-xs text-slate-400 text-center mb-6">
+                                Enter the 6-digit confirmation code provided by the customer for Order #{selectedOrderForPin}.
+                            </p>
+
+                            <div className="flex justify-center mb-6">
+                                <input
+                                    type="text"
+                                    maxLength="6"
+                                    value={pin}
+                                    onChange={(e) => {
+                                        const val = e.target.value.replace(/\D/g, '');
+                                        setPin(val);
+                                    }}
+                                    placeholder="000000"
+                                    className="bg-dark-950 border border-white/10 rounded-xl px-4 py-3 text-center text-3xl font-black font-mono tracking-widest text-primary-500 focus:outline-none focus:border-primary-500 w-48 transition-all"
+                                    autoFocus
+                                />
+                            </div>
+
+                            <button
+                                onClick={handleConfirmDeliveryCode}
+                                disabled={confirmingPin || pin.length !== 6}
+                                className="w-full bg-primary-500 hover:bg-primary-400 disabled:opacity-50 text-dark-950 font-bold py-3 rounded-xl shadow-lg transition-all"
+                            >
+                                {confirmingPin ? 'Verifying...' : 'Verify & Complete'}
+                            </button>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

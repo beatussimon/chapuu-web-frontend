@@ -156,6 +156,7 @@ export default function SellerAnalytics() {
                                 value={customFrom}
                                 onChange={e => setCustomFrom(e.target.value)}
                                 className="bg-dark-900 border border-white/10 rounded-lg px-2 py-2 text-xs md:text-sm text-slate-300 focus:border-cyan-500 outline-none flex-1 min-w-0"
+                                style={{ colorScheme: 'dark' }}
                             />
                             <span className="text-slate-500 shrink-0">→</span>
                             <input
@@ -163,6 +164,7 @@ export default function SellerAnalytics() {
                                 value={customTo}
                                 onChange={e => setCustomTo(e.target.value)}
                                 className="bg-dark-900 border border-white/10 rounded-lg px-2 py-2 text-xs md:text-sm text-slate-300 focus:border-cyan-500 outline-none flex-1 min-w-0"
+                                style={{ colorScheme: 'dark' }}
                             />
                         </div>
                         <button
@@ -176,8 +178,8 @@ export default function SellerAnalytics() {
             </div>
 
             {loading ? (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {[1, 2, 3, 4].map(i => (
+                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+                    {[1, 2, 3, 4, 5, 6].map(i => (
                         <div key={i} className="glass-dark border border-white/10 rounded-2xl p-6 animate-pulse h-32" />
                     ))}
                     <div className="col-span-full glass-dark border border-white/10 rounded-2xl animate-pulse h-80" />
@@ -185,7 +187,8 @@ export default function SellerAnalytics() {
             ) : data ? (
                 <>
                     {/* KPI Cards */}
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+                        {/* Total Revenue */}
                         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}
                             className="glass-dark border border-white/10 rounded-2xl p-6 relative overflow-hidden group hover:border-cyan-500/30 transition-colors"
                         >
@@ -197,7 +200,32 @@ export default function SellerAnalytics() {
                             </div>
                         </motion.div>
 
+                        {/* Net Revenue */}
+                        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
+                            className="glass-dark border border-white/10 rounded-2xl p-6 relative overflow-hidden group hover:border-slate-500/30 transition-colors"
+                        >
+                            <div className="absolute top-0 right-0 w-24 h-24 bg-slate-500/5 rounded-full -mr-8 -mt-8 group-hover:bg-slate-500/10 transition-colors" />
+                            <p className="text-slate-400 text-sm font-medium mb-1">Net Revenue</p>
+                            <h3 className="text-2xl md:text-3xl font-bold text-white">{formatPrice(kpi.net_revenue)}</h3>
+                            <div className="flex items-center gap-1 mt-2 text-xs text-slate-400 font-medium">
+                                <TrendingUp size={14} /> After commission fees
+                            </div>
+                        </motion.div>
+
+                        {/* Platform Commission */}
                         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+                            className="glass-dark border border-white/10 rounded-2xl p-6 relative overflow-hidden group hover:border-slate-500/30 transition-colors"
+                        >
+                            <div className="absolute top-0 right-0 w-24 h-24 bg-slate-500/5 rounded-full -mr-8 -mt-8 group-hover:bg-slate-500/10 transition-colors" />
+                            <p className="text-slate-400 text-sm font-medium mb-1">Platform Commission</p>
+                            <h3 className="text-2xl md:text-3xl font-bold text-white">{formatPrice(kpi.total_commission)}</h3>
+                            <div className="flex items-center gap-1 mt-2 text-xs text-slate-400 font-medium">
+                                <Percent size={14} /> 3% fee on sales
+                            </div>
+                        </motion.div>
+
+                        {/* Total Orders */}
+                        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
                             className="glass-dark border border-white/10 rounded-2xl p-6 relative overflow-hidden group hover:border-purple-500/30 transition-colors"
                         >
                             <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-full -mr-8 -mt-8 group-hover:bg-purple-500/10 transition-colors" />
@@ -208,6 +236,7 @@ export default function SellerAnalytics() {
                             </div>
                         </motion.div>
 
+                        {/* Avg Order Value */}
                         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
                             className="glass-dark border border-white/10 rounded-2xl p-6 relative overflow-hidden group hover:border-green-500/30 transition-colors"
                         >
@@ -219,7 +248,8 @@ export default function SellerAnalytics() {
                             </div>
                         </motion.div>
 
-                        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+                        {/* Completion Rate */}
+                        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
                             className="glass-dark border border-white/10 rounded-2xl p-6 relative overflow-hidden group hover:border-amber-500/30 transition-colors"
                         >
                             <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 rounded-full -mr-8 -mt-8 group-hover:bg-amber-500/10 transition-colors" />
@@ -241,13 +271,17 @@ export default function SellerAnalytics() {
                             <h3 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
                                 <TrendingUp size={20} className="text-cyan-400" /> Revenue Over Time
                             </h3>
-                            <p className="text-sm text-slate-500 mb-6">Daily revenue for the selected period</p>
+                            <p className="text-sm text-slate-500 mb-6">Daily gross and net revenue for the selected period</p>
                             <ResponsiveContainer width="100%" height={280}>
                                 <AreaChart data={Array.isArray(data?.revenue_by_day) ? data.revenue_by_day : []}>
                                     <defs>
                                         <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
                                             <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3} />
                                             <stop offset="95%" stopColor="#06b6d4" stopOpacity={0} />
+                                        </linearGradient>
+                                        <linearGradient id="netGrad" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
                                         </linearGradient>
                                     </defs>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
@@ -260,9 +294,20 @@ export default function SellerAnalytics() {
                                     <Tooltip
                                         contentStyle={{ backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
                                         labelFormatter={v => new Date(v).toLocaleDateString()}
-                                        formatter={(value) => [formatPrice(value), 'Revenue']}
+                                        formatter={(value, name) => [formatPrice(value), name]}
                                     />
-                                    <Area type="monotone" dataKey="revenue" stroke="#06b6d4" strokeWidth={2} fill="url(#revGrad)" />
+                                    <Legend verticalAlign="top" height={36} content={({ payload }) => (
+                                        <div className="flex justify-end gap-6 text-xs font-medium text-slate-400 mb-2">
+                                            {payload.map((entry, idx) => (
+                                                <div key={idx} className="flex items-center gap-1.5">
+                                                    <div className="w-3 h-1.5 rounded-full" style={{ backgroundColor: entry.color }} />
+                                                    <span>{entry.value}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )} />
+                                    <Area type="monotone" dataKey="revenue" name="Gross Revenue" stroke="#06b6d4" strokeWidth={2} fill="url(#revGrad)" />
+                                    <Area type="monotone" dataKey="net_revenue" name="Net Revenue" stroke="#22c55e" strokeWidth={2} fill="url(#netGrad)" />
                                 </AreaChart>
                             </ResponsiveContainer>
                         </motion.div>

@@ -39,8 +39,27 @@ export default function OrderConfirmation() {
 
     const itemsText = (Array.isArray(order.items) ? order.items : []).map(i => `${i.quantity}x ${i.product.name || 'Item'}`).join(', ');
 
-    // Formatting the message to copy
-    const confirmationMessage = `Hello, I just placed Order #${order.id} on Chapuu for ${formatPrice(order.total_amount)}. \n\nItems: ${itemsText}\nFulfillment: ${order.fulfillment_mode} ${order.table_number ? `(Table ${order.table_number})` : ''}\n\nHere is my payment confirmation to begin my order processing.`;
+    const getConfirmationMessage = () => {
+        let msg = `Hello, I just placed Order #${order.id} on Chapuu for ${formatPrice(order.total_amount)}.\n\nItems: ${itemsText}\n`;
+        
+        if (order.fulfillment_mode === 'RESERVATION') {
+            const formattedResTime = order.reservation_time 
+                ? new Date(order.reservation_time).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                : 'TBD';
+            msg += `Fulfillment: TABLE RESERVATION\nTable: ${order.table_number || 'TBD'}\nGuests: ${order.reservation_guest_count || 1}\nTime: ${formattedResTime}\n`;
+        } else if (order.scheduled_time) {
+            const formattedSchedTime = new Date(order.scheduled_time).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+            msg += `Fulfillment: SCHEDULED ${order.fulfillment_mode}\nExpected Time: ${formattedSchedTime}\n`;
+        } else {
+            msg += `Fulfillment: STANDARD ${order.fulfillment_mode}\n`;
+        }
+        
+        msg += `\nHere is my payment confirmation transaction code/receipt to begin preparation.`;
+        return msg;
+    };
+
+    const confirmationMessage = getConfirmationMessage();
+
 
     const handleCopy = () => {
         navigator.clipboard.writeText(confirmationMessage);

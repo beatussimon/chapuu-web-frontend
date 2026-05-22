@@ -239,7 +239,8 @@ export default function ReservationForm() {
                                     value={date}
                                     min={new Date().toISOString().split('T')[0]}
                                     onChange={(e) => setDate(e.target.value)}
-                                    className="w-full bg-dark-900 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-primary-500 text-white [color-scheme:dark]"
+                                    className="w-full bg-dark-900 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-primary-500 text-white"
+                                    style={{ colorScheme: 'dark' }}
                                     required
                                 />
                             </div>
@@ -249,7 +250,8 @@ export default function ReservationForm() {
                                     type="time"
                                     value={time}
                                     onChange={(e) => setTime(e.target.value)}
-                                    className="w-full bg-dark-900 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-primary-500 text-white [color-scheme:dark]"
+                                    className="w-full bg-dark-900 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-primary-500 text-white"
+                                    style={{ colorScheme: 'dark' }}
                                     required
                                 />
                             </div>

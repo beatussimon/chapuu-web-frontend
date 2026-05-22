@@ -2,9 +2,36 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import apiClient, { getWebSocketURL } from '../api/client';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChefHat, CheckCircle2, Clock, CreditCard, ShoppingBag, ArrowLeft, RefreshCw, Truck, Package, Star, X } from 'lucide-react';
+import { ChefHat, CheckCircle2, Clock, CreditCard, ShoppingBag, ArrowLeft, RefreshCw, Truck, Package, Star, X, Calendar, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useCurrency } from '../utils/useCurrency';
+
+const CountdownTimer = ({ targetTime, prefix = "Arriving in " }) => {
+    const [timeLeft, setTimeLeft] = useState('');
+
+    useEffect(() => {
+        const updateTimer = () => {
+            const diff = new Date(targetTime) - new Date();
+            if (diff <= 0) {
+                setTimeLeft('Expected now');
+                return;
+            }
+            const hours = Math.floor(diff / 3600000);
+            const minutes = Math.floor((diff % 3600000) / 60000);
+            const seconds = Math.floor((diff % 60000) / 1000);
+            
+            const hStr = hours > 0 ? `${hours}h ` : '';
+            const mStr = minutes > 0 || hours > 0 ? `${minutes}m ` : '';
+            setTimeLeft(`${prefix}${hStr}${mStr}${seconds}s`);
+        };
+
+        updateTimer();
+        const timer = setInterval(updateTimer, 1000);
+        return () => clearInterval(timer);
+    }, [targetTime, prefix]);
+
+    return <span className="font-mono">{timeLeft}</span>;
+};
 
 export default function OrderTracker() {
     const { id } = useParams();
@@ -153,9 +180,15 @@ export default function OrderTracker() {
         switch (state) {
             case 'AWAITING_PAYMENT': return 'Payment Verification';
             case 'PAID':
-            case 'QUEUED': return 'Received & In Queue';
+            case 'QUEUED': 
+                if (order.fulfillment_mode === 'RESERVATION') return 'Reservation Booked';
+                if (order.scheduled_time) return 'Scheduled & Confirmed';
+                return 'Received & In Queue';
             case 'PREPARING': return 'Kitchen is Preparing';
-            case 'READY': return order.fulfillment_mode === 'DELIVERY' ? 'Ready for Dispatch' : 'Ready for Pickup / Service';
+            case 'READY':
+                if (order.fulfillment_mode === 'DELIVERY') return 'Ready for Dispatch';
+                if (order.fulfillment_mode === 'RESERVATION') return 'Table & Meal Ready';
+                return 'Ready for Pickup / Service';
             case 'OUT_FOR_DELIVERY': return 'Out for Delivery';
             case 'COMPLETED': return 'Completed';
             default: return 'Processing';
@@ -241,6 +274,196 @@ export default function OrderTracker() {
                     })}
                 </div>
             </div>
+
+            {/* Premium Glassmorphic Reservation Ticket */}
+            {order.fulfillment_mode === 'RESERVATION' && (
+                <div className={`glass-dark border rounded-3xl p-6 md:p-8 mb-8 relative overflow-hidden shadow-2xl transition-all duration-500
+                    ${order.reservation_status === 'CONFIRMED' ? 'border-emerald-500/30 bg-emerald-500/[0.02] shadow-[0_0_30px_rgba(16,185,129,0.15)]' :
+                      order.reservation_status === 'ACTIVE' ? 'border-cyan-500/30 bg-cyan-500/[0.02] shadow-[0_0_30px_rgba(6,182,212,0.15)]' :
+                      order.reservation_status === 'PENDING' ? 'border-amber-500/30 bg-amber-500/[0.02] shadow-[0_0_30px_rgba(245,158,11,0.15)]' :
+                      'border-white/10 shadow-[0_0_20px_rgba(255,255,255,0.05)]'}`}
+                >
+                    {/* Glowing decorative ambient dots */}
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-primary-500/5 rounded-full blur-3xl -z-10"></div>
+                    <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-white/5 rounded-full blur-3xl -z-10"></div>
+
+                    {/* Header */}
+                    <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-6">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2.5 bg-white/5 rounded-xl border border-white/10 text-primary-400">
+                                <Calendar size={20} />
+                            </div>
+                            <div>
+                                <span className="text-[10px] uppercase tracking-widest text-slate-500 font-bold block">Fulfillment Mode</span>
+                                <h3 className="text-sm font-black text-white uppercase tracking-wider">VIP Reservation Booking</h3>
+                            </div>
+                        </div>
+
+                        {/* Status Pill */}
+                        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold uppercase tracking-wider
+                            ${order.reservation_status === 'CONFIRMED' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' :
+                              order.reservation_status === 'ACTIVE' ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400' :
+                              order.reservation_status === 'PENDING' ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' :
+                              order.reservation_status === 'COMPLETED' ? 'bg-purple-500/10 border-purple-500/30 text-purple-400' :
+                              'bg-white/5 border-white/10 text-slate-400'}`}
+                        >
+                            <span className={`w-2 h-2 rounded-full block
+                                ${order.reservation_status === 'CONFIRMED' ? 'bg-emerald-400 animate-pulse' :
+                                  order.reservation_status === 'ACTIVE' ? 'bg-cyan-400 animate-pulse' :
+                                  order.reservation_status === 'PENDING' ? 'bg-amber-400 animate-pulse' :
+                                  order.reservation_status === 'COMPLETED' ? 'bg-purple-400' :
+                                  'bg-slate-400'}`}
+                            ></span>
+                            {order.reservation_status || 'PENDING'}
+                        </div>
+                    </div>
+
+                    {/* Ticket Details Grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mb-6">
+                        <div>
+                            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block mb-1">Date & Time</span>
+                            <span className="text-sm font-bold text-white block">
+                                {order.reservation_time 
+                                    ? new Date(order.reservation_time).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                                    : 'Not Scheduled'}
+                            </span>
+                            {order.reservation_time && (
+                                <span className="text-[10px] text-primary-400 font-black mt-1 block">
+                                    <CountdownTimer targetTime={order.reservation_time} prefix="Expected in: " />
+                                </span>
+                            )}
+                        </div>
+
+                        <div>
+                            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block mb-1">Guests Seated</span>
+                            <span className="text-sm font-bold text-white flex items-center gap-1.5">
+                                <Users size={14} className="text-slate-400" />
+                                {order.reservation_guest_count || 1} {parseInt(order.reservation_guest_count) === 1 ? 'Guest' : 'Guests'}
+                            </span>
+                        </div>
+
+                        <div className="col-span-2 md:col-span-1">
+                            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block mb-1">Table Number</span>
+                            <span className={`text-sm font-bold block ${order.table_number ? 'text-primary-400' : 'text-slate-400'}`}>
+                                {order.table_number ? `Table #${order.table_number}` : 'Assigned on Arrival'}
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* Decorative Dashed Ticket Separator */}
+                    <div className="relative my-6">
+                        <div className="absolute left-0 right-0 top-1/2 border-t border-dashed border-white/10 -translate-y-1/2"></div>
+                        {/* Half-circles on left and right edges for boarding pass style */}
+                        <div className="absolute -left-9 md:-left-11 top-1/2 -translate-y-1/2 w-6 h-6 bg-dark-950 border border-white/10 rounded-full"></div>
+                        <div className="absolute -right-9 md:-right-11 top-1/2 -translate-y-1/2 w-6 h-6 bg-dark-950 border border-white/10 rounded-full"></div>
+                    </div>
+
+                    {/* Ticket Stub Message */}
+                    <div className="bg-dark-950/60 rounded-2xl border border-white/5 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="flex-1">
+                            <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-1">Instructions</h4>
+                            <p className="text-xs text-slate-400 leading-relaxed">
+                                {order.reservation_status === 'PENDING' && "We are waiting for our accountant or manager to verify your transaction deposit payment. Check back soon!"}
+                                {order.reservation_status === 'CONFIRMED' && "Congratulations! Your reservation is confirmed. Present this card screen at the host stand to be seated immediately."}
+                                {order.reservation_status === 'ACTIVE' && "Your dining session is officially active. Welcome to your reserved table! Feel free to request assistance from staff."}
+                                {order.reservation_status === 'COMPLETED' && "Thank you for dining with us! We hope you thoroughly enjoyed your experience. Please leave a review below."}
+                                {order.reservation_status === 'CANCELLED' && "This booking was cancelled. If you have questions or had paid a deposit, please reach out to host support."}
+                                {!['PENDING', 'CONFIRMED', 'ACTIVE', 'COMPLETED', 'CANCELLED'].includes(order.reservation_status) && "Please present this booking screen at the host stand upon your arrival."}
+                            </p>
+                        </div>
+                        {order.reservation_status === 'CONFIRMED' && (
+                            <div className="shrink-0 flex items-center justify-center bg-emerald-500/10 border border-emerald-500/20 px-4 py-2.5 rounded-xl">
+                                <span className="text-[11px] font-black text-emerald-400 tracking-wider uppercase animate-pulse">Ready to Seat</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Premium Glassmorphic Scheduled Preorder Ticket */}
+            {order.scheduled_time && order.fulfillment_mode !== 'RESERVATION' && (
+                <div className="glass-dark border border-primary-500/20 bg-primary-500/[0.01] rounded-3xl p-6 md:p-8 mb-8 relative overflow-hidden shadow-2xl">
+                    <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2.5 bg-white/5 rounded-xl border border-white/10 text-primary-400">
+                                <Clock size={20} className="animate-pulse" />
+                            </div>
+                            <div>
+                                <span className="text-[10px] uppercase tracking-widest text-slate-500 font-bold block">Order Type</span>
+                                <h3 className="text-sm font-black text-white uppercase tracking-wider">Scheduled Preorder</h3>
+                            </div>
+                        </div>
+                        <div className="bg-primary-500/10 text-primary-400 px-3 py-1 rounded-lg border border-primary-500/20 text-xs font-bold uppercase tracking-wider">
+                            Pre-order
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                        <div>
+                            <span className="text-slate-500 font-bold block mb-1">EXPECTED PICKUP/DELIVERY</span>
+                            <span className="text-sm font-bold text-white block font-sans">
+                                {new Date(order.scheduled_time).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                        </div>
+                        <div>
+                            <span className="text-slate-500 font-bold block mb-1">COUNTDOWN TO ARRIVAL</span>
+                            <span className="text-sm font-black text-primary-400 block font-sans">
+                                <CountdownTimer targetTime={order.scheduled_time} prefix="" />
+                            </span>
+                        </div>
+                    </div>
+                    {order.scheduled_start_time && order.state === 'QUEUED' && (
+                        <div className="mt-4 pt-4 border-t border-white/5 flex flex-col sm:flex-row sm:items-center justify-between text-xs gap-2">
+                            <span className="text-slate-400 font-medium">Kitchen scheduled to start cooking at: <strong>{new Date(order.scheduled_start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong></span>
+                            <div className="bg-primary-500/10 text-primary-400 px-3 py-1 rounded-lg border border-primary-500/20 font-black font-sans shrink-0">
+                                Prep begins in: <CountdownTimer targetTime={order.scheduled_start_time} prefix="" />
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Handoff Verification Code & Review Card */}
+            {['DELIVERY', 'PICKUP', 'TAKEAWAY'].includes(order.fulfillment_mode) && 
+             ['OUT_FOR_DELIVERY', 'READY'].includes(order.state) && (
+                <div className="glass-dark border border-primary-500/20 bg-primary-500/5 rounded-2xl md:rounded-3xl p-6 mb-8 shadow-xl text-center">
+                    <h3 className="text-sm md:text-lg font-black text-primary-400 mb-2 uppercase tracking-wider">Handoff Verification Code</h3>
+                    <p className="text-xs text-slate-400 mb-4">Please give this code to the driver or cashier to complete your order handoff.</p>
+                    <div className="bg-dark-950/60 inline-block px-8 py-3 rounded-2xl border border-white/10 mb-6">
+                        <span className="text-3xl font-black font-mono tracking-widest text-primary-500">{order.delivery_code || '------'}</span>
+                    </div>
+
+                    {!order.has_review && !reviewSubmitted ? (
+                        <div className="border-t border-white/5 pt-4 mt-2 text-left">
+                            <h4 className="text-sm font-bold text-white mb-2 text-center">While you wait, rate your experience!</h4>
+                            <div className="flex justify-center gap-1 mb-4">
+                                {[1, 2, 3, 4, 5].map(star => (
+                                    <button 
+                                        key={star} 
+                                        onClick={() => setRating(star)} 
+                                        className={`p-1 transition-transform hover:scale-110 ${rating >= star ? 'text-yellow-400' : 'text-slate-600'}`}
+                                    >
+                                        <Star size={24} className={rating >= star ? 'fill-current' : ''} />
+                                    </button>
+                                ))}
+                            </div>
+                            <textarea
+                                value={comment} 
+                                onChange={(e) => setComment(e.target.value)}
+                                placeholder="Leave a review comment (optional)..."
+                                className="w-full bg-dark-950 border border-white/10 rounded-xl p-3 text-slate-200 focus:border-primary-500 transition-all resize-none mb-3 h-16 text-sm"
+                            ></textarea>
+                            <button 
+                                onClick={submitReview} 
+                                className="w-full bg-primary-500 hover:bg-primary-400 text-dark-900 font-bold py-2 rounded-xl text-sm transition-all"
+                            >
+                                Submit Review
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="text-green-400 text-xs font-bold">Review submitted. Thank you!</div>
+                    )}
+                </div>
+            )}
 
             {/* Order Items summary */}
             <div className="glass-dark border border-white/10 rounded-2xl md:rounded-3xl p-4 md:p-8 mb-8 shadow-xl">
