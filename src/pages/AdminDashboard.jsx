@@ -39,6 +39,13 @@ export default function AdminDashboard() {
     const [noticeTargetUser, setNoticeTargetUser] = useState('');
     const [noticeTargetStore, setNoticeTargetStore] = useState('');
 
+    // Support Settings State
+    const [supportPhone, setSupportPhone] = useState('');
+    const [supportEmail, setSupportEmail] = useState('');
+    const [supportSms, setSupportSms] = useState('');
+    const [supportWhatsapp, setSupportWhatsapp] = useState('');
+    const [policyWarning, setPolicyWarning] = useState('');
+
     const fetchData = () => {
         apiClient.get('/stores/')
             .then(res => setStores(Array.isArray(res.data) ? res.data : []))
@@ -57,6 +64,20 @@ export default function AdminDashboard() {
         fetchData();
         const interval = setInterval(fetchData, 60000);
         return () => clearInterval(interval);
+    }, []);
+
+    useEffect(() => {
+        apiClient.get('/system-support/')
+            .then(res => {
+                if (res.data) {
+                    setSupportPhone(res.data.support_phone || '');
+                    setSupportEmail(res.data.support_email || '');
+                    setSupportSms(res.data.support_sms || '');
+                    setSupportWhatsapp(res.data.support_whatsapp || '');
+                    setPolicyWarning(res.data.policy_warning || '');
+                }
+            })
+            .catch(err => console.error("Failed to load support settings", err));
     }, []);
 
     const handleCreateSeller = (e) => {
@@ -154,6 +175,25 @@ export default function AdminDashboard() {
             }).catch(err => toast.error("Failed to post notice", {id: tid}));
     };
 
+    const handleUpdateSupportConfig = (e) => {
+        e.preventDefault();
+        const payload = {
+            support_phone: supportPhone,
+            support_email: supportEmail,
+            support_sms: supportSms,
+            support_whatsapp: supportWhatsapp,
+            policy_warning: policyWarning
+        };
+        const tid = toast.loading("Updating support configuration...");
+        apiClient.post('/system-support/update_config/', payload)
+            .then(res => {
+                toast.success("Support configuration updated successfully!", { id: tid });
+            })
+            .catch(err => {
+                toast.error("Failed to update support configuration.", { id: tid });
+            });
+    };
+
     return (
         <div className="w-full min-h-screen py-4 md:py-6 px-2 md:px-4 text-white overflow-x-hidden">
             <div className="flex flex-col lg:grid lg:grid-cols-3 items-center mb-8 gap-4">
@@ -174,6 +214,9 @@ export default function AdminDashboard() {
                     </button>
                     <button onClick={() => setActiveTab('NOTICES')} className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap ${activeTab === 'NOTICES' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'}`}>
                         <Bell size={14} /> Notices
+                    </button>
+                    <button onClick={() => setActiveTab('SUPPORT_SETTINGS')} className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap ${activeTab === 'SUPPORT_SETTINGS' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'}`}>
+                        <Shield size={14} /> Support Settings
                     </button>
                     <button onClick={() => setActiveTab('ANALYTICS')} className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap ${activeTab === 'ANALYTICS' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'}`}>
                         <BarChart3 size={14} /> Analytics
@@ -315,6 +358,35 @@ export default function AdminDashboard() {
                         </div>
 
                         <button type="submit" className="w-full py-3 bg-yellow-600 hover:bg-yellow-700 text-white rounded-xl font-medium mt-4">Send Broadcast</button>
+                    </form>
+                </div>
+            )}
+
+            {activeTab === 'SUPPORT_SETTINGS' && (
+                <div className="glass-dark border border-white/5 rounded-3xl p-6 max-w-2xl mx-auto">
+                    <h2 className="text-xl font-bold mb-6 text-white flex items-center gap-2"><Shield className="text-purple-400" size={20} /> System Support Configuration</h2>
+                    <form onSubmit={handleUpdateSupportConfig} className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-400 mb-1">Support Phone (tel:)</label>
+                            <input type="text" required value={supportPhone} onChange={e => setSupportPhone(e.target.value)} className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-white text-sm focus:outline-none focus:border-purple-500" placeholder="e.g. +255 700 000 000" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-400 mb-1">Support Email (mailto:)</label>
+                            <input type="email" required value={supportEmail} onChange={e => setSupportEmail(e.target.value)} className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-white text-sm focus:outline-none focus:border-purple-500" placeholder="e.g. support@chapuu.co.tz" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-400 mb-1">Support SMS (sms:)</label>
+                            <input type="text" required value={supportSms} onChange={e => setSupportSms(e.target.value)} className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-white text-sm focus:outline-none focus:border-purple-500" placeholder="e.g. +255 700 000 000" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-400 mb-1">WhatsApp Number</label>
+                            <input type="text" required value={supportWhatsapp} onChange={e => setSupportWhatsapp(e.target.value)} className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-white text-sm focus:outline-none focus:border-purple-500" placeholder="e.g. 255700000000 (digits only)" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-400 mb-1">Seller Policy Violation Warning Banner Text</label>
+                            <textarea required rows="4" value={policyWarning} onChange={e => setPolicyWarning(e.target.value)} className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-white text-sm focus:outline-none focus:border-purple-500 resize-none" placeholder="Warning notice shown to store operators..." />
+                        </div>
+                        <button type="submit" className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold mt-4 transition-colors shadow-lg shadow-purple-600/20">Save Configuration</button>
                     </form>
                 </div>
             )}

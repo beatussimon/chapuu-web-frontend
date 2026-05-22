@@ -1,9 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, HelpCircle, Mail, Phone, MessageSquare } from 'lucide-react';
+import apiClient from '../api/client';
 
 export default function FAQ() {
     const [openFaq, setOpenFaq] = useState(null);
+    const [supportConfig, setSupportConfig] = useState({
+        support_phone: '+255 700 000 000',
+        support_email: 'support@chapuu.co.tz',
+        support_sms: '+255 700 000 000',
+        support_whatsapp: '255700000000'
+    });
+
+    useEffect(() => {
+        apiClient.get('/system-support/')
+            .then(res => {
+                if (res.data) {
+                    setSupportConfig(res.data);
+                }
+            })
+            .catch(err => console.error("Failed to fetch system support config in FAQ", err));
+    }, []);
 
     const faqs = [
         { q: "How does table reservation work?", a: "Simply browse restaurants, select an available time, and your table is instantly secured. You can optionally pre-order your meals so they are prepared right as you arrive." },
@@ -64,36 +81,36 @@ export default function FAQ() {
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">
                     <a 
-                        href="tel:+255700000000" 
+                        href={`tel:${supportConfig.support_phone}`} 
                         className="flex flex-col items-center justify-center p-6 bg-slate-900/60 border border-white/5 rounded-2xl hover:border-primary-500/40 hover:bg-slate-900/80 transition-all duration-300 group shadow-md"
                     >
                         <div className="w-12 h-12 rounded-full bg-primary-500/10 flex items-center justify-center text-primary-400 group-hover:scale-110 transition-transform mb-4">
                             <Phone size={24} />
                         </div>
                         <span className="text-lg font-bold text-slate-200 mb-1">Call Us</span>
-                        <span className="text-sm text-slate-400">+255 700 000 000</span>
+                        <span className="text-sm text-slate-400">{supportConfig.support_phone}</span>
                     </a>
 
                     <a 
-                        href="mailto:support@chapuu.test?subject=Report%20an%20Issue" 
+                        href={`mailto:${supportConfig.support_email}?subject=Report%20an%20Issue`} 
                         className="flex flex-col items-center justify-center p-6 bg-slate-900/60 border border-white/5 rounded-2xl hover:border-primary-500/40 hover:bg-slate-900/80 transition-all duration-300 group shadow-md"
                     >
                         <div className="w-12 h-12 rounded-full bg-primary-500/10 flex items-center justify-center text-primary-400 group-hover:scale-110 transition-transform mb-4">
                             <Mail size={24} />
                         </div>
                         <span className="text-lg font-bold text-slate-200 mb-1">Email Support</span>
-                        <span className="text-sm text-slate-400">support@chapuu.test</span>
+                        <span className="text-sm text-slate-400">{supportConfig.support_email}</span>
                     </a>
 
                     <a 
-                        href="sms:+255700000000?body=I%20want%20to%20report%20an%20issue%20with%20my%20order" 
+                        href={`sms:${supportConfig.support_sms}?body=I%20want%20to%20report%20an%20issue%20with%20my%20order`} 
                         className="flex flex-col items-center justify-center p-6 bg-slate-900/60 border border-white/5 rounded-2xl hover:border-primary-500/40 hover:bg-slate-900/80 transition-all duration-300 group shadow-md"
                     >
                         <div className="w-12 h-12 rounded-full bg-primary-500/10 flex items-center justify-center text-primary-400 group-hover:scale-110 transition-transform mb-4">
                             <MessageSquare size={24} />
                         </div>
                         <span className="text-lg font-bold text-slate-200 mb-1">SMS Support</span>
-                        <span className="text-sm text-slate-400">Send an SMS</span>
+                        <span className="text-sm text-slate-400">{supportConfig.support_sms}</span>
                     </a>
                 </div>
             </div>

@@ -64,6 +64,21 @@ export default function SellerDashboard() {
     const [showHireModal, setShowHireModal] = useState(false);
     const [hireForm, setHireForm] = useState({ username: '', password: '', role: 'CHEF', first_name: '', last_name: '' });
 
+    // Support Settings State
+    const [supportConfig, setSupportConfig] = useState({
+        policy_warning: "Violation of the system's policy (such as consecutive delivery locking or fraud) can get your store taken down permanently."
+    });
+
+    useEffect(() => {
+        apiClient.get('/system-support/')
+            .then(res => {
+                if (res.data && res.data.policy_warning) {
+                    setSupportConfig(res.data);
+                }
+            })
+            .catch(err => console.error("Failed to fetch support config in SellerDashboard", err));
+    }, []);
+
     // Role-Based "Tunnel Vision" Redirects
     useEffect(() => {
         if (userRole === 'CHEF' && activeView !== 'KITCHEN') setActiveView('KITCHEN');
@@ -756,7 +771,7 @@ export default function SellerDashboard() {
                                 <p className="text-xs text-slate-300 leading-relaxed">
                                     Orders have been locked due to excessive failed PIN verification attempts. This has been flagged as suspicious to the admin panel. 
                                     <span className="text-red-400 font-bold block mt-1">
-                                        ⚠️ WARNING: Unauthorized manual overrides violate system policy and recurring offenses can result in immediate store suspension or termination.
+                                        ⚠️ WARNING: {supportConfig.policy_warning}
                                     </span>
                                 </p>
                             </div>
@@ -1495,7 +1510,7 @@ export default function SellerDashboard() {
                                             <p className="text-xs text-red-400 font-bold mb-2">⚠️ SAFETY POLICY WARNING</p>
                                             <p className="text-xs text-slate-300 leading-relaxed">
                                                 Order is locked due to too many failed attempts (5/5). 
-                                                Manual overrides are restricted for delivery validation failures and are audited. Recurring bypasses trigger immediate store suspension or termination.
+                                                {supportConfig.policy_warning}
                                             </p>
                                         </div>
 
