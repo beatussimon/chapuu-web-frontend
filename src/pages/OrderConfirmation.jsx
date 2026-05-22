@@ -53,8 +53,11 @@ export default function OrderConfirmation() {
         } else {
             msg += `Fulfillment: STANDARD ${order.fulfillment_mode}\n`;
         }
-        
-        msg += `\nHere is my payment confirmation transaction code/receipt to begin preparation.`;
+        if (order.payment_message) {
+            msg += `\nHere is my payment confirmation transaction code/receipt to begin preparation: ${order.payment_message}`;
+        } else {
+            msg += `\nHere is my payment confirmation transaction code/receipt to begin preparation.`;
+        }
         return msg;
     };
 
