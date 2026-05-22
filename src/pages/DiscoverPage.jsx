@@ -123,27 +123,42 @@ export default function DiscoverPage() {
                     <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2 px-2">
                         <TrendingUp className="text-orange-500" size={20} /> Trending Right Now
                     </h2>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 px-2">
-                        {stats.trending_items.slice(0, 4).map(item => (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-5 px-2">
+                        {stats.trending_items.slice(0, 5).map(item => (
                             <motion.div
                                 key={item.id}
-                                whileHover={{ y: -3 }}
+                                whileHover={{ y: -4 }}
                                 onClick={() => {
                                     const s = stores.find(s => s.id === item.store_id);
-                                    if (s) handleSelectStore(s);
+                                    if (s) {
+                                        setSelectedStore(s);
+                                        navigate('/menu', { state: { highlightProductId: item.id } });
+                                    }
                                 }}
-                                className="cursor-pointer glass-dark border border-white/5 rounded-2xl p-2.5 flex items-center gap-3 hover:border-orange-500/30 transition-all group"
+                                className="cursor-pointer glass-dark rounded-2xl border border-white/5 hover:border-primary-500/30 transition-all overflow-hidden flex flex-col group relative"
                             >
-                                <div className="w-12 h-12 rounded-xl bg-dark-900 overflow-hidden shrink-0">
+                                <div className="relative w-full aspect-[4/3] bg-dark-900 overflow-hidden">
                                     {item.image_url ? (
-                                        <OptimizedImage src={item.image_url} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform" wrapperClassName="w-full h-full" />
+                                        <OptimizedImage src={item.image_url} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" wrapperClassName="w-full h-full" />
                                     ) : (
-                                        <div className="w-full h-full flex items-center justify-center"><Utensils size={14} className="text-slate-600" /></div>
+                                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-dark-800 to-dark-900">
+                                            <Utensils size={24} className="text-white/10" />
+                                        </div>
                                     )}
+                                    <div className="absolute bottom-2 left-2">
+                                        <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded backdrop-blur-md border bg-orange-500/80 border-orange-500/50 text-white">
+                                            🔥 TRENDING
+                                        </span>
+                                    </div>
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                    <h3 className="text-sm font-bold text-white truncate">{item.name}</h3>
-                                    <div className="flex items-center justify-between mt-0.5">
+                                <div className="p-3 flex flex-col flex-1 justify-between bg-gradient-to-t from-dark-950 to-transparent">
+                                    <div>
+                                        <h3 className="font-bold text-white text-sm line-clamp-1">{item.name}</h3>
+                                        <p className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1 line-clamp-1">
+                                            <Store size={10} className="text-primary-500" /> {stores.find(s => s.id === item.store_id)?.name || 'Store'}
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5">
                                         <span className="text-[10px] font-bold text-primary-400">{formatPrice(item.price)}</span>
                                         <span className="text-[9px] text-slate-500 font-medium px-1.5 py-0.5 bg-white/5 rounded">🔥 {item.times_ordered}x</span>
                                     </div>
@@ -157,12 +172,12 @@ export default function DiscoverPage() {
             {/* Main Directory / Grid */}
             <div className="px-2">
                 <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                    {searchQuery ? `Results for "${searchQuery}"` : <><Store className="text-primary-500" size={20} /> Discover Venues</>}
+                    {searchQuery ? `Results for "${searchQuery}"` : <><Store className="text-primary-500" size={20} /> Discover Food spots</>}
                 </h2>
                 
                 {filteredStores.length === 0 ? (
                     <div className="text-center py-12 text-slate-500 bg-white/5 rounded-3xl border border-dashed border-white/10">
-                        No venues found matching your criteria.
+                        No food spots found matching your criteria.
                     </div>
                 ) : (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-5">
@@ -179,7 +194,7 @@ export default function DiscoverPage() {
                                     {isTop && !searchQuery && (
                                         <div className="absolute top-2 right-2 z-20 bg-orange-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-lg">HOT</div>
                                     )}
-                                    <div className="relative w-full aspect-square bg-dark-900 overflow-hidden">
+                                    <div className="relative w-full aspect-[4/3] bg-dark-900 overflow-hidden">
                                         {store.image_url ? (
                                             <OptimizedImage src={store.image_url} alt={store.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" wrapperClassName="w-full h-full" />
                                         ) : (

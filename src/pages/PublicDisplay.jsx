@@ -83,7 +83,10 @@ export default function PublicDisplay() {
                 reconnectTimeout = setTimeout(connectWS, 5000);
             };
 
-            socket.onerror = (err) => console.error("[TV WS] Error", err);
+            socket.onerror = (err) => {
+                console.error("[TV WS] Error", err);
+                if (socket) socket.close();
+            };
         };
 
         connectWS();
@@ -101,7 +104,11 @@ export default function PublicDisplay() {
         }, 12000);
 
         return () => {
-            if (socket) socket.close();
+            if (socket) {
+                socket.onclose = null;
+                socket.onerror = null;
+                socket.close();
+            }
             if (reconnectTimeout) clearTimeout(reconnectTimeout);
             clearInterval(viewInterval);
         };

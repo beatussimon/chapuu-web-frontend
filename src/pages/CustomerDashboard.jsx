@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, Navigate } from 'react-router-dom';
+import { useNavigate, Navigate, useLocation } from 'react-router-dom';
 import apiClient from '../api/client';
 import { useAppStore } from '../store/useStore';
 import { ShoppingCart, ChefHat, Plus, Minus, CreditCard, UtensilsCrossed, Trash2, ArrowLeft, Star, Search, ShoppingBag, X, Phone, Mail, ChevronUp, ChevronLeft, ChevronRight, Image } from 'lucide-react';
@@ -24,6 +24,7 @@ export default function CustomerDashboard() {
     const [lightboxIndex, setLightboxIndex] = useState(0);
     const { cart, addToCart, updateQuantity, removeFromCart, selectedStore } = useAppStore();
     const navigate = useNavigate();
+    const location = useLocation();
     const { formatPrice } = useCurrency();
     const categoryRefs = useRef({});
     const lastScrollY = useRef(0);
@@ -93,6 +94,31 @@ export default function CustomerDashboard() {
         const interval = setInterval(fetchStoreData, 45000); // 45s Polling to prevent 429 Too Many Requests
         return () => clearInterval(interval);
     }, [selectedStore]);
+
+    useEffect(() => {
+        if (!loading && products.length > 0 && location.state?.highlightProductId) {
+            const product = products.find(p => p.id === location.state.highlightProductId);
+            if (product) {
+                // Open the product preview modal
+                setPreviewImageProduct(product);
+                setPreviewImageIndex(0);
+                
+                // Select category and scroll to it
+                const cat = product.category_name || 'Uncategorized';
+                setActiveCategory(cat);
+                
+                // Delay scroll slightly to allow DOM to render
+                setTimeout(() => {
+                    if (categoryRefs.current[cat]) {
+                        categoryRefs.current[cat].scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }, 100);
+
+                // Clear location state so this only runs once per transition
+                window.history.replaceState({}, document.title);
+            }
+        }
+    }, [loading, products, location.state]);
 
     if (!selectedStore) {
         return <Navigate to="/stores" />;

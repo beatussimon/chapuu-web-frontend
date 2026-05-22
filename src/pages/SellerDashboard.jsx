@@ -450,14 +450,22 @@ export default function SellerDashboard() {
     useEffect(() => {
         if (!userRole) return;
         
+        const storeId = storeDetails?.id;
+        
+        // Strictly avoid connecting to a global socket if the role requires a store ID 
+        // and it hasn't loaded yet. This prevents noisy initial failed connections.
+        const rolesRequiringStore = ['SELLER', 'CHEF'];
+        if (rolesRequiringStore.includes(userRole) && !storeId) {
+            return;
+        }
+
         let socket = null;
         let reconnectTimeout = null;
 
         const connectWS = () => {
             let wsPath = '/ws/orders/';
-            // Use storeId from ref to avoid effect restart loop
-            if (storeIdRef.current) {
-                wsPath += `${storeIdRef.current}/`;
+            if (storeId) {
+                wsPath += `${storeId}/`;
             }
             
             const wsUrl = getWebSocketURL(wsPath);
@@ -478,15 +486,21 @@ export default function SellerDashboard() {
                 setWsConnected(false);
                 reconnectTimeout = setTimeout(connectWS, 10000); // Slower reconnect
             };
-            socket.onerror = () => socket.close();
+            socket.onerror = () => {
+                if (socket) socket.close();
+            };
         };
 
         connectWS();
         return () => {
-            if (socket) socket.close();
+            if (socket) {
+                socket.onclose = null;
+                socket.onerror = null;
+                socket.close();
+            }
             if (reconnectTimeout) clearTimeout(reconnectTimeout);
         };
-    }, [userRole]); // DON'T depend on storeDetails.id here
+    }, [userRole, storeDetails?.id]);
 
     // Polling & Initial Fetch
     useEffect(() => {

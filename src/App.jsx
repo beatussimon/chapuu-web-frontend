@@ -23,6 +23,7 @@ import DeliveryDashboard from './pages/staff/DeliveryDashboard';
 import PublicDisplay from './pages/PublicDisplay';
 import DiscoverPage from './pages/DiscoverPage';
 import FAQ from './pages/FAQ';
+import TermsAndConditions from './pages/TermsAndConditions';
 import { Utensils, LayoutDashboard, LogOut, ShoppingBag, TerminalSquare, QrCode, Calendar, Package, Shield, Store, Menu, X, Navigation, Tv, BarChart3, Compass, UtensilsCrossed, HelpCircle, ListOrdered, ShoppingCart, TrendingUp } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import { setStoreResetFn } from './api/client';
@@ -60,54 +61,54 @@ function TopNavigation() {
   if (isTvMode && !scrolled) return null;
 
   return (
-    <nav className="sticky top-0 z-50 bg-dark-950/95 backdrop-blur-md border-b border-white/5 h-16 md:h-20 px-4 md:px-12 flex items-center transition-opacity duration-300">
+    <nav className="sticky top-0 z-50 bg-dark-950/95 backdrop-blur-md border-b border-white/5 h-16 md:h-20 px-4 md:px-12 flex items-center justify-between transition-opacity duration-300">
       {/* Left: Logo */}
-      <div className="flex-1 flex justify-start h-full">
+      <div className="flex-none flex items-center h-full">
         <Link to="/" className="flex items-center text-primary-500 hover:text-primary-400 transition-colors cursor-pointer group py-2 gap-2 md:gap-3">
-          <img src="/logo.png" alt="Chapuu Logo" className="h-8 md:h-12 object-contain" />
-          <h1 className="text-xl md:text-2xl font-bold tracking-wider text-white">CHAPUU</h1>
+          <img src="/logo.png" alt="Chapuu Logo" className="h-8 md:h-12 object-contain animate-pulse-slow" />
+          <h1 className="text-lg md:text-2xl font-bold tracking-wider text-white">CHAPUU</h1>
         </Link>
       </div>
 
       {/* Center: Desktop Navigation Links */}
-      <div className="hidden lg:flex items-center justify-center gap-1 xl:gap-2">
+      <div className="hidden lg:flex flex-1 min-w-0 items-center justify-center gap-1 xl:gap-2 mx-4">
         {token && (
           <>
-            <div className="flex items-center gap-2 text-sm text-slate-400 mr-4 border-r border-white/10 pr-4 h-6">
+            <div className="flex items-center gap-2 text-sm text-slate-400 mr-4 border-r border-white/10 pr-4 h-6 flex-shrink-0">
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
               <span className="font-medium">{userRole}</span>
             </div>
 
             {['SELLER', 'ADMIN', 'CHEF', 'ACCOUNTANT', 'DELIVERY'].includes(userRole) ? (
               <>
-                <Link to="/seller" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors"><TerminalSquare size={16} /><span className="text-sm font-medium">Dashboard</span></Link>
+                <Link to="/seller" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0"><TerminalSquare size={16} /><span className="text-sm font-medium">Dashboard</span></Link>
                 {['SELLER', 'ADMIN'].includes(userRole) && (
                   <>
-                    <Link to="/seller/reservations" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors"><Calendar size={16} /><span className="text-sm font-medium">Host</span></Link>
-                    <Link to="/seller/menu" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors"><Utensils size={16} /><span className="text-sm font-medium">Menu</span></Link>
-                    <Link to="/seller/analytics" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors"><BarChart3 size={16} /><span className="text-sm font-medium">Analytics</span></Link>
-                    <Link to="/seller/inventory" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors"><Package size={16} /><span className="text-sm font-medium">Stock</span></Link>
-                    <Link to="/seller/qrcodes" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors"><QrCode size={16} /><span className="text-sm font-medium">QRs</span></Link>
+                    <Link to="/seller/reservations" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0"><Calendar size={16} /><span className="text-sm font-medium">Host</span></Link>
+                    <Link to="/seller/menu" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0"><Utensils size={16} /><span className="text-sm font-medium">Menu</span></Link>
+                    <Link to="/seller/analytics" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0"><BarChart3 size={16} /><span className="text-sm font-medium">Analytics</span></Link>
+                    <Link to="/seller/inventory" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0"><Package size={16} /><span className="text-sm font-medium">Stock</span></Link>
+                    <Link to="/seller/qrcodes" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0"><QrCode size={16} /><span className="text-sm font-medium">QRs</span></Link>
                   </>
                 )}
-                <Link to="/tv/1" target="_blank" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors"><Tv size={16} /><span className="text-sm font-medium">TV</span></Link>
+                <Link to="/tv/1" target="_blank" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0"><Tv size={16} /><span className="text-sm font-medium">TV</span></Link>
                 {userRole === 'ADMIN' && (
-                  <Link to="/admin" className="flex items-center gap-2 px-3 py-2 text-purple-400 hover:text-purple-300 transition-colors ml-2"><Shield size={16} /><span className="text-sm font-medium">Admin</span></Link>
+                  <Link to="/admin" className="flex items-center gap-2 px-3 py-2 text-purple-400 hover:text-purple-300 transition-colors ml-2 flex-shrink-0"><Shield size={16} /><span className="text-sm font-medium">Admin</span></Link>
                 )}
               </>
             ) : null}
 
             {userRole === 'CUSTOMER' ? (
               <>
-                <Link to="/" className="md:hidden flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors"><TrendingUp size={16} /><span className="text-sm font-medium">Trending</span></Link>
-                <Link to="/stores?type=RESTAURANT" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors"><UtensilsCrossed size={16} /><span className="text-sm font-medium">Restaurants</span></Link>
-                <Link to="/stores?type=SHOP" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors"><Store size={16} /><span className="text-sm font-medium">Shops</span></Link>
-                <Link to="/orders" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors"><ListOrdered size={16} /><span className="text-sm font-medium">Orders</span></Link>
-                <Link to="/reserve" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors"><Calendar size={16} /><span className="text-sm font-medium">Reserve</span></Link>
-                <Link to="/faq" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors"><HelpCircle size={16} /><span className="text-sm font-medium">FAQ</span></Link>
+                <Link to="/" className="md:hidden flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0"><TrendingUp size={16} /><span className="text-sm font-medium">Trending</span></Link>
+                <Link to="/stores?type=RESTAURANT" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0"><UtensilsCrossed size={16} /><span className="text-sm font-medium">Restaurants</span></Link>
+                <Link to="/stores?type=SHOP" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0"><Store size={16} /><span className="text-sm font-medium">Shops</span></Link>
+                <Link to="/orders" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0"><ListOrdered size={16} /><span className="text-sm font-medium">Orders</span></Link>
+                <Link to="/reserve" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0"><Calendar size={16} /><span className="text-sm font-medium">Reserve</span></Link>
+                <Link to="/faq" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0"><HelpCircle size={16} /><span className="text-sm font-medium">FAQ</span></Link>
 
                 {/* Global Cart Button */}
-                <Link to="/cart" className="flex items-center gap-2 ml-4 px-4 py-2 rounded-full bg-primary-500 text-dark-950 font-bold hover:bg-primary-400 transition-colors shadow-lg shadow-primary-500/20 relative">
+                <Link to="/cart" className="flex items-center gap-2 ml-4 px-4 py-2 rounded-full bg-primary-500 text-dark-950 font-bold hover:bg-primary-400 transition-colors shadow-lg shadow-primary-500/20 relative flex-shrink-0">
                   <ShoppingCart size={16} />
                   <span className="text-sm">Cart</span>
                   {cart.length > 0 && (
@@ -123,11 +124,11 @@ function TopNavigation() {
       </div>
 
       {/* Right: Actions */}
-      <div className="flex-1 flex justify-end items-center gap-4">
+      <div className="flex-none flex items-center gap-2 sm:gap-4">
         {!token ? (
           <>
-            <Link to="/faq" className="px-5 py-2 text-slate-300 hover:text-white text-sm font-medium transition-colors">FAQ</Link>
-            <Link to="/login" className="px-5 py-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-sm font-medium transition-all">
+            <Link to="/faq" className="px-3 py-1.5 md:px-5 md:py-2 text-slate-300 hover:text-white text-xs md:text-sm font-medium transition-colors">FAQ</Link>
+            <Link to="/login" className="px-3.5 py-1.5 md:px-5 md:py-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-xs md:text-sm font-medium transition-all">
               Login
             </Link>
           </>
@@ -227,6 +228,7 @@ function App() {
             <Route path="/faq" element={<FAQ />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Signup />} />
+            <Route path="/terms" element={<TermsAndConditions />} />
             <Route path="/tv/:storeId?" element={<PublicDisplay />} />
 
             {/* Customer Routes (Accessible by any authenticated user) */}

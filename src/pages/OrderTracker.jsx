@@ -68,6 +68,10 @@ export default function OrderTracker() {
             toast.error("Please provide a star rating!");
             return;
         }
+        if (!comment.trim()) {
+            toast.error("Please provide a comment for your review!");
+            return;
+        }
         apiClient.post('/reviews/', {
             store: order.store,
             order: order.id,
@@ -106,9 +110,11 @@ export default function OrderTracker() {
                     }
                 } catch (e) { console.error("[WS] Error", e); }
             };
-
             socket.onclose = () => {
                 reconnectTimeout = setTimeout(connectWS, 5000);
+            };
+            socket.onerror = () => {
+                if (socket) socket.close();
             };
         };
 
@@ -116,7 +122,11 @@ export default function OrderTracker() {
 
         return () => {
             clearInterval(interval);
-            if (socket) socket.close();
+            if (socket) {
+                socket.onclose = null;
+                socket.onerror = null;
+                socket.close();
+            }
             if (reconnectTimeout) clearTimeout(reconnectTimeout);
         };
     }, [id]);
@@ -506,8 +516,9 @@ export default function OrderTracker() {
                             </div>
                             <textarea
                                 value={comment} onChange={(e) => setComment(e.target.value)}
-                                placeholder="Leave a comment (optional)..."
+                                placeholder="Leave a comment (Required)..."
                                 className="w-full bg-dark-950 border border-white/10 rounded-xl p-4 text-slate-200 focus:border-primary-500 transition-all resize-none mb-6 h-24"
+                                required
                             ></textarea>
                             <div className="flex gap-4">
                                 <button onClick={() => setShowReviewModal(false)} className="flex-1 py-3 text-slate-400 hover:text-white transition-colors font-medium">Dismiss</button>

@@ -35,7 +35,7 @@ export default function Login() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8 overflow-hidden relative">
+        <div className="min-h-[75vh] md:min-h-[80vh] w-full flex items-center justify-center p-4 sm:p-6 lg:p-8 overflow-hidden relative">
 
             {/* Background decorative elements */}
             <div className="absolute top-1/4 left-1/4 w-64 h-64 sm:w-96 sm:h-96 bg-primary-500/20 rounded-full blur-[60px] sm:blur-[100px] pointer-events-none"></div>
@@ -47,11 +47,8 @@ export default function Login() {
                 className="w-full max-w-md glass-dark rounded-3xl p-6 sm:p-8 border border-white/10 shadow-2xl relative z-10"
             >
                 <div className="flex flex-col items-center mb-6 sm:mb-8">
-                    <div className="bg-primary-500/10 p-3 sm:p-4 rounded-2xl mb-4 border border-primary-500/20">
-                        <Utensils size={32} className="text-primary-500 sm:w-[40px] sm:h-[40px]" />
-                    </div>
-                    <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white mb-2 text-center">Welcome Back</h2>
-                    <p className="text-sm sm:text-base text-slate-400 text-center">Sign in to multi-vendor Chapuu Operations.</p>
+                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white/90 mb-2 text-center">Welcome Back</h2>
+                    <p className="text-xs sm:text-sm text-slate-400 text-center">Sign in to multi-vendor Chapuu Operations.</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
@@ -67,7 +64,7 @@ export default function Login() {
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value)}
                                 className="w-full bg-dark-900/50 border border-white/10 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 rounded-xl py-3 pl-11 pr-4 text-slate-100 placeholder-slate-600 transition-all outline-none text-base"
-                                placeholder="Enter username..."
+                                placeholder="Enter username (Required)"
                             />
                         </div>
                     </div>
@@ -84,7 +81,7 @@ export default function Login() {
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 className="w-full bg-dark-900/50 border border-white/10 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 rounded-xl py-3 pl-11 pr-4 text-slate-100 placeholder-slate-600 transition-all outline-none text-base"
-                                placeholder="••••••••"
+                                placeholder="Enter password (Required)"
                             />
                         </div>
                     </div>

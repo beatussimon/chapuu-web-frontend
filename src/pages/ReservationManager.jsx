@@ -48,13 +48,20 @@ export default function ReservationManager() {
                 setWsConnected(false);
                 reconnectTimeout = setTimeout(connectWS, 5000);
             };
+            socket.onerror = () => {
+                if (socket) socket.close();
+            };
         };
 
         connectWS();
 
         const clockInterval = setInterval(() => setNow(new Date()), 10000);
         return () => { 
-            if (socket) socket.close();
+            if (socket) {
+                socket.onclose = null;
+                socket.onerror = null;
+                socket.close();
+            }
             if (reconnectTimeout) clearTimeout(reconnectTimeout);
             clearInterval(clockInterval); 
         };
