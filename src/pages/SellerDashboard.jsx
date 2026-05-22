@@ -6,7 +6,7 @@ import {
     SquareTerminal, Star, MessageSquare, Truck, Bell, QrCode, Calendar, 
     Store, Plus, Edit2, Trash2, X, ShoppingBag, ShoppingCart, Users, 
     UserPlus, Key, Power, Search, BarChart3, Settings, Save, Phone, Mail, 
-    TerminalSquare, Shield, RefreshCw, AlertTriangle
+    TerminalSquare, Shield, RefreshCw, AlertTriangle, Image, Upload
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAppStore } from '../store/useStore';
@@ -547,6 +547,40 @@ export default function SellerDashboard() {
                 fetchDashboard();
             })
             .catch(err => toast.error('Failed to delete', { id: toastId }));
+    };
+
+    const handleUploadGalleryImage = (e) => {
+        e.preventDefault();
+        const toastId = toast.loading('Uploading gallery image...');
+        const formData = new FormData(e.target);
+        formData.append('store', storeDetails.id);
+
+        apiClient.post('/store-gallery/', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        })
+        .then(() => {
+            toast.success('Gallery image uploaded!', { id: toastId });
+            e.target.reset();
+            fetchDashboard();
+        })
+        .catch(err => {
+            const errMsg = err.response?.data?.[0] || err.response?.data?.non_field_errors?.[0] || 'Failed to upload image';
+            toast.error(errMsg, { id: toastId });
+        });
+    };
+
+    const handleDeleteGalleryImage = (imageId) => {
+        if (!window.confirm('Are you sure you want to delete this gallery image?')) return;
+        const toastId = toast.loading('Deleting gallery image...');
+
+        apiClient.delete(`/store-gallery/${imageId}/`)
+            .then(() => {
+                toast.success('Image deleted from gallery!', { id: toastId });
+                fetchDashboard();
+            })
+            .catch(err => {
+                toast.error('Failed to delete image', { id: toastId });
+            });
     };
 
     return (
@@ -1115,6 +1149,77 @@ export default function SellerDashboard() {
                             ))}
                             {(!storeDetails.payment_methods || storeDetails.payment_methods.length === 0) && !editingPaymentMethod && (
                                 <div className="text-center py-6 text-slate-500 bg-dark-950 rounded-xl border border-white/5 border-dashed">No payment methods configured yet.</div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Store Gallery Management */}
+                    <div className="bg-dark-900 border border-white/10 rounded-2xl p-6">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                <Image className="text-primary-400" size={20} /> Store Gallery 
+                                <span className="text-xs text-slate-500 font-normal">({(storeDetails.gallery_images || []).length}/10 images)</span>
+                            </h3>
+                        </div>
+                        <p className="text-sm text-slate-400 mb-6">Upload beautiful pictures of your restaurant, kitchen, table settings, or key dishes to display on your store profile for customers.</p>
+
+                        {/* Upload Form */}
+                        {(storeDetails.gallery_images || []).length < 10 ? (
+                            <form onSubmit={handleUploadGalleryImage} className="mb-6 bg-dark-950 border border-white/5 p-4 rounded-xl space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                                    <div className="md:col-span-2">
+                                        <label className="text-xs text-slate-400 block mb-1">Upload Photo (Max 10MB)</label>
+                                        <input type="file" name="image" accept="image/*" required className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-primary-500/10 file:text-primary-500 text-slate-400" />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-slate-400 block mb-1">Caption / Description (Optional)</label>
+                                        <input type="text" name="caption" placeholder="e.g. Dining Area Cozy Ambiance" className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none text-white placeholder-slate-600" />
+                                    </div>
+                                </div>
+                                <div className="flex justify-end pt-2">
+                                    <button type="submit" className="bg-primary-500 hover:bg-primary-400 text-dark-900 px-6 py-2 rounded-lg text-sm font-bold shadow-lg shadow-primary-500/20 flex items-center gap-2">
+                                        <Upload size={16} /> Upload to Gallery
+                                    </button>
+                                </div>
+                            </form>
+                        ) : (
+                            <div className="mb-6 p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 text-sm font-medium flex items-center gap-2">
+                                <AlertTriangle size={18} />
+                                Gallery Limit Reached (10/10 images). Delete one or more existing photos to upload new ones.
+                            </div>
+                        )}
+
+                        {/* Gallery Grid */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+                            {(storeDetails.gallery_images || []).map((img) => (
+                                <div key={img.id} className="bg-dark-950 border border-white/5 rounded-2xl overflow-hidden group relative flex flex-col aspect-square">
+                                    <div className="w-full h-full relative overflow-hidden flex-grow">
+                                        <OptimizedImage 
+                                            src={img.image_url || img.image} 
+                                            alt={img.caption || 'Gallery Image'} 
+                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                            wrapperClassName="w-full h-full"
+                                            eager
+                                        />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-dark-950 via-dark-950/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-2 pointer-events-none">
+                                            {img.caption && <p className="text-[10px] text-white font-bold leading-tight line-clamp-2">{img.caption}</p>}
+                                        </div>
+                                    </div>
+                                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                        <button 
+                                            onClick={() => handleDeleteGalleryImage(img.id)} 
+                                            className="p-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600 hover:scale-105 transition-all shadow-lg"
+                                            title="Delete Image"
+                                        >
+                                            <Trash2 size={12} />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                            {(storeDetails.gallery_images || []).length === 0 && (
+                                <div className="col-span-full text-center py-8 text-slate-500 bg-dark-950 rounded-xl border border-white/5 border-dashed">
+                                    No gallery images uploaded yet.
+                                </div>
                             )}
                         </div>
                     </div>

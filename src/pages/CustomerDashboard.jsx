@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import apiClient from '../api/client';
 import { useAppStore } from '../store/useStore';
-import { ShoppingCart, ChefHat, Plus, Minus, CreditCard, UtensilsCrossed, Trash2, ArrowLeft, Star, Search, ShoppingBag, X, Phone, Mail, ChevronUp, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ShoppingCart, ChefHat, Plus, Minus, CreditCard, UtensilsCrossed, Trash2, ArrowLeft, Star, Search, ShoppingBag, X, Phone, Mail, ChevronUp, ChevronLeft, ChevronRight, Image } from 'lucide-react';
 import { useCurrency } from '../utils/useCurrency';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -20,6 +20,8 @@ export default function CustomerDashboard() {
     const [previewImageProduct, setPreviewImageProduct] = useState(null);
     const [previewImageIndex, setPreviewImageIndex] = useState(0);
     const [cartCollapsed, setCartCollapsed] = useState(false);
+    const [lightboxOpen, setLightboxOpen] = useState(false);
+    const [lightboxIndex, setLightboxIndex] = useState(0);
     const { cart, addToCart, updateQuantity, removeFromCart, selectedStore } = useAppStore();
     const navigate = useNavigate();
     const { formatPrice } = useCurrency();
@@ -47,6 +49,23 @@ export default function CustomerDashboard() {
             .then(res => setUserPoints(res.data.loyalty_points || 0))
             .catch(() => console.error("Could not fetch user profile"));
     }, []);
+
+    useEffect(() => {
+        if (!lightboxOpen || !selectedStore?.gallery_images?.length) return;
+
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape') {
+                setLightboxOpen(false);
+            } else if (e.key === 'ArrowRight') {
+                setLightboxIndex((prev) => (prev === selectedStore.gallery_images.length - 1 ? 0 : prev + 1));
+            } else if (e.key === 'ArrowLeft') {
+                setLightboxIndex((prev) => (prev === 0 ? selectedStore.gallery_images.length - 1 : prev - 1));
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [lightboxOpen, selectedStore]);
 
     useEffect(() => {
         if (!selectedStore) return;
@@ -167,6 +186,22 @@ export default function CustomerDashboard() {
                                             >
                                                 <Mail size={10} className="md:w-3 md:h-3" /> Email
                                             </a>
+                                            {selectedStore.gallery_images?.length > 0 && (
+                                                <>
+                                                    <span className="w-1 h-1 rounded-full bg-white/20"></span>
+                                                    <button 
+                                                        onClick={() => {
+                                                            triggerHaptic(hapticPatterns.light);
+                                                            setLightboxIndex(0);
+                                                            setLightboxOpen(true);
+                                                        }}
+                                                        className="text-primary-400 hover:text-primary-300 text-[10px] md:text-sm font-medium flex items-center gap-1 transition-colors cursor-pointer" 
+                                                        title="View Gallery"
+                                                    >
+                                                        <Image size={10} className="md:w-3 md:h-3" /> Gallery ({selectedStore.gallery_images.length})
+                                                    </button>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -180,6 +215,32 @@ export default function CustomerDashboard() {
                             </div>
                         </div>
                     </div>
+
+                    {/* Store Gallery Thumbnails Strip */}
+                    {selectedStore.gallery_images?.length > 0 && (
+                        <div className="flex gap-3 overflow-x-auto pb-4 pt-1 px-1 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 no-scrollbar scroll-smooth">
+                            {selectedStore.gallery_images.map((img, idx) => (
+                                <button
+                                    key={img.id}
+                                    onClick={() => {
+                                        triggerHaptic(hapticPatterns.medium);
+                                        setLightboxIndex(idx);
+                                        setLightboxOpen(true);
+                                    }}
+                                    className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden border border-white/10 hover:border-primary-500/50 hover:scale-105 shrink-0 transition-all focus:outline-none focus:ring-2 focus:ring-primary-500/30 relative group shadow-lg"
+                                >
+                                    <OptimizedImage 
+                                        src={img.image_url || img.image} 
+                                        alt={img.caption || 'Store image'} 
+                                        className="w-full h-full object-cover" 
+                                        wrapperClassName="w-full h-full"
+                                        eager
+                                    />
+                                    <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors"></div>
+                                </button>
+                            ))}
+                        </div>
+                    )}
 
                     {/* Search Bar */}
                     <div className="relative mb-4">
@@ -553,6 +614,121 @@ export default function CustomerDashboard() {
                         </motion.div>
                     );
                 })()}
+            </AnimatePresence>
+
+            {/* Store Gallery Lightbox Modal */}
+            <AnimatePresence>
+                {lightboxOpen && selectedStore?.gallery_images?.length > 0 && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => setLightboxOpen(false)}
+                        className="fixed inset-0 z-50 flex flex-col justify-between bg-dark-950/95 backdrop-blur-xl select-none"
+                    >
+                        {/* Lightbox Header */}
+                        <div 
+                            className="w-full flex items-center justify-between p-4 bg-gradient-to-b from-dark-950 to-transparent"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <span className="text-slate-400 text-sm font-bold">
+                                {lightboxIndex + 1} of {selectedStore.gallery_images.length}
+                            </span>
+                            <button
+                                onClick={() => {
+                                    triggerHaptic(hapticPatterns.light);
+                                    setLightboxOpen(false);
+                                }}
+                                className="p-2 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-white cursor-pointer"
+                            >
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        {/* Lightbox Body / Swiper */}
+                        <div className="flex-1 flex items-center justify-between px-2 md:px-8 relative">
+                            {/* Left Nav Button (Desktop) */}
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    triggerHaptic(hapticPatterns.light);
+                                    setLightboxIndex((prev) => (prev === 0 ? selectedStore.gallery_images.length - 1 : prev - 1));
+                                }}
+                                className="hidden md:flex p-3 bg-white/5 hover:bg-white/10 border border-white/5 rounded-full transition-colors text-slate-400 hover:text-white cursor-pointer"
+                            >
+                                <ChevronLeft size={28} />
+                            </button>
+
+                            {/* Main Gallery Image View with Motion for Swipe */}
+                            <div 
+                                className="w-full max-w-4xl h-[60vh] md:h-[75vh] flex items-center justify-center overflow-hidden mx-auto"
+                                onClick={e => e.stopPropagation()}
+                            >
+                                <motion.div
+                                    key={lightboxIndex}
+                                    initial={{ opacity: 0, x: 50 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: -50 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="w-full h-full flex items-center justify-center relative p-2"
+                                    drag="x"
+                                    dragConstraints={{ left: 0, right: 0 }}
+                                    dragElastic={0.6}
+                                    onDragEnd={(e, { offset, velocity }) => {
+                                        const swipeConfidenceThreshold = 10000;
+                                        const swipePower = Math.abs(offset.x) * velocity.x;
+                                        if (swipePower < -swipeConfidenceThreshold || offset.x < -150) {
+                                            // Swipe left -> Next Image
+                                            triggerHaptic(hapticPatterns.light);
+                                            setLightboxIndex((prev) => (prev === selectedStore.gallery_images.length - 1 ? 0 : prev + 1));
+                                        } else if (swipePower > swipeConfidenceThreshold || offset.x > 150) {
+                                            // Swipe right -> Prev Image
+                                            triggerHaptic(hapticPatterns.light);
+                                            setLightboxIndex((prev) => (prev === 0 ? selectedStore.gallery_images.length - 1 : prev - 1));
+                                        }
+                                    }}
+                                >
+                                    <OptimizedImage 
+                                        src={selectedStore.gallery_images[lightboxIndex].image_url || selectedStore.gallery_images[lightboxIndex].image} 
+                                        alt={selectedStore.gallery_images[lightboxIndex].caption || 'Store Gallery Image'} 
+                                        className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl border border-white/5"
+                                        wrapperClassName="w-full h-full flex items-center justify-center"
+                                        eager
+                                    />
+                                </motion.div>
+                            </div>
+
+                            {/* Right Nav Button (Desktop) */}
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    triggerHaptic(hapticPatterns.light);
+                                    setLightboxIndex((prev) => (prev === selectedStore.gallery_images.length - 1 ? 0 : prev + 1));
+                                }}
+                                className="hidden md:flex p-3 bg-white/5 hover:bg-white/10 border border-white/5 rounded-full transition-colors text-slate-400 hover:text-white cursor-pointer"
+                            >
+                                <ChevronRight size={28} />
+                            </button>
+                        </div>
+
+                        {/* Lightbox Footer (Caption) */}
+                        <div 
+                            className="w-full text-center px-6 pb-8 pt-4 bg-gradient-to-t from-dark-950 via-dark-950/80 to-transparent"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            {selectedStore.gallery_images[lightboxIndex].caption ? (
+                                <p className="text-white text-base md:text-lg font-bold line-clamp-2 drop-shadow-md">
+                                    {selectedStore.gallery_images[lightboxIndex].caption}
+                                </p>
+                            ) : (
+                                <p className="text-slate-500 text-xs italic tracking-wider">No description available</p>
+                            )}
+                            <p className="text-[10px] text-slate-500 font-medium uppercase tracking-widest mt-2 block md:hidden">
+                                👈 Swipe Left or Right to Browse 👉
+                            </p>
+                        </div>
+                    </motion.div>
+                )}
             </AnimatePresence>
         </div>
     );
