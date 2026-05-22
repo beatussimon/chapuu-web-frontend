@@ -6,7 +6,7 @@ import {
     SquareTerminal, Star, MessageSquare, Truck, Bell, QrCode, Calendar, 
     Store, Plus, Edit2, Trash2, X, ShoppingBag, ShoppingCart, Users, 
     UserPlus, Key, Power, Search, BarChart3, Settings, Save, Phone, Mail, 
-    TerminalSquare, Shield, RefreshCw
+    TerminalSquare, Shield, RefreshCw, AlertTriangle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAppStore } from '../store/useStore';
@@ -314,6 +314,23 @@ export default function SellerDashboard() {
             });
     };
 
+    const handleStaffManualVerify = (orderId) => {
+        const toastId = toast.loading("Performing manual handoff override...");
+        setHandoffPinModal(prev => ({ ...prev, loading: true }));
+        apiClient.post(`/orders/${orderId}/staff_manual_verify/`)
+            .then(() => {
+                toast.success("Manual override completed! 3% commission collected.", { id: toastId });
+                setHandoffPinModal({ open: false, orderId: null, pin: '', loading: false });
+                fetchDashboard(true);
+            })
+            .catch(err => {
+                console.error("Manual override failed", err);
+                const msg = err.response?.data?.error || "Failed to perform manual override.";
+                toast.error(msg, { id: toastId });
+                setHandoffPinModal(prev => ({ ...prev, loading: false }));
+            });
+    };
+
     const handleRespondReschedule = (orderId, approve) => {
         const toastId = toast.loading(`${approve ? 'Approving' : 'Rejecting'} reschedule request...`);
         apiClient.post(`/orders/${orderId}/respond_reschedule/`, { approve })
@@ -480,6 +497,7 @@ export default function SellerDashboard() {
     // Filter READY orders for specific views
     const readyForKitchen = readyOrders.filter(o => o.fulfillment_mode !== 'DELIVERY');
     const readyForDelivery = readyOrders.filter(o => o.fulfillment_mode === 'DELIVERY');
+    const lockedOrders = [...readyForDelivery, ...outForDeliveryOrders].filter(o => o.is_locked);
 
     const canSeeKitchen = ['SELLER', 'ADMIN', 'CHEF'].includes(userRole);
     const canSeeAccounting = ['SELLER', 'ADMIN', 'ACCOUNTANT'].includes(userRole);
@@ -725,27 +743,58 @@ export default function SellerDashboard() {
             )}
 
             {activeView === 'DELIVERY' && canSeeDelivery && (
-                <div className="flex flex-col xl:flex-row gap-6 flex-grow overflow-x-auto pb-4 custom-scrollbar animate-fadeIn">
-                    <div className="glass-dark rounded-3xl p-6 border border-green-500/20 flex flex-col min-w-[300px] xl:min-w-[320px] flex-1 min-h-[400px]">
-                        <div className="flex items-center gap-2 mb-6 pb-4 border-b border-green-500/10">
-                            <CheckCircle2 className="text-green-500" />
-                            <h3 className="font-bold text-lg text-white tracking-wide">READY FOR PICKUP/DELIVERY</h3>
-                            <span className="ml-auto bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-xs font-bold border border-green-500/30">{readyForDelivery.length}</span>
+                <div className="flex flex-col gap-6 w-full animate-fadeIn">
+                    {/* Locked Order / Policy Warning Banner */}
+                    {lockedOrders.length > 0 && (
+                        <div className="bg-red-500/10 border border-red-500/30 rounded-3xl p-6 flex flex-col md:flex-row items-start md:items-center gap-5 shadow-[0_0_35px_rgba(239,68,68,0.15)] relative overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-br from-red-500/[0.03] to-transparent"></div>
+                            <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center text-red-400 shrink-0 border border-red-500/30 relative z-10">
+                                <AlertTriangle size={24} />
+                            </div>
+                            <div className="flex-grow text-left relative z-10">
+                                <h4 className="text-lg font-bold text-white mb-1">Security Alert: {lockedOrders.length} Locked Order{lockedOrders.length > 1 ? 's' : ''} Detected</h4>
+                                <p className="text-xs text-slate-300 leading-relaxed">
+                                    Orders have been locked due to excessive failed PIN verification attempts. This has been flagged as suspicious to the admin panel. 
+                                    <span className="text-red-400 font-bold block mt-1">
+                                        ⚠️ WARNING: Unauthorized manual overrides violate system policy and recurring offenses can result in immediate store suspension or termination.
+                                    </span>
+                                </p>
+                            </div>
+                            <div className="shrink-0 flex gap-2 w-full md:w-auto relative z-10">
+                                <button 
+                                    onClick={() => {
+                                        setHandoffPinModal({ open: true, orderId: lockedOrders[0].id, pin: '', loading: false });
+                                    }}
+                                    className="w-full md:w-auto bg-red-500 hover:bg-red-400 text-dark-950 font-bold px-6 py-3 rounded-2xl transition-all shadow-lg active:scale-95 text-xs font-black uppercase tracking-wider"
+                                >
+                                    Resolve Lock
+                                </button>
+                            </div>
                         </div>
-                        <div className="overflow-y-auto pr-2 space-y-4 flex-grow">
-                            {loading ? <LoadingSkeleton /> : <AnimatePresence>{readyForDelivery.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} onOpenHandoffPinModal={(id) => setHandoffPinModal({ open: true, orderId: id, pin: '', loading: false })} />)}</AnimatePresence>}
-                            {!loading && readyForDelivery.length === 0 && <EmptyState icon={<CheckCircle2 size={48} />} text="No orders awaiting dispatch" />}
+                    )}
+
+                    <div className="flex flex-col xl:flex-row gap-6 flex-grow overflow-x-auto pb-4 custom-scrollbar">
+                        <div className="glass-dark rounded-3xl p-6 border border-green-500/20 flex flex-col min-w-[300px] xl:min-w-[320px] flex-1 min-h-[400px]">
+                            <div className="flex items-center gap-2 mb-6 pb-4 border-b border-green-500/10">
+                                <CheckCircle2 className="text-green-500" />
+                                <h3 className="font-bold text-lg text-white tracking-wide">READY FOR PICKUP/DELIVERY</h3>
+                                <span className="ml-auto bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-xs font-bold border border-green-500/30">{readyForDelivery.length}</span>
+                            </div>
+                            <div className="overflow-y-auto pr-2 space-y-4 flex-grow">
+                                {loading ? <LoadingSkeleton /> : <AnimatePresence>{readyForDelivery.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} onOpenHandoffPinModal={(id) => setHandoffPinModal({ open: true, orderId: id, pin: '', loading: false })} />)}</AnimatePresence>}
+                                {!loading && readyForDelivery.length === 0 && <EmptyState icon={<CheckCircle2 size={48} />} text="No orders awaiting dispatch" />}
+                            </div>
                         </div>
-                    </div>
-                    <div className="glass-dark rounded-3xl p-6 border border-purple-500/20 flex flex-col min-w-[300px] xl:min-w-[320px] flex-1 min-h-[400px]">
-                        <div className="flex items-center gap-2 mb-6 pb-4 border-b border-purple-500/10">
-                            <Truck className="text-purple-500" />
-                            <h3 className="font-bold text-lg text-white tracking-wide">OUT FOR DELIVERY</h3>
-                            <span className="ml-auto bg-purple-500/20 text-purple-400 px-3 py-1 rounded-full text-xs font-bold border border-purple-500/30">{outForDeliveryOrders.length}</span>
-                        </div>
-                        <div className="overflow-y-auto pr-2 space-y-4 flex-grow">
-                            {loading ? <LoadingSkeleton /> : <AnimatePresence>{outForDeliveryOrders.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} onOpenHandoffPinModal={(id) => setHandoffPinModal({ open: true, orderId: id, pin: '', loading: false })} />)}</AnimatePresence>}
-                            {!loading && outForDeliveryOrders.length === 0 && <EmptyState icon={<Truck size={48} />} text="No active deliveries" />}
+                        <div className="glass-dark rounded-3xl p-6 border border-purple-500/20 flex flex-col min-w-[300px] xl:min-w-[320px] flex-1 min-h-[400px]">
+                            <div className="flex items-center gap-2 mb-6 pb-4 border-b border-purple-500/10">
+                                <Truck className="text-purple-500" />
+                                <h3 className="font-bold text-lg text-white tracking-wide">OUT FOR DELIVERY</h3>
+                                <span className="ml-auto bg-purple-500/20 text-purple-400 px-3 py-1 rounded-full text-xs font-bold border border-purple-500/30">{outForDeliveryOrders.length}</span>
+                            </div>
+                            <div className="overflow-y-auto pr-2 space-y-4 flex-grow">
+                                {loading ? <LoadingSkeleton /> : <AnimatePresence>{outForDeliveryOrders.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} onOpenHandoffPinModal={(id) => setHandoffPinModal({ open: true, orderId: id, pin: '', loading: false })} />)}</AnimatePresence>}
+                                {!loading && outForDeliveryOrders.length === 0 && <EmptyState icon={<Truck size={48} />} text="No active deliveries" />}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1406,56 +1455,92 @@ export default function SellerDashboard() {
 
             {/* Handoff Verification PIN Entry Modal */}
             <AnimatePresence>
-                {handoffPinModal.open && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-dark-950/80 backdrop-blur-sm"
-                    >
+                {handoffPinModal.open && (() => {
+                    const currentOrder = readyForDelivery.find(o => o.id === handoffPinModal.orderId) || outForDeliveryOrders.find(o => o.id === handoffPinModal.orderId);
+                    const isLocked = currentOrder?.is_locked;
+                    return (
                         <motion.div
-                            initial={{ scale: 0.95, y: 20 }}
-                            animate={{ scale: 1, y: 0 }}
-                            exit={{ scale: 0.95, y: 20 }}
-                            className="bg-dark-900 border border-white/10 rounded-3xl p-6 max-w-sm w-full shadow-2xl relative"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-dark-950/80 backdrop-blur-sm"
                         >
-                            <button
-                                onClick={() => setHandoffPinModal({ open: false, orderId: null, pin: '', loading: false })}
-                                className="absolute top-4 right-4 p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
+                            <motion.div
+                                initial={{ scale: 0.95, y: 20 }}
+                                animate={{ scale: 1, y: 0 }}
+                                exit={{ scale: 0.95, y: 20 }}
+                                className="bg-dark-900 border border-white/10 rounded-3xl p-6 max-w-sm w-full shadow-2xl relative"
                             >
-                                <X size={18} />
-                            </button>
+                                <button
+                                    onClick={() => setHandoffPinModal({ open: false, orderId: null, pin: '', loading: false })}
+                                    className="absolute top-4 right-4 p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
+                                >
+                                    <X size={18} />
+                                </button>
 
-                            <h3 className="text-xl font-bold text-white mb-2 text-center">Fulfillment Handoff</h3>
-                            <p className="text-xs text-slate-400 text-center mb-6">
-                                Enter the 6-digit confirmation code provided by the customer for Order #{handoffPinModal.orderId}.
-                            </p>
+                                <h3 className="text-xl font-bold text-white mb-2 text-center flex items-center justify-center gap-2">
+                                    {isLocked ? (
+                                        <>
+                                            <AlertTriangle className="text-red-500 shrink-0" size={22} />
+                                            <span className="text-red-500">Order Locked</span>
+                                        </>
+                                    ) : (
+                                        "Fulfillment Handoff"
+                                    )}
+                                </h3>
 
-                            <div className="flex justify-center mb-6">
-                                <input
-                                    type="text"
-                                    maxLength="6"
-                                    value={handoffPinModal.pin}
-                                    onChange={(e) => {
-                                        const val = e.target.value.replace(/\D/g, '');
-                                        setHandoffPinModal(prev => ({ ...prev, pin: val }));
-                                    }}
-                                    placeholder="000000"
-                                    className="bg-dark-950 border border-white/10 rounded-xl px-4 py-3 text-center text-3xl font-black font-mono tracking-widest text-primary-500 focus:outline-none focus:border-primary-500 w-48 transition-all"
-                                    autoFocus
-                                />
-                            </div>
+                                {isLocked ? (
+                                    <div className="space-y-4 text-center mt-4">
+                                        <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl text-left">
+                                            <p className="text-xs text-red-400 font-bold mb-2">⚠️ SAFETY POLICY WARNING</p>
+                                            <p className="text-xs text-slate-300 leading-relaxed">
+                                                Order is locked due to too many failed attempts (5/5). 
+                                                Manual overrides are restricted for delivery validation failures and are audited. Recurring bypasses trigger immediate store suspension or termination.
+                                            </p>
+                                        </div>
 
-                            <button
-                                onClick={handleConfirmHandoffPin}
-                                disabled={handoffPinModal.loading || handoffPinModal.pin.length !== 6}
-                                className="w-full bg-primary-500 hover:bg-primary-400 disabled:opacity-50 text-dark-950 font-bold py-3 rounded-xl shadow-lg transition-all"
-                            >
-                                {handoffPinModal.loading ? 'Verifying...' : 'Verify & Complete'}
-                            </button>
+                                        <button
+                                            onClick={() => handleStaffManualVerify(handoffPinModal.orderId)}
+                                            disabled={handoffPinModal.loading}
+                                            className="w-full bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-bold py-3 rounded-xl shadow-lg transition-all text-sm uppercase tracking-wider font-sans"
+                                        >
+                                            {handoffPinModal.loading ? 'Overriding...' : 'Force Manual Override'}
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <p className="text-xs text-slate-400 text-center mb-6">
+                                            Enter the 6-digit confirmation code provided by the customer for Order #{handoffPinModal.orderId}.
+                                        </p>
+
+                                        <div className="flex justify-center mb-6">
+                                            <input
+                                                type="text"
+                                                maxLength="6"
+                                                value={handoffPinModal.pin}
+                                                onChange={(e) => {
+                                                    const val = e.target.value.replace(/\D/g, '');
+                                                    setHandoffPinModal(prev => ({ ...prev, pin: val }));
+                                                }}
+                                                placeholder="000000"
+                                                className="bg-dark-950 border border-white/10 rounded-xl px-4 py-3 text-center text-3xl font-black font-mono tracking-widest text-primary-500 focus:outline-none focus:border-primary-500 w-48 transition-all"
+                                                autoFocus
+                                            />
+                                        </div>
+
+                                        <button
+                                            onClick={handleConfirmHandoffPin}
+                                            disabled={handoffPinModal.loading || handoffPinModal.pin.length !== 6}
+                                            className="w-full bg-primary-500 hover:bg-primary-400 disabled:opacity-50 text-dark-950 font-bold py-3 rounded-xl shadow-lg transition-all"
+                                        >
+                                            {handoffPinModal.loading ? 'Verifying...' : 'Verify & Complete'}
+                                        </button>
+                                    </>
+                                )}
+                            </motion.div>
                         </motion.div>
-                    </motion.div>
-                )}
+                    );
+                })()}
             </AnimatePresence>
 
             {/* Invoice Payment Upload Modal */}

@@ -422,46 +422,15 @@ export default function OrderTracker() {
                 </div>
             )}
 
-            {/* Handoff Verification Code & Review Card */}
+            {/* Handoff Verification Code */}
             {['DELIVERY', 'PICKUP', 'TAKEAWAY'].includes(order.fulfillment_mode) && 
              ['OUT_FOR_DELIVERY', 'READY'].includes(order.state) && (
                 <div className="glass-dark border border-primary-500/20 bg-primary-500/5 rounded-2xl md:rounded-3xl p-6 mb-8 shadow-xl text-center">
                     <h3 className="text-sm md:text-lg font-black text-primary-400 mb-2 uppercase tracking-wider">Handoff Verification Code</h3>
                     <p className="text-xs text-slate-400 mb-4">Please give this code to the driver or cashier to complete your order handoff.</p>
-                    <div className="bg-dark-950/60 inline-block px-8 py-3 rounded-2xl border border-white/10 mb-6">
+                    <div className="bg-dark-950/60 inline-block px-8 py-3 rounded-2xl border border-white/10">
                         <span className="text-3xl font-black font-mono tracking-widest text-primary-500">{order.delivery_code || '------'}</span>
                     </div>
-
-                    {!order.has_review && !reviewSubmitted ? (
-                        <div className="border-t border-white/5 pt-4 mt-2 text-left">
-                            <h4 className="text-sm font-bold text-white mb-2 text-center">While you wait, rate your experience!</h4>
-                            <div className="flex justify-center gap-1 mb-4">
-                                {[1, 2, 3, 4, 5].map(star => (
-                                    <button 
-                                        key={star} 
-                                        onClick={() => setRating(star)} 
-                                        className={`p-1 transition-transform hover:scale-110 ${rating >= star ? 'text-yellow-400' : 'text-slate-600'}`}
-                                    >
-                                        <Star size={24} className={rating >= star ? 'fill-current' : ''} />
-                                    </button>
-                                ))}
-                            </div>
-                            <textarea
-                                value={comment} 
-                                onChange={(e) => setComment(e.target.value)}
-                                placeholder="Leave a review comment (optional)..."
-                                className="w-full bg-dark-950 border border-white/10 rounded-xl p-3 text-slate-200 focus:border-primary-500 transition-all resize-none mb-3 h-16 text-sm"
-                            ></textarea>
-                            <button 
-                                onClick={submitReview} 
-                                className="w-full bg-primary-500 hover:bg-primary-400 text-dark-900 font-bold py-2 rounded-xl text-sm transition-all"
-                            >
-                                Submit Review
-                            </button>
-                        </div>
-                    ) : (
-                        <div className="text-green-400 text-xs font-bold">Review submitted. Thank you!</div>
-                    )}
                 </div>
             )}
 

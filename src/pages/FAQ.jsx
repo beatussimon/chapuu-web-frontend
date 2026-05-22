@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, HelpCircle, Mail } from 'lucide-react';
+import { ChevronDown, HelpCircle, Mail, Phone, MessageSquare } from 'lucide-react';
 
 export default function FAQ() {
     const [openFaq, setOpenFaq] = useState(null);
@@ -57,11 +57,45 @@ export default function FAQ() {
 
             <div className="mt-16 text-center glass-dark border border-primary-500/20 rounded-3xl p-8 relative overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-br from-primary-500/5 to-transparent"></div>
-                <h3 className="text-2xl font-bold text-white mb-3 relative z-10">Still have questions?</h3>
-                <p className="text-slate-400 mb-6 relative z-10">We're here to help you with any issues or queries.</p>
-                <a href="mailto:support@chapuu.test" className="inline-flex items-center justify-center gap-2 bg-primary-500 hover:bg-primary-400 text-dark-950 font-bold px-8 py-4 rounded-xl transition-all shadow-lg active:scale-95 relative z-10">
-                    <Mail size={20} /> Contact Support
-                </a>
+                <h3 className="text-2xl font-bold text-white mb-2 relative z-10">Report an Issue or Get Support</h3>
+                <p className="text-slate-400 mb-8 max-w-lg mx-auto relative z-10">
+                    If you face any delivery issues, reckless service, or policy violations, please report it immediately. Our support team is available 24/7.
+                </p>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">
+                    <a 
+                        href="tel:+255700000000" 
+                        className="flex flex-col items-center justify-center p-6 bg-slate-900/60 border border-white/5 rounded-2xl hover:border-primary-500/40 hover:bg-slate-900/80 transition-all duration-300 group shadow-md"
+                    >
+                        <div className="w-12 h-12 rounded-full bg-primary-500/10 flex items-center justify-center text-primary-400 group-hover:scale-110 transition-transform mb-4">
+                            <Phone size={24} />
+                        </div>
+                        <span className="text-lg font-bold text-slate-200 mb-1">Call Us</span>
+                        <span className="text-sm text-slate-400">+255 700 000 000</span>
+                    </a>
+
+                    <a 
+                        href="mailto:support@chapuu.test?subject=Report%20an%20Issue" 
+                        className="flex flex-col items-center justify-center p-6 bg-slate-900/60 border border-white/5 rounded-2xl hover:border-primary-500/40 hover:bg-slate-900/80 transition-all duration-300 group shadow-md"
+                    >
+                        <div className="w-12 h-12 rounded-full bg-primary-500/10 flex items-center justify-center text-primary-400 group-hover:scale-110 transition-transform mb-4">
+                            <Mail size={24} />
+                        </div>
+                        <span className="text-lg font-bold text-slate-200 mb-1">Email Support</span>
+                        <span className="text-sm text-slate-400">support@chapuu.test</span>
+                    </a>
+
+                    <a 
+                        href="sms:+255700000000?body=I%20want%20to%20report%20an%20issue%20with%20my%20order" 
+                        className="flex flex-col items-center justify-center p-6 bg-slate-900/60 border border-white/5 rounded-2xl hover:border-primary-500/40 hover:bg-slate-900/80 transition-all duration-300 group shadow-md"
+                    >
+                        <div className="w-12 h-12 rounded-full bg-primary-500/10 flex items-center justify-center text-primary-400 group-hover:scale-110 transition-transform mb-4">
+                            <MessageSquare size={24} />
+                        </div>
+                        <span className="text-lg font-bold text-slate-200 mb-1">SMS Support</span>
+                        <span className="text-sm text-slate-400">Send an SMS</span>
+                    </a>
+                </div>
             </div>
         </div>
     );
