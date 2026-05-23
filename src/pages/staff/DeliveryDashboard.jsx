@@ -34,7 +34,7 @@ export default function DeliveryDashboard() {
     };
 
     useEffect(() => {
-        if (userRole !== 'DELIVERY' && userRole !== 'ADMIN') {
+        if (userRole !== 'DELIVERY' && userRole !== 'ADMIN' && userRole !== 'SUPERUSER') {
             navigate('/');
             return;
         }

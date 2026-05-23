@@ -231,7 +231,7 @@ export default function Signup() {
                                                 value={firstName}
                                                 onChange={(e) => setFirstName(e.target.value)}
                                                 className="w-full bg-dark-900 border border-white/10 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-100 placeholder-slate-600 transition-all outline-none"
-                                                placeholder="Enter first name (Required)"
+                                                placeholder="First name"
                                             />
                                         </div>
                                     </div>
@@ -248,7 +248,7 @@ export default function Signup() {
                                                 value={lastName}
                                                 onChange={(e) => setLastName(e.target.value)}
                                                 className="w-full bg-dark-900 border border-white/10 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-100 placeholder-slate-600 transition-all outline-none"
-                                                placeholder="Enter last name (Required)"
+                                                placeholder="Last name"
                                             />
                                         </div>
                                     </div>
@@ -266,7 +266,7 @@ export default function Signup() {
                                             value={email}
                                             onChange={(e) => setEmail(e.target.value)}
                                             className="w-full bg-dark-900 border border-white/10 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-100 placeholder-slate-600 transition-all outline-none"
-                                            placeholder="Enter email address (Required)"
+                                            placeholder="Email address"
                                         />
                                     </div>
                                 </div>
@@ -305,7 +305,7 @@ export default function Signup() {
                                             value={phone}
                                             onChange={(e) => setPhone(e.target.value)}
                                             className="w-full bg-dark-900 border border-white/10 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-100 placeholder-slate-600 transition-all outline-none"
-                                            placeholder="Enter phone number (Required)"
+                                            placeholder="Phone number"
                                         />
                                     </div>
                                 </div>
@@ -322,7 +322,7 @@ export default function Signup() {
                                             value={username}
                                             onChange={(e) => setUsername(e.target.value)}
                                             className="w-full bg-dark-900 border border-white/10 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-100 placeholder-slate-600 transition-all outline-none"
-                                            placeholder="Enter username (Required)"
+                                            placeholder="Username"
                                         />
                                     </div>
                                 </div>
@@ -340,7 +340,7 @@ export default function Signup() {
                                             onChange={(e) => setPassword(e.target.value)}
                                             minLength={4}
                                             className="w-full bg-dark-900 border border-white/10 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-100 placeholder-slate-600 transition-all outline-none"
-                                            placeholder="Enter password (Required)"
+                                            placeholder="Password"
                                         />
                                     </div>
                                 </div>

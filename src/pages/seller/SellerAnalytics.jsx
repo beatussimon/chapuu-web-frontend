@@ -272,7 +272,7 @@ export default function SellerAnalytics() {
                                 <TrendingUp size={20} className="text-cyan-400" /> Revenue Over Time
                             </h3>
                             <p className="text-sm text-slate-500 mb-6">Daily gross and net revenue for the selected period</p>
-                            <ResponsiveContainer width="100%" height={280}>
+                            <ResponsiveContainer width="100%" height={280} initialDimension={{ width: 400, height: 280 }}>
                                 <AreaChart data={Array.isArray(data?.revenue_by_day) ? data.revenue_by_day : []}>
                                     <defs>
                                         <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
@@ -320,7 +320,7 @@ export default function SellerAnalytics() {
                                 <Percent size={20} className="text-purple-400" /> Fulfillment Mix
                             </h3>
                             <p className="text-sm text-slate-500 mb-4">Order types breakdown</p>
-                            <ResponsiveContainer width="100%" height={220}>
+                            <ResponsiveContainer width="100%" height={220} initialDimension={{ width: 400, height: 220 }}>
                                 <PieChart>
                                     <Pie
                                         data={Array.isArray(data?.fulfillment_breakdown) ? data.fulfillment_breakdown : []}
@@ -362,7 +362,7 @@ export default function SellerAnalytics() {
                                 <Clock size={20} className="text-amber-400" /> Orders by Hour
                             </h3>
                             <p className="text-sm text-slate-500 mb-6">Identify your peak business hours</p>
-                            <ResponsiveContainer width="100%" height={250}>
+                            <ResponsiveContainer width="100%" height={250} initialDimension={{ width: 400, height: 250 }}>
                                 <BarChart data={Array.isArray(data?.orders_by_hour) ? data.orders_by_hour : []}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
                                     <XAxis dataKey="hour" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false}

@@ -32,7 +32,9 @@ function ProtectedRoute({ children, role }) {
   const userRole = useAppStore(state => state.userRole);
   const location = useLocation();
   if (!userRole) return <Navigate to="/login" state={{ from: location.pathname }} replace />;
-  if (role && userRole !== role && userRole !== 'ADMIN') return <div className="p-8 text-center text-red-400">Access Denied</div>;
+  if (role && userRole !== role && userRole !== 'ADMIN' && userRole !== 'SUPERUSER') {
+    return <div className="p-8 text-center text-red-400">Access Denied</div>;
+  }
   return children;
 }
 
@@ -79,10 +81,10 @@ function TopNavigation() {
               <span className="font-medium">{userRole}</span>
             </div>
 
-            {['SELLER', 'ADMIN', 'CHEF', 'ACCOUNTANT', 'DELIVERY'].includes(userRole) ? (
+            {['SELLER', 'ADMIN', 'SUPERUSER', 'CHEF', 'ACCOUNTANT', 'DELIVERY'].includes(userRole) ? (
               <>
                 <Link to="/seller" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0"><TerminalSquare size={16} /><span className="text-sm font-medium">Dashboard</span></Link>
-                {['SELLER', 'ADMIN'].includes(userRole) && (
+                {['SELLER', 'ADMIN', 'SUPERUSER'].includes(userRole) && (
                   <>
                     <Link to="/seller/reservations" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0"><Calendar size={16} /><span className="text-sm font-medium">Host</span></Link>
                     <Link to="/seller/menu" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0"><Utensils size={16} /><span className="text-sm font-medium">Menu</span></Link>
@@ -92,7 +94,7 @@ function TopNavigation() {
                   </>
                 )}
                 <Link to="/tv/1" target="_blank" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0"><Tv size={16} /><span className="text-sm font-medium">TV</span></Link>
-                {userRole === 'ADMIN' && (
+                {['ADMIN', 'SUPERUSER'].includes(userRole) && (
                   <Link to="/admin" className="flex items-center gap-2 px-3 py-2 text-purple-400 hover:text-purple-300 transition-colors ml-2 flex-shrink-0"><Shield size={16} /><span className="text-sm font-medium">Admin</span></Link>
                 )}
               </>
@@ -182,7 +184,7 @@ function BottomNav() {
           <Link to="/reserve" className={`flex flex-col items-center p-2 ${isActive('/reserve') ? 'text-primary-500' : 'text-slate-400'}`}><Calendar size={20} /><span className="text-[10px] mt-1">Reserve</span></Link>
         </>
       )}
-      {['SELLER', 'ADMIN', 'CHEF'].includes(userRole) && (
+      {['SELLER', 'ADMIN', 'SUPERUSER', 'CHEF'].includes(userRole) && (
         <>
           <Link to="/seller" className={`flex flex-col items-center p-2 ${isActive('/seller') ? 'text-primary-500' : 'text-slate-400'}`}><TerminalSquare size={20} /><span className="text-[10px] mt-1">Dashboard</span></Link>
           <Link to="/seller/menu" className={`flex flex-col items-center p-2 ${isActive('/seller/menu') ? 'text-primary-500' : 'text-slate-400'}`}><Utensils size={20} /><span className="text-[10px] mt-1">Menu</span></Link>

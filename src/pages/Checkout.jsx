@@ -210,7 +210,7 @@ export default function Checkout() {
                         </h2>
 
                         <div className="space-y-4">
-                            {['SELLER', 'ADMIN', 'ACCOUNTANT', 'CHEF'].includes(userRole) && (
+                            {['SELLER', 'ADMIN', 'SUPERUSER', 'ACCOUNTANT', 'CHEF'].includes(userRole) && (
                                 <div className="flex items-center gap-3 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl">
                                     <input
                                         type="checkbox"
@@ -419,7 +419,7 @@ export default function Checkout() {
                                             <textarea
                                                 value={deliveryLocation}
                                                 onChange={(e) => setDeliveryLocation(e.target.value)}
-                                                placeholder="Enter full delivery address/instructions..."
+                                                placeholder="Full delivery address/instructions..."
                                                 rows="2"
                                                 className="w-full mt-1 bg-dark-950 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-primary-500 transition-all resize-none"
                                             ></textarea>

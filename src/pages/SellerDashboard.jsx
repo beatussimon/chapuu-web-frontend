@@ -63,7 +63,7 @@ export default function SellerDashboard() {
     // Team Management State
     const [staffList, setStaffList] = useState([]);
     const [showHireModal, setShowHireModal] = useState(false);
-    const [hireForm, setHireForm] = useState({ username: '', password: '', role: 'CHEF', first_name: '', last_name: '' });
+    const [hireForm, setHireForm] = useState({ username: '', password: '', role: 'CHEF', first_name: '', last_name: '', email: '', phone_number: '' });
 
     // Support Settings State
     const [supportConfig, setSupportConfig] = useState({
@@ -88,7 +88,7 @@ export default function SellerDashboard() {
     }, [userRole, activeView]);
 
     const fetchStaff = () => {
-        if (userRole === 'SELLER' || userRole === 'ADMIN') {
+        if (userRole === 'SELLER' || userRole === 'ADMIN' || userRole === 'SUPERUSER') {
             apiClient.get('/staff/')
                 .then(res => setStaffList(Array.isArray(res.data) ? res.data : []))
                 .catch(e => console.error("Staff fetch failed"));
@@ -102,7 +102,7 @@ export default function SellerDashboard() {
             .then(() => {
                 toast.success("Staff added successfully!", { id: toastId });
                 setShowHireModal(false);
-                setHireForm({ username: '', password: '', role: 'CHEF', first_name: '', last_name: '' });
+                setHireForm({ username: '', password: '', role: 'CHEF', first_name: '', last_name: '', email: '', phone_number: '' });
                 fetchStaff();
             })
             .catch(err => {
@@ -371,7 +371,7 @@ export default function SellerDashboard() {
     };
 
     const fetchBillingData = useCallback(() => {
-        if (userRole !== 'SELLER' && userRole !== 'ADMIN') return;
+        if (userRole !== 'SELLER' && userRole !== 'ADMIN' && userRole !== 'SUPERUSER') return;
         
         apiClient.get('/billing/invoices/')
             .then(res => setInvoices(Array.isArray(res.data) ? res.data : []))
@@ -438,14 +438,14 @@ export default function SellerDashboard() {
                     setStoreDetails(store);
                     setStoreType(store.store_type || 'RESTAURANT');
                     
-                    if (['SELLER', 'ADMIN'].includes(userRole)) {
+                    if (['SELLER', 'ADMIN', 'SUPERUSER'].includes(userRole)) {
                         apiClient.get(`/stores/${store.id}/reviews/`)
                             .then(r => setReviews(Array.isArray(r.data) ? r.data : []))
                             .catch(() => {});
                     }
                 }
 
-                if (['SELLER', 'ADMIN'].includes(userRole)) {
+                if (['SELLER', 'ADMIN', 'SUPERUSER'].includes(userRole)) {
                     apiClient.get('/products/')
                         .then(res => setPosProducts(Array.isArray(res.data) ? res.data : []))
                         .catch(() => {});
@@ -472,10 +472,11 @@ export default function SellerDashboard() {
         
         // Strictly avoid connecting to a global socket if the role requires a store ID 
         // and it hasn't loaded yet. This prevents noisy initial failed connections.
-        const rolesRequiringStore = ['SELLER', 'CHEF', 'DELIVERY', 'ACCOUNTANT', 'ADMIN'];
+        const rolesRequiringStore = ['SELLER', 'CHEF', 'DELIVERY', 'ACCOUNTANT', 'ADMIN', 'SUPERUSER'];
         if (rolesRequiringStore.includes(userRole) && !storeId) {
             return;
         }
+
 
         let socket = null;
         let reconnectTimeout = null;
@@ -546,10 +547,10 @@ export default function SellerDashboard() {
     const readyForDelivery = readyOrders.filter(o => o.fulfillment_mode === 'DELIVERY');
     const lockedOrders = ordersArray.filter(o => o.is_locked);
 
-    const canSeeKitchen = ['SELLER', 'ADMIN', 'CHEF'].includes(userRole);
-    const canSeeAccounting = ['SELLER', 'ADMIN', 'ACCOUNTANT'].includes(userRole);
-    const canSeeDelivery = ['SELLER', 'ADMIN', 'DELIVERY'].includes(userRole);
-    const canSeeAdminStuff = ['SELLER', 'ADMIN'].includes(userRole);
+    const canSeeKitchen = ['SELLER', 'ADMIN', 'SUPERUSER', 'CHEF'].includes(userRole);
+    const canSeeAccounting = ['SELLER', 'ADMIN', 'SUPERUSER', 'ACCOUNTANT'].includes(userRole);
+    const canSeeDelivery = ['SELLER', 'ADMIN', 'SUPERUSER', 'DELIVERY'].includes(userRole);
+    const canSeeAdminStuff = ['SELLER', 'ADMIN', 'SUPERUSER'].includes(userRole);
 
     const storeUrl = typeof window !== 'undefined' ? `${window.location.origin}/?store=${storeDetails?.id}` : '';
 
@@ -702,19 +703,19 @@ export default function SellerDashboard() {
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto min-w-0 lg:flex-1 lg:justify-end">
                     <div className="flex bg-dark-900 border border-white/10 rounded-xl p-1 overflow-x-auto lg:justify-start scrollbar-none no-scrollbar flex-1 min-w-0">
                         {/* Operational Tabs */}
-                        {(userRole === 'SELLER' || userRole === 'ADMIN' || userRole === 'CHEF') && (
+                        {(userRole === 'SELLER' || userRole === 'ADMIN' || userRole === 'SUPERUSER' || userRole === 'CHEF') && (
                             <button onClick={() => setActiveView('KITCHEN')} className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all relative ${activeView === 'KITCHEN' ? 'bg-primary-500 text-dark-950 shadow-lg shadow-primary-500/20' : 'text-slate-400 hover:text-white'}`}>
                                 <Utensils size={14} /> Kitchen
                                 {kitchenCount > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full border-2 border-dark-900 animate-bounce font-black">{kitchenCount}</span>}
                             </button>
                         )}
-                        {(userRole === 'SELLER' || userRole === 'ADMIN' || userRole === 'ACCOUNTANT') && (
+                        {(userRole === 'SELLER' || userRole === 'ADMIN' || userRole === 'SUPERUSER' || userRole === 'ACCOUNTANT') && (
                             <button onClick={() => setActiveView('ACCOUNTING')} className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all relative ${activeView === 'ACCOUNTING' ? 'bg-primary-500 text-dark-950 shadow-lg shadow-primary-500/20' : 'text-slate-400 hover:text-white'}`}>
                                 <CreditCard size={14} /> Accountant
                                 {accountingCount > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full border-2 border-dark-900 font-black">{accountingCount}</span>}
                             </button>
                         )}
-                        {(userRole === 'SELLER' || userRole === 'ADMIN' || userRole === 'DELIVERY') && (
+                        {(userRole === 'SELLER' || userRole === 'ADMIN' || userRole === 'SUPERUSER' || userRole === 'DELIVERY') && (
                             <button onClick={() => setActiveView('DELIVERY')} className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all relative ${activeView === 'DELIVERY' ? 'bg-primary-500 text-dark-950 shadow-lg shadow-primary-500/20' : 'text-slate-400 hover:text-white'}`}>
                                 <Truck size={14} /> Delivery
                                 {deliveryCount > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full border-2 border-dark-900 font-black">{deliveryCount}</span>}
@@ -722,12 +723,12 @@ export default function SellerDashboard() {
                         )}
 
                         {/* Management Tabs */}
-                        {(userRole === 'SELLER' || userRole === 'ADMIN') && (
+                        {(userRole === 'SELLER' || userRole === 'ADMIN' || userRole === 'SUPERUSER') && (
                             <button onClick={() => setActiveView('TEAM')} className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all ${activeView === 'TEAM' ? 'bg-primary-500 text-dark-950 shadow-lg shadow-primary-500/20' : 'text-slate-400 hover:text-white'}`}>
                                 <Users size={14} /> Team
                             </button>
                         )}
-                        {(userRole === 'SELLER' || userRole === 'ADMIN') && (
+                        {(userRole === 'SELLER' || userRole === 'ADMIN' || userRole === 'SUPERUSER') && (
                             <button onClick={() => setActiveView('BILLING')} className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all ${activeView === 'BILLING' ? 'bg-primary-500 text-dark-950 shadow-lg shadow-primary-500/20' : 'text-slate-400 hover:text-white'}`}>
                                 <CreditCard size={14} /> Billing
                             </button>
@@ -737,7 +738,7 @@ export default function SellerDashboard() {
                             <Bell size={14} /> Notices
                             {unreadNoticesCount > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full border-2 border-dark-900 font-black">{unreadNoticesCount}</span>}
                         </button>
-                        {(userRole === 'SELLER' || userRole === 'ADMIN') && (
+                        {(userRole === 'SELLER' || userRole === 'ADMIN' || userRole === 'SUPERUSER') && (
                             <button onClick={() => setActiveView('SETTINGS')} className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all ${activeView === 'SETTINGS' ? 'bg-primary-500 text-dark-950' : 'text-slate-400 hover:text-white'}`}>
                                 <Store size={14} /> Settings
                             </button>
@@ -1417,7 +1418,7 @@ export default function SellerDashboard() {
             )}
 
             {/* Other views omitted for brevity, adding back QR and NOTICES */}
-            {activeView === 'TEAM' && (userRole === 'SELLER' || userRole === 'ADMIN') && (
+            {activeView === 'TEAM' && (userRole === 'SELLER' || userRole === 'ADMIN' || userRole === 'SUPERUSER') && (
                 <div className="glass-dark border border-white/5 rounded-3xl p-6 max-w-6xl mx-auto w-full">
                     <div className="flex justify-between items-center mb-8 pb-4 border-b border-white/5">
                         <div>
@@ -1498,6 +1499,16 @@ export default function SellerDashboard() {
                                     <div>
                                         <label className="text-[10px] font-black uppercase text-slate-500 mb-1 block">Last Name</label>
                                         <input required type="text" className="w-full bg-dark-950 border border-white/5 rounded-xl px-4 py-3 text-sm focus:border-primary-500 outline-none" value={hireForm.last_name} onChange={e => setHireForm({...hireForm, last_name: e.target.value})} />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-[10px] font-black uppercase text-slate-500 mb-1 block">Email Address</label>
+                                        <input required type="email" className="w-full bg-dark-950 border border-white/5 rounded-xl px-4 py-3 text-sm focus:border-primary-500 outline-none" value={hireForm.email} onChange={e => setHireForm({...hireForm, email: e.target.value})} />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black uppercase text-slate-500 mb-1 block">Phone Number</label>
+                                        <input required type="text" className="w-full bg-dark-950 border border-white/5 rounded-xl px-4 py-3 text-sm focus:border-primary-500 outline-none" value={hireForm.phone_number} onChange={e => setHireForm({...hireForm, phone_number: e.target.value})} />
                                     </div>
                                 </div>
                                 <div>
@@ -2031,23 +2042,23 @@ const OrderCard = ({ order, markItemReadyFn, advanceOrderStateFn, onVerifyPaymen
                 ))}
             </div>
 
-            {isAwaitingPayment && onVerifyPayment && ['ACCOUNTANT', 'SELLER', 'ADMIN'].includes(userRole) && (
+            {isAwaitingPayment && onVerifyPayment && ['ACCOUNTANT', 'SELLER', 'ADMIN', 'SUPERUSER'].includes(userRole) && (
                 <button onClick={onVerifyPayment} className="w-full mt-4 bg-indigo-500 text-white font-bold py-2 rounded-xl">Verify Payment</button>
             )}
 
-            {isQueued && advanceOrderStateFn && ['CHEF', 'SELLER', 'ADMIN'].includes(userRole) && (
+            {isQueued && advanceOrderStateFn && ['CHEF', 'SELLER', 'ADMIN', 'SUPERUSER'].includes(userRole) && (
                 <button onClick={() => advanceOrderStateFn(order.id, 'PREPARING')} className="w-full mt-4 bg-dark-800 text-white font-bold py-2 rounded-xl">Start Preparing</button>
             )}
 
-            {isPreparing && advanceOrderStateFn && ['CHEF', 'SELLER', 'ADMIN'].includes(userRole) && (
+            {isPreparing && advanceOrderStateFn && ['CHEF', 'SELLER', 'ADMIN', 'SUPERUSER'].includes(userRole) && (
                 <button onClick={() => advanceOrderStateFn(order.id, 'READY')} className="w-full mt-4 bg-primary-500 text-dark-900 font-bold py-2 rounded-xl">Mark All Ready</button>
             )}
 
-            {isReadyColumn && advanceOrderStateFn && ['DELIVERY', 'SELLER', 'ADMIN'].includes(userRole) && order.fulfillment_mode === 'DELIVERY' && (
+            {isReadyColumn && advanceOrderStateFn && ['DELIVERY', 'SELLER', 'ADMIN', 'SUPERUSER'].includes(userRole) && order.fulfillment_mode === 'DELIVERY' && (
                 <button onClick={() => advanceOrderStateFn(order.id, 'OUT_FOR_DELIVERY')} className="w-full mt-4 bg-purple-500 text-white font-bold py-2 rounded-xl">Out for Delivery</button>
             )}
 
-            {isReadyColumn && advanceOrderStateFn && ['SELLER', 'ADMIN', 'CHEF'].includes(userRole) && order.fulfillment_mode !== 'DELIVERY' && (
+            {isReadyColumn && advanceOrderStateFn && ['SELLER', 'ADMIN', 'SUPERUSER', 'CHEF'].includes(userRole) && order.fulfillment_mode !== 'DELIVERY' && (
                 <button 
                     onClick={() => {
                         if (requiresPinToComplete(order)) {
@@ -2062,7 +2073,7 @@ const OrderCard = ({ order, markItemReadyFn, advanceOrderStateFn, onVerifyPaymen
                 </button>
             )}
 
-            {isOutForDelivery && advanceOrderStateFn && ['DELIVERY', 'SELLER', 'ADMIN'].includes(userRole) && (
+            {isOutForDelivery && advanceOrderStateFn && ['DELIVERY', 'SELLER', 'ADMIN', 'SUPERUSER'].includes(userRole) && (
                 <button 
                     onClick={() => {
                         if (requiresPinToComplete(order)) {

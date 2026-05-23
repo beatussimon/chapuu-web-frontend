@@ -585,7 +585,7 @@ export default function OrderTracker() {
                             </div>
                             <textarea
                                 value={comment} onChange={(e) => setComment(e.target.value)}
-                                placeholder="Leave a comment (Required)..."
+                                placeholder="Leave a comment..."
                                 className="w-full bg-dark-950 border border-white/10 rounded-xl p-4 text-slate-200 focus:border-primary-500 transition-all resize-none mb-6 h-24"
                                 required
                             ></textarea>

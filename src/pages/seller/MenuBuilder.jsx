@@ -178,7 +178,7 @@ export default function MenuBuilder() {
                                             <label className="text-xs text-slate-400 mb-1 block">New Category Name</label>
                                             <input 
                                                 type="text" 
-                                                placeholder="Enter custom category name (e.g. Desserts)"
+                                                placeholder="Custom category name (e.g. Desserts)"
                                                 required
                                                 value={newCategoryName}
                                                 onChange={e => setNewCategoryName(e.target.value)}
