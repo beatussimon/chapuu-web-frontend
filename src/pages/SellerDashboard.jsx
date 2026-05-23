@@ -53,6 +53,7 @@ export default function SellerDashboard() {
     const [invoices, setInvoices] = useState([]);
     const [ledgerEntries, setLedgerEntries] = useState([]);
     const [platformPaymentMethods, setPlatformPaymentMethods] = useState([]);
+    const [globalPaymentMethods, setGlobalPaymentMethods] = useState([]);
     const [showPaymentModal, setShowPaymentModal] = useState({ open: false, invoice: null });
     const [paymentForm, setPaymentForm] = useState({ amount: '', transactionId: '', receiptScreenshot: null });
 
@@ -132,7 +133,7 @@ export default function SellerDashboard() {
     // Notification Badge Calculations
     const kitchenCount = orders.filter(o => ['QUEUED', 'PAID', 'PREPARING'].includes(o.state)).length;
     const accountingCount = orders.filter(o => o.state === 'AWAITING_PAYMENT').length;
-    const deliveryCount = orders.filter(o => ['READY', 'OUT_FOR_DELIVERY'].includes(o.state)).length;
+    const deliveryCount = orders.filter(o => o.fulfillment_mode === 'DELIVERY' && ['READY', 'OUT_FOR_DELIVERY'].includes(o.state)).length;
     const unreadNoticesCount = notices.filter(n => !n.is_read).length;
 
     const handleMarkAsRead = (noticeId) => {
@@ -347,8 +348,19 @@ export default function SellerDashboard() {
     };
 
     const handleRespondReschedule = (orderId, approve) => {
+        let payload = { approve };
+        if (!approve) {
+            const reason = prompt("Please enter a reason for rejecting this reschedule request:");
+            if (reason === null) return; // User cancelled prompt
+            if (!reason.trim()) {
+                toast.error("Rejection reason is required.");
+                return;
+            }
+            payload.rejection_reason = reason.trim();
+        }
+
         const toastId = toast.loading(`${approve ? 'Approving' : 'Rejecting'} reschedule request...`);
-        apiClient.post(`/orders/${orderId}/respond_reschedule/`, { approve })
+        apiClient.post(`/orders/${orderId}/respond_reschedule/`, payload)
             .then(() => {
                 toast.success(`Reschedule request ${approve ? 'approved' : 'rejected'}!`, { id: toastId });
                 fetchDashboard(true);
@@ -437,6 +449,12 @@ export default function SellerDashboard() {
                     apiClient.get('/products/')
                         .then(res => setPosProducts(Array.isArray(res.data) ? res.data : []))
                         .catch(() => {});
+
+                    apiClient.get('/global-payment-methods/')
+                        .then(res => {
+                            setGlobalPaymentMethods(Array.isArray(res.data) ? res.data.filter(pm => pm.is_active) : []);
+                        })
+                        .catch(err => console.error("Failed to fetch global payment methods", err));
                 }
             } catch (e) {
                 console.error("Static data fetch failed", e);
@@ -454,7 +472,7 @@ export default function SellerDashboard() {
         
         // Strictly avoid connecting to a global socket if the role requires a store ID 
         // and it hasn't loaded yet. This prevents noisy initial failed connections.
-        const rolesRequiringStore = ['SELLER', 'CHEF'];
+        const rolesRequiringStore = ['SELLER', 'CHEF', 'DELIVERY', 'ACCOUNTANT', 'ADMIN'];
         if (rolesRequiringStore.includes(userRole) && !storeId) {
             return;
         }
@@ -526,7 +544,7 @@ export default function SellerDashboard() {
     // Filter READY orders for specific views
     const readyForKitchen = readyOrders.filter(o => o.fulfillment_mode !== 'DELIVERY');
     const readyForDelivery = readyOrders.filter(o => o.fulfillment_mode === 'DELIVERY');
-    const lockedOrders = [...readyForDelivery, ...outForDeliveryOrders].filter(o => o.is_locked);
+    const lockedOrders = ordersArray.filter(o => o.is_locked);
 
     const canSeeKitchen = ['SELLER', 'ADMIN', 'CHEF'].includes(userRole);
     const canSeeAccounting = ['SELLER', 'ADMIN', 'ACCOUNTANT'].includes(userRole);
@@ -537,19 +555,61 @@ export default function SellerDashboard() {
 
     const handleSavePaymentMethod = (e) => {
         e.preventDefault();
-        const toastId = toast.loading('Saving payment method...');
-        const formData = new FormData(e.target);
-        formData.append('store', storeDetails.id);
         
-        const req = editingPaymentMethod.id 
-            ? apiClient.patch(`/payment-methods/${editingPaymentMethod.id}/`, formData, { headers: { 'Content-Type': 'multipart/form-data' }})
-            : apiClient.post('/payment-methods/', formData, { headers: { 'Content-Type': 'multipart/form-data' }});
-            
+        if (!editingPaymentMethod.global_payment_method) {
+            toast.error('Please select a payment template provider.');
+            return;
+        }
+
+        const selectedTemplate = globalPaymentMethods.find(
+            g => g.id === Number(editingPaymentMethod.global_payment_method)
+        );
+        const requiresDetails = selectedTemplate ? selectedTemplate.requires_account_details : false;
+
+        if (requiresDetails) {
+            if (!editingPaymentMethod.account_name || !editingPaymentMethod.account_name.trim()) {
+                toast.error('Account Name is required.');
+                return;
+            }
+            if (!editingPaymentMethod.account_number || !editingPaymentMethod.account_number.trim()) {
+                toast.error('Account Number/Lipa details are required.');
+                return;
+            }
+        }
+
+        const toastId = toast.loading('Saving payment method...');
+
+        const payload = {
+            store: storeDetails.id,
+            global_payment_method: Number(editingPaymentMethod.global_payment_method),
+            account_name: requiresDetails ? editingPaymentMethod.account_name.trim() : '',
+            account_number: requiresDetails ? editingPaymentMethod.account_number.trim() : '',
+            instructions: editingPaymentMethod.instructions || '',
+            is_active: !!editingPaymentMethod.is_active
+        };
+
+        const req = editingPaymentMethod.id
+            ? apiClient.patch(`/payment-methods/${editingPaymentMethod.id}/`, payload)
+            : apiClient.post('/payment-methods/', payload);
+
         req.then(() => {
             toast.success('Payment method saved!', { id: toastId });
             setEditingPaymentMethod(null);
+            
+            // Refresh store details to get updated payment methods list
+            apiClient.get('/stores/my_store/')
+                .then(storeRes => {
+                    if (storeRes.data && storeRes.data.id) {
+                        setStoreDetails(storeRes.data);
+                    }
+                })
+                .catch(() => {});
+            
             fetchDashboard();
-        }).catch(err => toast.error('Failed to save payment method', { id: toastId }));
+        }).catch(err => {
+            const errorMsg = err.response?.data?.error || err.response?.data?.detail || 'Failed to save payment method';
+            toast.error(errorMsg, { id: toastId });
+        });
     };
 
     const handleDeletePaymentMethod = (id) => {
@@ -558,6 +618,16 @@ export default function SellerDashboard() {
         apiClient.delete(`/payment-methods/${id}/`)
             .then(() => {
                 toast.success('Deleted', { id: toastId });
+                
+                // Refresh store details
+                apiClient.get('/stores/my_store/')
+                    .then(storeRes => {
+                        if (storeRes.data && storeRes.data.id) {
+                            setStoreDetails(storeRes.data);
+                        }
+                    })
+                    .catch(() => {});
+                
                 fetchDashboard();
             })
             .catch(err => toast.error('Failed to delete', { id: toastId }));
@@ -1084,7 +1154,7 @@ export default function SellerDashboard() {
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="text-lg font-bold text-white">Payment Methods</h3>
                             <button 
-                                onClick={() => setEditingPaymentMethod({ provider: '', account_name: '', account_number: '', instructions: '', is_active: true })}
+                                onClick={() => setEditingPaymentMethod({ global_payment_method: '', account_name: '', account_number: '', instructions: '', is_active: true })}
                                 className="bg-primary-500/10 hover:bg-primary-500/20 text-primary-400 p-2 rounded-lg transition-colors flex items-center gap-1 text-sm font-bold"
                             >
                                 <Plus size={16} /> Add Method
@@ -1092,40 +1162,106 @@ export default function SellerDashboard() {
                         </div>
                         <p className="text-sm text-slate-400 mb-6">Configure the offline payment methods your customers can use during checkout.</p>
                         
-                        {editingPaymentMethod && (
-                            <form onSubmit={handleSavePaymentMethod} className="mb-6 bg-dark-950 border border-primary-500/30 p-4 rounded-xl space-y-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="text-xs text-slate-400 block mb-1">Provider (e.g., M-Pesa, Cash)</label>
-                                        <input type="text" name="provider" defaultValue={editingPaymentMethod.provider} required className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none text-white" />
+                        {editingPaymentMethod && (() => {
+                            const selectedTemplate = globalPaymentMethods.find(
+                                g => g.id === Number(editingPaymentMethod.global_payment_method)
+                            );
+                            const requiresDetails = selectedTemplate ? selectedTemplate.requires_account_details : false;
+
+                            return (
+                                <form onSubmit={handleSavePaymentMethod} className="mb-6 bg-dark-950 border border-primary-500/30 p-4 rounded-xl space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="md:col-span-2">
+                                            <label className="text-xs text-slate-400 block mb-1">Provider / Template <span className="text-red-500">*</span></label>
+                                            <select
+                                                name="global_payment_method"
+                                                value={editingPaymentMethod.global_payment_method || ''}
+                                                onChange={(e) => setEditingPaymentMethod({
+                                                    ...editingPaymentMethod,
+                                                    global_payment_method: e.target.value,
+                                                    account_name: '',
+                                                    account_number: ''
+                                                })}
+                                                required
+                                                className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none text-white font-medium"
+                                            >
+                                                <option value="" disabled>-- Select Template --</option>
+                                                {globalPaymentMethods.map(g => (
+                                                    <option key={g.id} value={g.id}>{g.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        {requiresDetails && (
+                                            <>
+                                                <div>
+                                                    <label className="text-xs text-slate-400 block mb-1">
+                                                        Account Name <span className="text-red-500">*</span>
+                                                    </label>
+                                                    <input 
+                                                        type="text" 
+                                                        name="account_name" 
+                                                        value={editingPaymentMethod.account_name || ''} 
+                                                        onChange={(e) => setEditingPaymentMethod({ ...editingPaymentMethod, account_name: e.target.value })}
+                                                        required 
+                                                        className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none text-white" 
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="text-xs text-slate-400 block mb-1">
+                                                        Account Number <span className="text-red-500">*</span>
+                                                    </label>
+                                                    <input 
+                                                        type="text" 
+                                                        name="account_number" 
+                                                        value={editingPaymentMethod.account_number || ''} 
+                                                        onChange={(e) => setEditingPaymentMethod({ ...editingPaymentMethod, account_number: e.target.value })}
+                                                        required 
+                                                        className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none text-white" 
+                                                    />
+                                                </div>
+                                            </>
+                                        )}
+
+                                        {!requiresDetails && editingPaymentMethod.global_payment_method && (
+                                            <div className="md:col-span-2 bg-primary-500/10 border border-primary-500/20 p-3 rounded-lg flex items-start gap-2.5">
+                                                <CreditCard className="text-primary-400 shrink-0 mt-0.5" size={16} />
+                                                <div>
+                                                    <h5 className="text-xs font-bold text-slate-200">No Account Details Required</h5>
+                                                    <p className="text-[10px] text-slate-400 mt-0.5">This payment method (e.g., Cash or Direct Payment) does not require a digital account name or account number.</p>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <div className="md:col-span-2">
+                                            <label className="text-xs text-slate-400 block mb-1">Instructions (Optional)</label>
+                                            <textarea 
+                                                name="instructions" 
+                                                value={editingPaymentMethod.instructions || ''} 
+                                                onChange={(e) => setEditingPaymentMethod({ ...editingPaymentMethod, instructions: e.target.value })}
+                                                className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none text-white h-16" 
+                                                placeholder="e.g. Pay to Lipa Number or instructions for the customer" 
+                                            />
+                                        </div>
+                                        <div className="md:col-span-2 flex items-center gap-2">
+                                            <input 
+                                                type="checkbox" 
+                                                name="is_active" 
+                                                id="pm_is_active" 
+                                                checked={!!editingPaymentMethod.is_active} 
+                                                onChange={(e) => setEditingPaymentMethod({ ...editingPaymentMethod, is_active: e.target.checked })}
+                                                className="accent-primary-500 w-4 h-4 rounded" 
+                                            />
+                                            <label htmlFor="pm_is_active" className="text-sm font-medium text-white cursor-pointer">Actively Available</label>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label className="text-xs text-slate-400 block mb-1">Account Name (Optional)</label>
-                                        <input type="text" name="account_name" defaultValue={editingPaymentMethod.account_name} className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none text-white" />
+                                    <div className="flex gap-2 justify-end pt-2">
+                                        <button type="button" onClick={() => setEditingPaymentMethod(null)} className="px-4 py-2 hover:bg-white/5 rounded-lg text-sm font-medium transition-colors text-white">Cancel</button>
+                                        <button type="submit" className="bg-primary-500 hover:bg-primary-400 text-dark-900 px-6 py-2 rounded-lg text-sm font-bold shadow-lg shadow-primary-500/20">Save Method</button>
                                     </div>
-                                    <div>
-                                        <label className="text-xs text-slate-400 block mb-1">Account Number (Optional)</label>
-                                        <input type="text" name="account_number" defaultValue={editingPaymentMethod.account_number} className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none text-white" />
-                                    </div>
-                                    <div>
-                                        <label className="text-xs text-slate-400 block mb-1">Provider Logo (Optional)</label>
-                                        <input type="file" name="image" accept="image/*" className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-primary-500/10 file:text-primary-500" />
-                                    </div>
-                                    <div className="md:col-span-2">
-                                        <label className="text-xs text-slate-400 block mb-1">Instructions</label>
-                                        <textarea name="instructions" defaultValue={editingPaymentMethod.instructions} className="w-full bg-dark-900 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none text-white h-16" placeholder="e.g. Pay to Till Number 123456" />
-                                    </div>
-                                    <div className="md:col-span-2 flex items-center gap-2">
-                                        <input type="checkbox" name="is_active" id="pm_is_active" defaultChecked={editingPaymentMethod.is_active} value="true" className="accent-primary-500 w-4 h-4 rounded" />
-                                        <label htmlFor="pm_is_active" className="text-sm font-medium text-white cursor-pointer">Actively Available</label>
-                                    </div>
-                                </div>
-                                <div className="flex gap-2 justify-end pt-2">
-                                    <button type="button" onClick={() => setEditingPaymentMethod(null)} className="px-4 py-2 hover:bg-white/5 rounded-lg text-sm font-medium transition-colors text-white">Cancel</button>
-                                    <button type="submit" className="bg-primary-500 hover:bg-primary-400 text-dark-900 px-6 py-2 rounded-lg text-sm font-bold shadow-lg shadow-primary-500/20">Save Method</button>
-                                </div>
-                            </form>
-                        )}
+                                </form>
+                            );
+                        })()}
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             {(Array.isArray(storeDetails.payment_methods) ? storeDetails.payment_methods : []).map((pm, idx) => (
@@ -1155,7 +1291,10 @@ export default function SellerDashboard() {
                                             {pm.is_active ? 'ACTIVE' : 'INACTIVE'}
                                         </span>
                                         <div className="flex gap-2">
-                                            <button onClick={() => setEditingPaymentMethod(pm)} className="p-1 text-slate-400 hover:text-white bg-white/5 rounded transition-colors"><Edit2 size={12} /></button>
+                                            <button onClick={() => setEditingPaymentMethod({
+                                                ...pm,
+                                                global_payment_method: pm.global_payment_method || ''
+                                            })} className="p-1 text-slate-400 hover:text-white bg-white/5 rounded transition-colors"><Edit2 size={12} /></button>
                                             <button onClick={() => handleDeletePaymentMethod(pm.id)} className="p-1 text-slate-400 hover:text-red-400 bg-white/5 rounded transition-colors"><Trash2 size={12} /></button>
                                         </div>
                                     </div>
@@ -1235,6 +1374,43 @@ export default function SellerDashboard() {
                                     No gallery images uploaded yet.
                                 </div>
                             )}
+                        </div>
+                    </div>
+
+                    {/* System Support & Safety Policy */}
+                    <div className="bg-gradient-to-br from-red-950/40 to-dark-900 border border-red-500/20 rounded-3xl p-6 mt-6 shadow-xl relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 rounded-full blur-3xl pointer-events-none"></div>
+                        <div className="flex gap-4 items-start text-left">
+                            <div className="p-3 bg-red-500/10 rounded-2xl border border-red-500/20 text-red-500 shrink-0">
+                                <Shield size={24} className="animate-pulse" />
+                            </div>
+                            <div className="space-y-4 flex-grow">
+                                <div>
+                                    <h3 className="text-lg font-black text-white uppercase tracking-tight">System Support & Safety Policy</h3>
+                                    <p className="text-xs text-red-400 font-bold mt-1 uppercase tracking-widest font-mono">Store Compliance & Vendor Protection</p>
+                                </div>
+                                <p className="text-xs text-slate-300 leading-relaxed max-w-2xl bg-dark-950/60 p-4 rounded-xl border border-white/5 font-medium">
+                                    {supportConfig.policy_warning || "Violation of the system's policy (such as consecutive delivery locking or fraud) can get your store taken down permanently."}
+                                </p>
+
+                                <div className="border-t border-white/5 pt-4">
+                                    <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-wider mb-3 font-mono">Dedicated Priority Merchant Support</h4>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                        <a href={`tel:${supportConfig.seller_support_phone || '+255 700 000 111'}`} className="bg-dark-950 hover:bg-dark-900 border border-white/5 rounded-xl p-3 flex flex-col transition-all group">
+                                            <span className="text-[8px] font-black uppercase text-slate-500 tracking-widest mb-1 group-hover:text-primary-400">Call Support</span>
+                                            <span className="text-xs font-bold text-white font-mono">{supportConfig.seller_support_phone || '+255 700 000 111'}</span>
+                                        </a>
+                                        <a href={`mailto:${supportConfig.seller_support_email || 'vendor-support@chapuu.co.tz'}`} className="bg-dark-950 hover:bg-dark-900 border border-white/5 rounded-xl p-3 flex flex-col transition-all group">
+                                            <span className="text-[8px] font-black uppercase text-slate-500 tracking-widest mb-1 group-hover:text-primary-400">Email Support</span>
+                                            <span className="text-xs font-bold text-white font-mono break-all">{supportConfig.seller_support_email || 'vendor-support@chapuu.co.tz'}</span>
+                                        </a>
+                                        <a href={`sms:${supportConfig.seller_support_sms || '+255 700 000 111'}`} className="bg-dark-950 hover:bg-dark-900 border border-white/5 rounded-xl p-3 flex flex-col transition-all group">
+                                            <span className="text-[8px] font-black uppercase text-slate-500 tracking-widest mb-1 group-hover:text-primary-400">Priority SMS</span>
+                                            <span className="text-xs font-bold text-white font-mono">{supportConfig.seller_support_sms || '+255 700 000 111'}</span>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1590,7 +1766,7 @@ export default function SellerDashboard() {
             {/* Handoff Verification PIN Entry Modal */}
             <AnimatePresence>
                 {handoffPinModal.open && (() => {
-                    const currentOrder = readyForDelivery.find(o => o.id === handoffPinModal.orderId) || outForDeliveryOrders.find(o => o.id === handoffPinModal.orderId);
+                    const currentOrder = ordersArray.find(o => o.id === handoffPinModal.orderId);
                     const isLocked = currentOrder?.is_locked;
                     return (
                         <motion.div
@@ -1627,7 +1803,7 @@ export default function SellerDashboard() {
                                     <div className="space-y-4 text-center mt-4">
                                         <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl text-left">
                                             <p className="text-xs text-red-400 font-bold mb-2">⚠️ SAFETY POLICY WARNING</p>
-                                            <p className="text-xs text-slate-300 leading-relaxed">
+                                            <p className="text-xs text-slate-300 leading-relaxed font-medium">
                                                 Order is locked due to too many failed attempts (5/5). 
                                                 {supportConfig.policy_warning}
                                             </p>
@@ -1636,10 +1812,17 @@ export default function SellerDashboard() {
                                         <button
                                             onClick={() => handleStaffManualVerify(handoffPinModal.orderId)}
                                             disabled={handoffPinModal.loading}
-                                            className="w-full bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-bold py-3 rounded-xl shadow-lg transition-all text-sm uppercase tracking-wider font-sans"
+                                            className="w-full bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-bold py-3 rounded-xl shadow-lg transition-all text-sm uppercase tracking-wider font-sans animate-bounce"
                                         >
                                             {handoffPinModal.loading ? 'Overriding...' : 'Force Manual Override'}
                                         </button>
+
+                                        <a
+                                            href={`sms:${supportConfig.seller_support_sms || '+255 700 000 111'}?body=Chapuu%20Security%3A%20Order%20%23${handoffPinModal.orderId}%20at%20${storeDetails?.name || 'Store'}%20has%20been%20locked.%20Please%20verify%20for%20manual%20override.`}
+                                            className="w-full bg-dark-800 hover:bg-dark-700 text-white font-bold py-3 rounded-xl shadow-lg transition-all text-sm uppercase tracking-wider block text-center border border-white/10 font-sans mt-2"
+                                        >
+                                            Report Lock via SMS
+                                        </a>
                                     </div>
                                 ) : (
                                     <>
@@ -1784,8 +1967,15 @@ const OrderCard = ({ order, markItemReadyFn, advanceOrderStateFn, onVerifyPaymen
         <motion.div
             layout
             initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: -10 }}
-            className={`bg-dark-950/80 rounded-2xl p-5 border shadow-lg relative group ${isSelected ? 'ring-2 ring-primary-500 border-primary-500' : isReadyColumn ? 'border-green-500/30' : isPreparing ? 'border-primary-500/30' : isAwaitingPayment ? 'border-indigo-500/30' : 'border-white/5'}`}
+            className={`bg-dark-950/80 rounded-2xl p-5 border shadow-lg relative group ${isSelected ? 'ring-2 ring-primary-500 border-primary-500' : isReadyColumn ? 'border-green-500/30' : isPreparing ? 'border-primary-500/30' : isAwaitingPayment ? 'border-indigo-500/30' : 'border-white/5'} ${order.is_locked ? 'ring-2 ring-red-500 border-red-500' : ''}`}
         >
+            {order.is_locked && (
+                <div className="mb-4 bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-xl flex items-center gap-2 text-red-400 text-xs font-black animate-pulse text-left uppercase tracking-wider">
+                    <AlertTriangle size={14} className="shrink-0 text-red-500" />
+                    <span>⚠️ Security Lock Active (5/5 Failed PINs)</span>
+                </div>
+            )}
+            
             {/* Selection Overlay/Checkbox */}
             <div 
                 onClick={onSelect}

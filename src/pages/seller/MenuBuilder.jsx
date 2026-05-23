@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import apiClient from '../../api/client';
-import { Plus, Edit2, Trash2, Save, X, Tag, Package, Image as ImageIcon } from 'lucide-react';
+import { Plus, Edit2, Trash2, Save, X, Package, Image as ImageIcon } from 'lucide-react';
 import { useCurrency } from '../../utils/useCurrency';
 import toast from 'react-hot-toast';
 import OptimizedImage from '../../components/OptimizedImage';
@@ -9,13 +9,13 @@ export default function MenuBuilder() {
     const [categories, setCategories] = useState([]);
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
-    const { formatPrice } = useCurrency();
+    const { formatPrice, defaultCurrency } = useCurrency();
 
     // Form logic
-    const [editingCategory, setEditingCategory] = useState(null);
     const [editingProduct, setEditingProduct] = useState(null);
     const [productImageFile, setProductImageFile] = useState(null);
     const [productImageFile2, setProductImageFile2] = useState(null);
+    const [newCategoryName, setNewCategoryName] = useState('');
 
     const [storeId, setStoreId] = useState(null);
 
@@ -50,43 +50,36 @@ export default function MenuBuilder() {
             });
     }, []);
 
-    // --- Category Logic ---
-    const handleSaveCategory = (e) => {
-        e.preventDefault();
-        const toastId = toast.loading("Saving category...");
-        const payload = {
-            store: storeId,
-            name: editingCategory.name
-        };
 
-        const req = editingCategory.id
-            ? apiClient.put(`/categories/${editingCategory.id}/`, payload)
-            : apiClient.post(`/categories/`, payload);
-
-        req.then(() => {
-            toast.success("Category saved!", { id: toastId });
-            setEditingCategory(null);
-            if (storeId) fetchData(storeId);
-        }).catch(err => toast.error("Error saving category.", { id: toastId }));
-    };
-
-    const handleDeleteCategory = (id) => {
-        if (!window.confirm("Delete this category? Products in it will be uncategorized.")) return;
-        apiClient.delete(`/categories/${id}/`).then(() => { if (storeId) fetchData(storeId); }).catch(() => toast.error("Failed to delete"));
-    };
 
     // --- Product Logic ---
-    const handleSaveProduct = (e) => {
+    const handleSaveProduct = async (e) => {
         e.preventDefault();
         const toastId = toast.loading("Saving product...");
+
+        let categoryId = editingProduct.category;
+
+        if (editingProduct.category === 'NEW_CATEGORY') {
+            if (!newCategoryName.trim()) {
+                toast.error("Please enter a valid category name", { id: toastId });
+                return;
+            }
+            try {
+                const catRes = await apiClient.post('/categories/', { name: newCategoryName.trim() });
+                categoryId = catRes.data.id;
+            } catch (err) {
+                toast.error("Failed to save category.", { id: toastId });
+                return;
+            }
+        }
 
         const formData = new FormData();
         formData.append('store', storeId);
         formData.append('name', editingProduct.name);
         formData.append('description', editingProduct.description);
         formData.append('price', editingProduct.price);
-        if (editingProduct.category) {
-            formData.append('category', editingProduct.category);
+        if (categoryId) {
+            formData.append('category', categoryId);
         }
         formData.append('requires_kitchen', editingProduct.requires_kitchen);
         formData.append('is_active', editingProduct.is_active);
@@ -111,6 +104,7 @@ export default function MenuBuilder() {
             setEditingProduct(null);
             setProductImageFile(null);
             setProductImageFile2(null);
+            setNewCategoryName('');
             if (storeId) fetchData(storeId);
         }).catch(err => toast.error("Error saving product.", { id: toastId }));
     };
@@ -131,55 +125,10 @@ export default function MenuBuilder() {
                 </div>
             </div>
 
-            <div className="flex flex-col lg:flex-row gap-8">
-
-                {/* Categories Column */}
-                <div className="w-full lg:w-1/3 space-y-6">
-                    <div className="glass-dark border border-white/10 rounded-3xl p-6">
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-xl font-bold flex items-center gap-2"><Tag className="text-primary-500" size={20} /> Categories</h2>
-                            <button
-                                onClick={() => setEditingCategory({ name: '' })}
-                                className="bg-primary-500/10 hover:bg-primary-500/20 text-primary-400 p-2 rounded-lg transition-colors"
-                            >
-                                <Plus size={18} />
-                            </button>
-                        </div>
-
-                        {editingCategory && (
-                            <form onSubmit={handleSaveCategory} className="mb-6 bg-dark-900 border border-primary-500/30 p-4 rounded-xl">
-                                <input
-                                    type="text"
-                                    placeholder="Category Name"
-                                    required
-                                    value={editingCategory.name}
-                                    onChange={e => setEditingCategory({ ...editingCategory, name: e.target.value })}
-                                    className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 mb-3 text-sm focus:border-primary-500 outline-none"
-                                />
-                                <div className="flex gap-2">
-                                    <button type="submit" className="flex-1 bg-primary-500 text-dark-900 font-bold py-2 rounded-lg text-sm">Save</button>
-                                    <button type="button" onClick={() => setEditingCategory(null)} className="flex-1 bg-white/5 hover:bg-white/10 text-white font-medium py-2 rounded-lg text-sm">Cancel</button>
-                                </div>
-                            </form>
-                        )}
-
-                        <div className="space-y-3">
-                            {categories.map(c => (
-                                <div key={c.id} className="flex justify-between items-center bg-dark-900/50 p-3 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
-                                    <span className="font-medium">{c.name}</span>
-                                    <div className="flex gap-2">
-                                        <button onClick={() => setEditingCategory(c)} className="text-slate-400 hover:text-white p-1"><Edit2 size={16} /></button>
-                                        <button onClick={() => handleDeleteCategory(c.id)} className="text-slate-400 hover:text-red-400 p-1"><Trash2 size={16} /></button>
-                                    </div>
-                                </div>
-                            ))}
-                            {categories.length === 0 && <p className="text-sm text-slate-500 text-center py-4">No categories yet.</p>}
-                        </div>
-                    </div>
-                </div>
+            <div className="flex flex-col gap-8">
 
                 {/* Products Column */}
-                <div className="w-full lg:w-2/3 space-y-6">
+                <div className="w-full space-y-6">
                     <div className="glass-dark border border-white/10 rounded-3xl p-6">
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-xl font-bold flex items-center gap-2"><Package className="text-primary-500" size={20} /> Products</h2>
@@ -187,6 +136,7 @@ export default function MenuBuilder() {
                                 onClick={() => {
                                     setEditingProduct({ name: '', description: '', price: '', category: '', requires_kitchen: true, is_active: true, initial_stock: '' });
                                     setProductImageFile(null);
+                                    setNewCategoryName('');
                                 }}
                                 className="bg-primary-500 hover:bg-primary-400 text-dark-900 font-bold px-4 py-2 rounded-xl transition-all flex items-center gap-2 shadow-lg shadow-primary-500/20"
                             >
@@ -204,7 +154,7 @@ export default function MenuBuilder() {
                                         <input type="text" required value={editingProduct.name} onChange={e => setEditingProduct({ ...editingProduct, name: e.target.value })} className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none" />
                                     </div>
                                     <div>
-                                        <label className="text-xs text-slate-400 mb-1 block">Price</label>
+                                        <label className="text-xs text-slate-400 mb-1 block">Price ({defaultCurrency?.symbol || 'TSh'})</label>
                                         <input type="number" step="0.01" required value={editingProduct.price} onChange={e => setEditingProduct({ ...editingProduct, price: e.target.value })} className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none" />
                                     </div>
                                     <div className="md:col-span-2">
@@ -216,12 +166,26 @@ export default function MenuBuilder() {
                                         <select value={editingProduct.category || ''} onChange={e => setEditingProduct({ ...editingProduct, category: e.target.value })} className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none">
                                             <option value="">No Category</option>
                                             {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                            <option value="NEW_CATEGORY">+ Add New Category...</option>
                                         </select>
                                     </div>
                                     <div>
                                         <label className="text-xs text-slate-400 mb-1 block">Inventory Quantity</label>
                                         <input type="number" step="0.01" min="0" value={editingProduct.initial_stock || ''} onChange={e => setEditingProduct({ ...editingProduct, initial_stock: e.target.value })} className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none" placeholder="Leave empty for unlimited" />
                                     </div>
+                                    {editingProduct.category === 'NEW_CATEGORY' && (
+                                        <div className="md:col-span-2">
+                                            <label className="text-xs text-slate-400 mb-1 block">New Category Name</label>
+                                            <input 
+                                                type="text" 
+                                                placeholder="Enter custom category name (e.g. Desserts)"
+                                                required
+                                                value={newCategoryName}
+                                                onChange={e => setNewCategoryName(e.target.value)}
+                                                className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none transition-all"
+                                            />
+                                        </div>
+                                    )}
                                     <div className="md:col-span-2">
                                         <label className="text-xs text-slate-400 mb-1 block">Product Image 1</label>
                                         {editingProduct.image_url && !productImageFile && (
@@ -262,7 +226,7 @@ export default function MenuBuilder() {
                             </form>
                         )}
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {products.map(p => (
                                 <div key={p.id} className="bg-dark-900/50 border border-white/5 rounded-2xl p-4 hover:border-white/10 transition-colors flex flex-col">
                                     {p.image_url && (
@@ -288,13 +252,14 @@ export default function MenuBuilder() {
                                                     name: p.name,
                                                     description: p.description,
                                                     price: p.price,
-                                                    category: p.category,
+                                                    category: p.category || '',
                                                     requires_kitchen: p.requires_kitchen,
                                                     is_active: p.is_active,
                                                     image_url: p.image_url,
                                                     initial_stock: p.stock_quantity !== null ? p.stock_quantity : ''
                                                 });
                                                 setProductImageFile(null);
+                                                setNewCategoryName('');
                                             }} className="p-2 text-slate-400 hover:text-white bg-white/5 rounded-lg"><Edit2 size={14} /></button>
                                             <button onClick={() => handleDeleteProduct(p.id)} className="p-2 text-slate-400 hover:text-red-400 bg-white/5 rounded-lg"><Trash2 size={14} /></button>
                                         </div>

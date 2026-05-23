@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import apiClient, { getWebSocketURL } from '../api/client';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChefHat, CheckCircle2, Clock, CreditCard, ShoppingBag, ArrowLeft, RefreshCw, Truck, Package, Star, X, Calendar, Users } from 'lucide-react';
+import { ChefHat, CheckCircle2, Clock, CreditCard, ShoppingBag, ArrowLeft, RefreshCw, Truck, Package, Star, X, Calendar, Users, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useCurrency } from '../utils/useCurrency';
 
@@ -39,6 +39,7 @@ export default function OrderTracker() {
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(true);
     const { formatPrice } = useCurrency();
+    const [showRescheduleModal, setShowRescheduleModal] = useState(false);
 
     // Review State
     const [showReviewModal, setShowReviewModal] = useState(false);
@@ -421,7 +422,7 @@ export default function OrderTracker() {
                             </span>
                         </div>
                     </div>
-                    {order.scheduled_start_time && order.state === 'QUEUED' && (
+                    {order.scheduled_start_time && ['QUEUED', 'PAID'].includes(order.state) && (
                         <div className="mt-4 pt-4 border-t border-white/5 flex flex-col sm:flex-row sm:items-center justify-between text-xs gap-2">
                             <span className="text-slate-400 font-medium">Kitchen scheduled to start cooking at: <strong>{new Date(order.scheduled_start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong></span>
                             <div className="bg-primary-500/10 text-primary-400 px-3 py-1 rounded-lg border border-primary-500/20 font-black font-sans shrink-0">
@@ -429,12 +430,80 @@ export default function OrderTracker() {
                             </div>
                         </div>
                     )}
+                    
+                    {/* Reschedule button and status indicators */}
+                    <div className="mt-6 pt-4 border-t border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        {order.reschedule_status ? (
+                            <div className="flex flex-col gap-2">
+                                <div className={`px-3 py-1.5 rounded-lg border text-xs font-bold uppercase tracking-wider w-fit
+                                    ${order.reschedule_status === 'APPROVED' ? 'bg-green-500/10 border-green-500/20 text-green-400' :
+                                      order.reschedule_status === 'PENDING' ? 'bg-amber-500/10 border-amber-500/20 text-amber-400 animate-pulse' :
+                                      'bg-red-500/10 border-red-500/20 text-red-400'}`}
+                                >
+                                    Reschedule: {order.reschedule_status.replace('_', ' ')}
+                                    {order.reschedule_status === 'PENDING' && " (Awaiting approval)"}
+                                </div>
+                                {order.reschedule_status === 'REJECTED' && order.reschedule_rejection_reason && (
+                                    <p className="text-xs text-red-400 font-medium text-left mt-1">
+                                        Reason: <span className="italic">"{order.reschedule_rejection_reason}"</span>
+                                    </p>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="text-xs text-slate-500">Need to change your schedule?</div>
+                        )}
+                        
+                        {['PAID', 'QUEUED'].includes(order.state) && 
+                         order.reschedule_status !== 'PENDING' && 
+                         (order.reschedule_count || 0) < 1 &&
+                         (!order.scheduled_start_time || new Date(order.scheduled_start_time) > new Date()) && (
+                            <button
+                                onClick={() => setShowRescheduleModal(true)}
+                                className="bg-primary-500 hover:bg-primary-400 text-dark-900 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-primary-500/10 transition-all active:scale-95 cursor-pointer self-start sm:self-auto"
+                            >
+                                <Clock size={14} /> Reschedule Order
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Reschedule Request History */}
+                    {order.reschedule_requests && order.reschedule_requests.length > 0 && (
+                        <div className="mt-6 pt-6 border-t border-white/5 text-left">
+                            <h4 className="text-xs font-black uppercase text-slate-500 tracking-wider mb-3 font-mono">Schedule Change History</h4>
+                            <div className="space-y-2">
+                                {order.reschedule_requests.map((req, idx) => (
+                                    <div key={req.id || idx} className="bg-dark-950/40 border border-white/5 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                                        <div className="space-y-1">
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-bold text-slate-400">Proposed Time:</span>
+                                                <span className="font-bold text-white">
+                                                    {new Date(req.requested_time).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                </span>
+                                            </div>
+                                            {req.status === 'REJECTED' && req.rejection_reason && (
+                                                <p className="text-[11px] text-red-400 font-medium mt-1">
+                                                    Reason: <span className="italic">"{req.rejection_reason}"</span>
+                                                </p>
+                                            )}
+                                        </div>
+                                        <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider w-fit shrink-0 border
+                                            ${req.status === 'APPROVED' ? 'bg-green-500/15 border-green-500/25 text-green-400' :
+                                              req.status === 'PENDING' ? 'bg-amber-500/15 border-amber-500/25 text-amber-400 animate-pulse' :
+                                              'bg-red-500/15 border-red-500/25 text-red-400'}`}
+                                        >
+                                            {req.status}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 
-            {/* Handoff Verification Code */}
-            {['DELIVERY', 'PICKUP', 'TAKEAWAY'].includes(order.fulfillment_mode) && 
-             ['OUT_FOR_DELIVERY', 'READY'].includes(order.state) && (
+            {/* Handoff Verification Code (Refined visibility) */}
+            {((order.fulfillment_mode === 'DELIVERY' && order.state === 'OUT_FOR_DELIVERY') ||
+              (['PICKUP', 'TAKEAWAY'].includes(order.fulfillment_mode) && order.state === 'READY')) && (
                 <div className="glass-dark border border-primary-500/20 bg-primary-500/5 rounded-2xl md:rounded-3xl p-6 mb-8 shadow-xl text-center">
                     <h3 className="text-sm md:text-lg font-black text-primary-400 mb-2 uppercase tracking-wider">Handoff Verification Code</h3>
                     <p className="text-xs text-slate-400 mb-4">Please give this code to the driver or cashier to complete your order handoff.</p>
@@ -526,6 +595,74 @@ export default function OrderTracker() {
                             </div>
                         </motion.div>
                     </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Preorder Reschedule Modal */}
+            <AnimatePresence>
+                {showRescheduleModal && (
+                    <div className="fixed inset-0 bg-dark-950/80 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
+                            className="bg-dark-900 border border-white/10 w-full max-w-md rounded-3xl p-6 shadow-2xl relative text-left"
+                        >
+                            <button onClick={() => setShowRescheduleModal(false)} className="absolute top-4 right-4 p-2 hover:bg-white/5 rounded-full text-slate-400 hover:text-white transition-colors"><X size={20} /></button>
+                            
+                            <h3 className="text-xl font-black text-white uppercase tracking-tight mb-6">Reschedule Preorder</h3>
+
+                            <div className="bg-primary-500/10 border border-primary-500/20 p-4 rounded-2xl mb-6">
+                                <p className="text-[10px] text-primary-400 font-black uppercase tracking-wider mb-1">Current Expected Time</p>
+                                <p className="text-sm font-bold text-white">{new Date(order.scheduled_time).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                            </div>
+
+                            <form onSubmit={(e) => {
+                                e.preventDefault();
+                                const newTime = e.target.new_time.value;
+                                if (!newTime) return toast.error("Please pick a new schedule time.");
+
+                                const tid = toast.loading("Submitting reschedule request...");
+                                apiClient.post(`/orders/${order.id}/request_reschedule/`, {
+                                    scheduled_time: newTime
+                                }).then(res => {
+                                    toast.success("Reschedule request submitted successfully! Pending vendor approval.", { id: tid });
+                                    setShowRescheduleModal(false);
+                                    fetchOrder();
+                                }).catch(err => {
+                                    const msg = err.response?.data?.error || "Rescheduling failed.";
+                                    toast.error(msg, { id: tid });
+                                });
+                            }} className="space-y-6">
+                                <div>
+                                    <label className="block text-xs text-slate-400 font-bold uppercase mb-2">New Expected Time</label>
+                                    <input 
+                                        type="datetime-local"
+                                        name="new_time"
+                                        required
+                                        className="w-full bg-dark-950 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-500 text-sm font-medium"
+                                        style={{ colorScheme: 'dark' }}
+                                        min={new Date().toISOString().slice(0, 16)}
+                                    />
+                                </div>
+
+                                <div className="p-4 bg-primary-500/5 border border-primary-500/10 rounded-2xl flex gap-3">
+                                    <AlertCircle className="text-primary-400 shrink-0" size={18} />
+                                    <p className="text-[11px] text-slate-400 leading-relaxed">
+                                        Your request is sent to the restaurant for review. We validate that the kitchen has enough time to prepare your food before confirming.
+                                    </p>
+                                </div>
+
+                                <div className="flex gap-3 pt-2">
+                                    <button type="button" onClick={() => setShowRescheduleModal(false)} className="flex-1 py-3 rounded-xl bg-dark-800 font-bold hover:bg-dark-700 text-sm transition-colors text-white">Cancel</button>
+                                    <button 
+                                        type="submit" 
+                                        className="flex-1 py-3 rounded-xl bg-primary-500 text-dark-950 font-black hover:bg-primary-400 text-sm uppercase tracking-wider shadow-lg shadow-primary-500/20 transition-all cursor-pointer"
+                                    >
+                                        Request Change
+                                    </button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </div>
                 )}
             </AnimatePresence>
         </div>

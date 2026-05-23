@@ -75,8 +75,8 @@ export function useCurrency() {
         // Convert from base (TZS) to target: divide by rate
         const converted = rate > 0 ? num / rate : num;
 
-        // TZS-like currencies: no decimals; USD-like: 2 decimals
-        const decimals = rate >= 10 ? 0 : 2;
+        // TZS-like base currencies: no decimals; USD-like high-rate: 2 decimals
+        const decimals = rate >= 10 ? 2 : 0;
 
         return `${target.symbol} ${converted.toLocaleString(undefined, {
             minimumFractionDigits: decimals,
@@ -100,7 +100,7 @@ export function formatPriceStatic(amount) {
         if (def) {
             const rate = Number(def.rate_to_base);
             const converted = rate > 0 ? num / rate : num;
-            const decimals = rate >= 10 ? 0 : 2;
+            const decimals = rate >= 10 ? 2 : 0;
             return `${def.symbol} ${converted.toLocaleString(undefined, {
                 minimumFractionDigits: decimals,
                 maximumFractionDigits: decimals
