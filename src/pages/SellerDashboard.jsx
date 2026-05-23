@@ -699,8 +699,8 @@ export default function SellerDashboard() {
                     )}
                 </div>
 
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
-                    <div className="flex bg-dark-900 border border-white/10 rounded-xl p-1 overflow-x-auto lg:justify-center scrollbar-none no-scrollbar">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto min-w-0 lg:flex-1 lg:justify-end">
+                    <div className="flex bg-dark-900 border border-white/10 rounded-xl p-1 overflow-x-auto lg:justify-start scrollbar-none no-scrollbar flex-1 min-w-0">
                         {/* Operational Tabs */}
                         {(userRole === 'SELLER' || userRole === 'ADMIN' || userRole === 'CHEF') && (
                             <button onClick={() => setActiveView('KITCHEN')} className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all relative ${activeView === 'KITCHEN' ? 'bg-primary-500 text-dark-950 shadow-lg shadow-primary-500/20' : 'text-slate-400 hover:text-white'}`}>
@@ -744,13 +744,13 @@ export default function SellerDashboard() {
                         )}
                     </div>
 
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 shrink-0">
                         {canSeeAdminStuff && (
-                            <button onClick={() => setShowPOSModal(true)} className="flex-1 sm:flex-none bg-primary-500 hover:bg-primary-400 text-dark-950 font-bold px-4 py-2 rounded-xl flex items-center justify-center gap-2 text-sm">
+                            <button onClick={() => setShowPOSModal(true)} className="flex-1 sm:flex-none bg-primary-500 hover:bg-primary-400 text-dark-950 font-bold px-4 h-10 rounded-xl flex items-center justify-center gap-2 text-sm shrink-0">
                                 <ListOrdered size={18} /> POS
                             </button>
                         )}
-                        <button onClick={() => fetchDashboard()} className="p-2 bg-white/5 hover:bg-white/10 rounded-xl transition-colors text-slate-400">
+                        <button onClick={() => fetchDashboard()} className="w-10 h-10 bg-white/5 hover:bg-white/10 rounded-xl transition-colors text-slate-400 flex items-center justify-center shrink-0">
                             <Clock size={18} />
                         </button>
                     </div>
