@@ -551,7 +551,10 @@ export default function SellerDashboard() {
                     
                     if (['SELLER', 'ADMIN', 'SUPERUSER'].includes(userRole)) {
                         apiClient.get(`/stores/${store.id}/reviews/`)
-                            .then(r => setReviews(Array.isArray(r.data) ? r.data : []))
+                            .then(r => {
+                                const data = r.data || {};
+                                setReviews(data.results || (Array.isArray(data) ? data : []));
+                            })
                             .catch(() => {});
                     }
                 }

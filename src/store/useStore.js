@@ -119,6 +119,16 @@ export const useAppStore = create(
             })),
             clearUserLocation: () => set({
                 userLocation: { lat: null, lng: null, name: null, granted: false }
+            }),
+
+            // Favorites Slice
+            savedStores: [],
+            toggleSaveStore: (storeId) => set((state) => {
+                const safeSaved = Array.isArray(state.savedStores) ? state.savedStores : [];
+                if (safeSaved.includes(storeId)) {
+                    return { savedStores: safeSaved.filter(id => id !== storeId) };
+                }
+                return { savedStores: [...safeSaved, storeId] };
             })
         }),
         {
@@ -129,7 +139,8 @@ export const useAppStore = create(
                 cart: state.cart,
                 selectedStore: state.selectedStore,
                 activeReservation: state.activeReservation,
-                userLocation: state.userLocation
+                userLocation: state.userLocation,
+                savedStores: state.savedStores
             }),
         }
     )

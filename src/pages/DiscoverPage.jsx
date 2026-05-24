@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, MapPin, TrendingUp, Star, ChefHat, ShoppingBag, ArrowRight, Utensils, X, Store, Navigation, SlidersHorizontal, Clock, Compass, Tag, Map as MapIcon } from 'lucide-react';
+import { Search, MapPin, TrendingUp, Star, ChefHat, ShoppingBag, ArrowRight, Utensils, X, Store, Navigation, SlidersHorizontal, Clock, Compass, Tag, Map as MapIcon, Heart } from 'lucide-react';
 import apiClient from '../api/client';
 import { useAppStore } from '../store/useStore';
 import { useCurrency } from '../utils/useCurrency';
@@ -8,6 +8,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import OptimizedImage from '../components/OptimizedImage';
 import { useLocation } from '../hooks/useLocation';
+import { triggerHaptic, hapticPatterns } from '../utils/haptics';
 import SearchResults from '../components/SearchResults';
 import MapModal from '../components/MapModal';
 
@@ -81,7 +82,7 @@ export default function DiscoverPage() {
     const [activeFilter, setActiveFilter] = useState('ALL');
     const [initialLoading, setInitialLoading] = useState(true);
     const [storesLoading, setStoresLoading] = useState(false);
-    const { setSelectedStore, token } = useAppStore();
+    const { setSelectedStore, token, savedStores, toggleSaveStore } = useAppStore();
     const isAuthenticated = !!token;
     const { formatPrice } = useCurrency();
     const navigate = useNavigate();
@@ -265,6 +266,97 @@ export default function DiscoverPage() {
         );
     }
 
+
+    const safeSavedStores = Array.isArray(savedStores) ? savedStores : [];
+    const favoriteStores = stores.filter(s => safeSavedStores.includes(s.id));
+
+    const renderStoreCard = (store) => {
+        const isTop = stats.top_stores?.some(ts => ts.id === store.id);
+        const isSaved = safeSavedStores.includes(store.id);
+
+        return (
+            <motion.div
+                key={store.id}
+                whileHover={{ y: -4 }}
+                onClick={() => handleSelectStore(store)}
+                className="cursor-pointer glass-dark border border-white/5 rounded-3xl overflow-hidden hover:border-primary-500/50 transition-all flex flex-col group relative"
+            >
+                {/* Save/Favorite Button */}
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        triggerHaptic(hapticPatterns.light);
+                        toggleSaveStore(store.id);
+                        if (isSaved) {
+                            toast.success(`Removed ${store.name} from favorites`);
+                        } else {
+                            toast.success(`Saved ${store.name} to favorites`);
+                        }
+                    }}
+                    className="absolute top-2 right-2 z-20 p-2 rounded-xl bg-dark-950/60 backdrop-blur-md border border-white/10 hover:bg-white/10 hover:scale-110 active:scale-95 transition-all text-slate-400 group/heart"
+                    title={isSaved ? "Remove from Favorites" : "Save to Favorites"}
+                >
+                    <Heart size={14} className={`transition-colors ${isSaved ? 'fill-red-500 text-red-500 animate-pulse' : 'text-slate-300 hover:text-red-500'}`} />
+                </button>
+
+                {isTop && (
+                    <div className="absolute top-2 right-12 z-20 bg-orange-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-lg">HOT</div>
+                )}
+
+                <div className="relative w-full aspect-[4/3] bg-dark-900 border-b border-white/5 overflow-hidden">
+                    {store.image_url ? (
+                        <OptimizedImage src={store.image_url} alt={store.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" wrapperClassName="w-full h-full" placeholderType="store" />
+                    ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
+                            {store.store_type === 'SHOP' ? <ShoppingBag size={48} className="text-white/10" /> : <ChefHat size={48} className="text-white/10" />}
+                        </div>
+                    )}
+                    
+                    {/* Proximity distance badge */}
+                    {store.distance_km !== undefined && store.distance_km !== null && (
+                        <div className="absolute top-2 left-2 z-10">
+                            <span className="text-[9px] font-black px-1.5 py-0.5 rounded backdrop-blur-md border bg-dark-950/80 border-white/10 text-primary-400 flex items-center gap-1">
+                                <MapPin size={9} className="text-primary-400" /> {store.distance_km < 0.3 ? "Nearby" : `${store.distance_km} km`}
+                            </span>
+                        </div>
+                    )}
+                    
+                    <div className="absolute bottom-2 left-2 z-10">
+                        <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded backdrop-blur-md border ${store.store_type === 'SHOP' ? 'bg-purple-500/80 border-purple-500/50 text-white' : 'bg-dark-950/80 border-white/10 text-primary-400'}`}>
+                            {store.store_type}
+                        </span>
+                    </div>
+                    {!store.is_open && (
+                        <div className="absolute inset-0 bg-dark-950/65 z-10 flex items-center justify-center backdrop-blur-[1px]">
+                            <span className="bg-red-500/90 text-white font-black px-3 py-1 rounded-xl text-xs uppercase tracking-widest shadow-lg shadow-red-500/25 border border-red-400/20 transform -rotate-6 animate-fadeIn">
+                                Closed
+                            </span>
+                        </div>
+                    )}
+                </div>
+                <div className="p-5 flex flex-col flex-1 justify-between bg-gradient-to-t from-dark-950 to-transparent text-left">
+                    <div className="mb-4">
+                        <h3 className="text-lg font-bold text-white group-hover:text-primary-400 transition-colors line-clamp-1">{store.name}</h3>
+                        <p className="text-[11px] text-slate-500 mt-1 flex items-center gap-1 line-clamp-1">
+                            <MapPin size={11} className="text-slate-500 shrink-0" /> 
+                            {store.location || 'Online'}
+                        </p>
+                    </div>
+                    <div className="flex items-center justify-between mt-auto pt-3 border-t border-white/5">
+                        <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-400 font-bold">
+                            <Star size={10} className="text-yellow-500 fill-current" /> {parseFloat(store.avg_rating || 4.5).toFixed(1)}
+                            <span className="text-[10px] text-slate-700 font-black">·</span>
+                            <span className="text-[9px] text-slate-400 font-medium tracking-tighter flex items-center gap-1">
+                                <Clock size={9} className="text-slate-400 shrink-0" />
+                                {store.working_hours || '08:00 AM - 10:00 PM'}
+                            </span>
+                        </div>
+                        <ArrowRight size={14} className="text-primary-500 opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0 transform duration-300" />
+                    </div>
+                </div>
+            </motion.div>
+        );
+    };
 
     return (
         <div className="w-full max-w-6xl mx-auto py-4 md:py-6 px-2 md:px-4 space-y-8">
@@ -603,6 +695,19 @@ export default function DiscoverPage() {
                         </div>
                     )}
 
+                    {/* Saved Spots / Favorites */}
+                    {activeFilter === 'ALL' && favoriteStores.length > 0 && (
+                        <div className="px-2 mb-8">
+                            <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                                <Heart className="text-red-500 fill-current" size={20} /> 
+                                Your Favorites
+                            </h2>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                                {favoriteStores.map(store => renderStoreCard(store))}
+                            </div>
+                        </div>
+                    )}
+
                     {/* Main Directory / Grid */}
                     <div className="px-2">
                         <div className="flex items-center justify-between mb-4">
@@ -632,73 +737,7 @@ export default function DiscoverPage() {
                             </div>
                         ) : (
                             <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 transition-opacity duration-200 ${storesLoading ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
-                                {stores.map(store => {
-                                    const isTop = stats.top_stores?.some(ts => ts.id === store.id);
-                                    
-                                    return (
-                                        <motion.div
-                                            key={store.id}
-                                            whileHover={{ y: -4 }}
-                                            onClick={() => handleSelectStore(store)}
-                                            className="cursor-pointer glass-dark border border-white/5 rounded-3xl overflow-hidden hover:border-primary-500/50 transition-all flex flex-col group relative"
-                                        >
-                                            {isTop && (
-                                                <div className="absolute top-2 right-2 z-20 bg-orange-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-lg">HOT</div>
-                                            )}
-                                            <div className="relative w-full aspect-[4/3] bg-dark-900 overflow-hidden">
-                                                {store.image_url ? (
-                                                    <OptimizedImage src={store.image_url} alt={store.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" wrapperClassName="w-full h-full" placeholderType="store" />
-                                                ) : (
-                                                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
-                                                        {store.store_type === 'SHOP' ? <ShoppingBag size={48} className="text-white/10" /> : <ChefHat size={48} className="text-white/10" />}
-                                                    </div>
-                                                )}
-                                                
-                                                {/* Proximity distance badge */}
-                                                {store.distance_km !== undefined && store.distance_km !== null && (
-                                                    <div className="absolute top-2 left-2 z-10">
-                                                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded backdrop-blur-md border bg-dark-950/80 border-white/10 text-primary-400 flex items-center gap-1">
-                                                            <MapPin size={9} className="text-primary-400" /> {store.distance_km < 0.3 ? "Nearby" : `${store.distance_km} km`}
-                                                        </span>
-                                                    </div>
-                                                )}
-                                                
-                                                <div className="absolute bottom-2 left-2 z-10">
-                                                    <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded backdrop-blur-md border ${store.store_type === 'SHOP' ? 'bg-purple-500/80 border-purple-500/50 text-white' : 'bg-dark-950/80 border-white/10 text-primary-400'}`}>
-                                                        {store.store_type}
-                                                    </span>
-                                                </div>
-                                                {!store.is_open && (
-                                                    <div className="absolute inset-0 bg-dark-950/65 z-10 flex items-center justify-center backdrop-blur-[1px]">
-                                                        <span className="bg-red-500/90 text-white font-black px-3 py-1 rounded-xl text-xs uppercase tracking-widest shadow-lg shadow-red-500/25 border border-red-400/20 transform -rotate-6 animate-fadeIn">
-                                                            Closed
-                                                        </span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div className="p-5 flex flex-col flex-1 justify-between bg-gradient-to-t from-dark-950 to-transparent text-left">
-                                                <div className="mb-4">
-                                                    <h3 className="text-lg font-bold text-white group-hover:text-primary-400 transition-colors line-clamp-1">{store.name}</h3>
-                                                    <p className="text-[11px] text-slate-500 mt-1 flex items-center gap-1 line-clamp-1">
-                                                        <MapPin size={11} className="text-slate-500 shrink-0" /> 
-                                                        {store.location || 'Online'}
-                                                    </p>
-                                                </div>
-                                                <div className="flex items-center justify-between mt-auto pt-3 border-t border-white/5">
-                                                    <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-400 font-bold">
-                                                        <Star size={10} className="text-yellow-500 fill-current" /> {parseFloat(store.avg_rating || 4.5).toFixed(1)}
-                                                        <span className="text-[10px] text-slate-700 font-black">·</span>
-                                                        <span className="text-[9px] text-slate-400 font-medium tracking-tighter flex items-center gap-1">
-                                                            <Clock size={9} className="text-slate-400 shrink-0" />
-                                                            {store.working_hours || '08:00 AM - 10:00 PM'}
-                                                        </span>
-                                                    </div>
-                                                    <ArrowRight size={14} className="text-primary-500 opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0 transform duration-300" />
-                                                </div>
-                                            </div>
-                                        </motion.div>
-                                    );
-                                })}
+                                {stores.map(store => renderStoreCard(store))}
                             </div>
                         )}
                     </div>

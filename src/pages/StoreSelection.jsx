@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Store, MapPin, ChefHat, ArrowRight, ShoppingBag, Utensils, Star, Phone, Mail, Clock } from 'lucide-react';
+import { Store, MapPin, ChefHat, ArrowRight, ShoppingBag, Utensils, Star, Phone, Mail, Clock, Heart } from 'lucide-react';
 import { useAppStore } from '../store/useStore';
 import { useLocation } from '../hooks/useLocation';
+import { triggerHaptic, hapticPatterns } from '../utils/haptics';
 import apiClient from '../api/client';
 import toast from 'react-hot-toast';
 import OptimizedImage from '../components/OptimizedImage';
@@ -15,7 +16,7 @@ export default function StoreSelection() {
     const typeParam = searchParams.get('type');
     const [filter, setFilter] = useState(typeParam === 'RESTAURANT' || typeParam === 'SHOP' ? typeParam : 'ALL');
     const [showOpenOnly, setShowOpenOnly] = useState(false);
-    const { setSelectedStore } = useAppStore();
+    const { setSelectedStore, savedStores, toggleSaveStore } = useAppStore();
     const { location, hasLocation, requestLocation } = useLocation();
     const navigate = useNavigate();
 
@@ -41,20 +42,18 @@ export default function StoreSelection() {
                     params.lng = location.lng;
                 }
                 const response = await apiClient.get(url, { params });
-                // Fetch reviews for all stores concurrently
+                // Use review_count and avg_rating pre-calculated on the backend
                 const data = Array.isArray(response.data) ? response.data : [];
-                const storesWithReviews = await Promise.all(data.map(async (store) => {
-                    try {
-                        const reviewsRes = await apiClient.get(`/stores/${store.id}/reviews/`);
-                        const reviews = Array.isArray(reviewsRes.data) ? reviewsRes.data : [];
-                        const avgRating = reviews.length > 0
-                            ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
-                            : 'New';
-                        return { ...store, reviewCount: reviews.length, avgRating };
-                    } catch (e) {
-                        return { ...store, reviewCount: 0, avgRating: 'New' };
-                    }
-                }));
+                const storesWithReviews = data.map((store) => {
+                    const avgRating = store.avg_rating !== null && store.avg_rating !== undefined
+                        ? Number(store.avg_rating).toFixed(1)
+                        : 'New';
+                    return {
+                        ...store,
+                        reviewCount: store.review_count || 0,
+                        avgRating
+                    };
+                });
                 setStores(storesWithReviews);
             } catch (error) {
                 toast.error('Failed to load stores');
@@ -73,7 +72,10 @@ export default function StoreSelection() {
     };
 
     const storesArray = Array.isArray(stores) ? stores : [];
-    let filteredStores = filter === 'ALL' ? storesArray : storesArray.filter(s => s.store_type === filter);
+    const safeSavedStores = Array.isArray(savedStores) ? savedStores : [];
+    let filteredStores = filter === 'ALL' ? storesArray : 
+                         filter === 'SAVED' ? storesArray.filter(s => safeSavedStores.includes(s.id)) :
+                         storesArray.filter(s => s.store_type === filter);
     if (showOpenOnly) {
         filteredStores = filteredStores.filter(s => s.is_open);
     }
@@ -91,7 +93,8 @@ export default function StoreSelection() {
                     <div className="flex flex-wrap gap-2">
                         {[{ key: 'ALL', label: 'All', icon: <Store size={16} /> },
                         { key: 'RESTAURANT', label: 'Restaurants', icon: <Utensils size={16} /> },
-                        { key: 'SHOP', label: 'Shops', icon: <ShoppingBag size={16} /> }
+                        { key: 'SHOP', label: 'Shops', icon: <ShoppingBag size={16} /> },
+                        { key: 'SAVED', label: 'Saved', icon: <Heart size={16} className={filter === 'SAVED' ? 'fill-current text-red-500' : ''} /> }
                         ].map(tab => (
                             <button
                                 key={tab.key}
@@ -162,6 +165,25 @@ export default function StoreSelection() {
                                         <Store size={48} className="text-white/10" />
                                     </div>
                                 )}
+
+                                {/* Save/Favorite Button */}
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        triggerHaptic(hapticPatterns.light);
+                                        toggleSaveStore(store.id);
+                                        const isSaved = safeSavedStores.includes(store.id);
+                                        if (isSaved) {
+                                            toast.success(`Removed ${store.name} from favorites`);
+                                        } else {
+                                            toast.success(`Saved ${store.name} to favorites`);
+                                        }
+                                    }}
+                                    className="absolute top-2 right-2 z-20 p-2 rounded-xl bg-dark-950/60 backdrop-blur-md border border-white/10 hover:bg-white/10 hover:scale-110 active:scale-95 transition-all text-slate-400 group/heart"
+                                    title={safeSavedStores.includes(store.id) ? "Remove from Favorites" : "Save to Favorites"}
+                                >
+                                    <Heart size={14} className={`transition-colors ${safeSavedStores.includes(store.id) ? 'fill-red-500 text-red-500 animate-pulse' : 'text-slate-300 hover:text-red-500'}`} />
+                                </button>
                                 
                                 {/* Proximity distance badge */}
                                 {store.distance_km !== undefined && store.distance_km !== null && (
