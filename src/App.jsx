@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useAppStore } from './store/useStore';
-import CustomerDashboard from './pages/CustomerDashboard';
-import SellerDashboard from './pages/SellerDashboard';
+
+// Static imports for common/lightweight pages (always needed)
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import StoreSelection from './pages/StoreSelection';
@@ -11,19 +11,24 @@ import GlobalCart from './pages/GlobalCart';
 import OrderConfirmation from './pages/OrderConfirmation';
 import OrderTracker from './pages/OrderTracker';
 import ScanHandler from './pages/ScanHandler';
-import TableQRCodes from './pages/TableQRCodes';
-import ReservationForm from './pages/ReservationForm';
-import ReservationManager from './pages/ReservationManager';
-import InventoryDashboard from './pages/InventoryDashboard';
-import AdminDashboard from './pages/AdminDashboard';
-import MenuBuilder from './pages/seller/MenuBuilder';
-import SellerAnalytics from './pages/seller/SellerAnalytics';
+import CustomerDashboard from './pages/CustomerDashboard';
 import CustomerOrders from './pages/CustomerOrders';
-import DeliveryDashboard from './pages/staff/DeliveryDashboard';
-import PublicDisplay from './pages/PublicDisplay';
 import DiscoverPage from './pages/DiscoverPage';
 import FAQ from './pages/FAQ';
 import TermsAndConditions from './pages/TermsAndConditions';
+import ReservationForm from './pages/ReservationForm';
+
+// Lazy imports for heavy role-specific pages (loaded on demand)
+const SellerDashboard = lazy(() => import('./pages/SellerDashboard'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const MenuBuilder = lazy(() => import('./pages/seller/MenuBuilder'));
+const SellerAnalytics = lazy(() => import('./pages/seller/SellerAnalytics'));
+const DeliveryDashboard = lazy(() => import('./pages/staff/DeliveryDashboard'));
+const InventoryDashboard = lazy(() => import('./pages/InventoryDashboard'));
+const ReservationManager = lazy(() => import('./pages/ReservationManager'));
+const TableQRCodes = lazy(() => import('./pages/TableQRCodes'));
+const PublicDisplay = lazy(() => import('./pages/PublicDisplay'));
+
 import { Utensils, LayoutDashboard, LogOut, ShoppingBag, TerminalSquare, QrCode, Calendar, Package, Shield, Store, Menu, X, Navigation, Tv, BarChart3, Compass, UtensilsCrossed, HelpCircle, ListOrdered, ShoppingCart, TrendingUp, LayoutGrid } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import { setStoreResetFn } from './api/client';
@@ -460,36 +465,43 @@ function App() {
         }} />
 
         <main className="flex-1 w-full max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8 pb-20 lg:pb-8">
-          <Routes>
-            {/* Public App Routes */}
-            <Route path="/" element={<DiscoverPage />} />
-            <Route path="/faq" element={<FAQ />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Signup />} />
-            <Route path="/terms" element={<TermsAndConditions />} />
-            <Route path="/tv/:storeId?" element={<PublicDisplay />} />
+          <Suspense fallback={
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+              <div className="w-10 h-10 border-3 border-primary-500/30 border-t-primary-500 rounded-full animate-spin" />
+              <p className="text-sm text-slate-400 animate-pulse">Loading...</p>
+            </div>
+          }>
+            <Routes>
+              {/* Public App Routes */}
+              <Route path="/" element={<DiscoverPage />} />
+              <Route path="/faq" element={<FAQ />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Signup />} />
+              <Route path="/terms" element={<TermsAndConditions />} />
+              <Route path="/tv/:storeId?" element={<PublicDisplay />} />
 
-            {/* Customer Routes (Accessible by any authenticated user) */}
-            <Route path="/stores" element={<ProtectedRoute><StoreSelection /></ProtectedRoute>} />
-            <Route path="/menu" element={<ProtectedRoute><CustomerDashboard /></ProtectedRoute>} />
-            <Route path="/cart" element={<ProtectedRoute><GlobalCart /></ProtectedRoute>} />
-            <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
-            <Route path="/orders" element={<ProtectedRoute><CustomerOrders /></ProtectedRoute>} />
-            <Route path="/order/confirmation/:id" element={<ProtectedRoute><OrderConfirmation /></ProtectedRoute>} />
-            <Route path="/order/track/:id" element={<ProtectedRoute><OrderTracker /></ProtectedRoute>} />
-            <Route path="/scan" element={<ProtectedRoute><ScanHandler /></ProtectedRoute>} />
-            <Route path="/reserve" element={<ProtectedRoute><ReservationForm /></ProtectedRoute>} />
-            <Route path="/seller" element={<ProtectedRoute><SellerDashboard /></ProtectedRoute>} />
-            <Route path="/seller/menu" element={<ProtectedRoute role="SELLER"><MenuBuilder /></ProtectedRoute>} />
-            <Route path="/seller/reservations" element={<ProtectedRoute role="SELLER"><ReservationManager /></ProtectedRoute>} />
-            <Route path="/seller/inventory" element={<ProtectedRoute role="SELLER"><InventoryDashboard /></ProtectedRoute>} />
-            <Route path="/seller/analytics" element={<ProtectedRoute role="SELLER"><SellerAnalytics /></ProtectedRoute>} />
-            <Route path="/seller/qrcodes" element={<ProtectedRoute role="SELLER"><TableQRCodes /></ProtectedRoute>} />
-            <Route path="/admin" element={<ProtectedRoute role="ADMIN"><AdminDashboard /></ProtectedRoute>} />
+              {/* Customer Routes (Accessible by any authenticated user) */}
+              <Route path="/stores" element={<ProtectedRoute><StoreSelection /></ProtectedRoute>} />
+              <Route path="/menu" element={<ProtectedRoute><CustomerDashboard /></ProtectedRoute>} />
+              <Route path="/cart" element={<ProtectedRoute><GlobalCart /></ProtectedRoute>} />
+              <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
+              <Route path="/orders" element={<ProtectedRoute><CustomerOrders /></ProtectedRoute>} />
+              <Route path="/order/confirmation/:id" element={<ProtectedRoute><OrderConfirmation /></ProtectedRoute>} />
+              <Route path="/order/track/:id" element={<ProtectedRoute><OrderTracker /></ProtectedRoute>} />
+              <Route path="/scan" element={<ProtectedRoute><ScanHandler /></ProtectedRoute>} />
+              <Route path="/reserve" element={<ProtectedRoute><ReservationForm /></ProtectedRoute>} />
+              <Route path="/seller" element={<ProtectedRoute><SellerDashboard /></ProtectedRoute>} />
+              <Route path="/seller/menu" element={<ProtectedRoute role="SELLER"><MenuBuilder /></ProtectedRoute>} />
+              <Route path="/seller/reservations" element={<ProtectedRoute role="SELLER"><ReservationManager /></ProtectedRoute>} />
+              <Route path="/seller/inventory" element={<ProtectedRoute role="SELLER"><InventoryDashboard /></ProtectedRoute>} />
+              <Route path="/seller/analytics" element={<ProtectedRoute role="SELLER"><SellerAnalytics /></ProtectedRoute>} />
+              <Route path="/seller/qrcodes" element={<ProtectedRoute role="SELLER"><TableQRCodes /></ProtectedRoute>} />
+              <Route path="/admin" element={<ProtectedRoute role="ADMIN"><AdminDashboard /></ProtectedRoute>} />
 
-            {/* Delivery Routes */}
-            <Route path="/delivery" element={<ProtectedRoute role="DELIVERY"><DeliveryDashboard /></ProtectedRoute>} />
-          </Routes>
+              {/* Delivery Routes */}
+              <Route path="/delivery" element={<ProtectedRoute role="DELIVERY"><DeliveryDashboard /></ProtectedRoute>} />
+            </Routes>
+          </Suspense>
         </main>
         <BottomNav moreMenuOpen={moreMenuOpen} onToggleMore={() => setMoreMenuOpen(!moreMenuOpen)} />
         <BottomDrawer isOpen={moreMenuOpen} onClose={() => setMoreMenuOpen(false)} />
