@@ -24,7 +24,7 @@ import PublicDisplay from './pages/PublicDisplay';
 import DiscoverPage from './pages/DiscoverPage';
 import FAQ from './pages/FAQ';
 import TermsAndConditions from './pages/TermsAndConditions';
-import { Utensils, LayoutDashboard, LogOut, ShoppingBag, TerminalSquare, QrCode, Calendar, Package, Shield, Store, Menu, X, Navigation, Tv, BarChart3, Compass, UtensilsCrossed, HelpCircle, ListOrdered, ShoppingCart, TrendingUp } from 'lucide-react';
+import { Utensils, LayoutDashboard, LogOut, ShoppingBag, TerminalSquare, QrCode, Calendar, Package, Shield, Store, Menu, X, Navigation, Tv, BarChart3, Compass, UtensilsCrossed, HelpCircle, ListOrdered, ShoppingCart, TrendingUp, LayoutGrid } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import { setStoreResetFn } from './api/client';
 
@@ -158,7 +158,7 @@ function TopNavigation() {
   );
 }
 
-function BottomNav() {
+function BottomNav({ moreMenuOpen, onToggleMore }) {
   const { userRole, cart } = useAppStore();
   const location = useLocation();
   if (!userRole) return null;
@@ -190,25 +190,232 @@ function BottomNav() {
           <Link to="/seller/menu" className={`flex flex-col items-center p-2 ${isActive('/seller/menu') ? 'text-primary-500' : 'text-slate-400'}`}><Utensils size={20} /><span className="text-[10px] mt-1">Menu</span></Link>
           <Link to="/seller/analytics" className={`flex flex-col items-center p-2 ${isActive('/seller/analytics') ? 'text-primary-500' : 'text-slate-400'}`}><BarChart3 size={20} /><span className="text-[10px] mt-1">Analytics</span></Link>
           <Link to="/seller/inventory" className={`flex flex-col items-center p-2 ${isActive('/seller/inventory') ? 'text-primary-500' : 'text-slate-400'}`}><Package size={20} /><span className="text-[10px] mt-1">Stock</span></Link>
+          <button onClick={onToggleMore} className={`flex flex-col items-center p-2 transition-colors ${moreMenuOpen ? 'text-primary-500' : 'text-slate-400 hover:text-white'}`}><LayoutGrid size={20} /><span className="text-[10px] mt-1">More</span></button>
         </>
       )}
       {userRole === 'ACCOUNTANT' && (
         <>
           <Link to="/seller" className={`flex flex-col items-center p-2 ${isActive('/seller') ? 'text-primary-500' : 'text-slate-400'}`}><TerminalSquare size={20} /><span className="text-[10px] mt-1">Dashboard</span></Link>
+          <button onClick={onToggleMore} className={`flex flex-col items-center p-2 transition-colors ${moreMenuOpen ? 'text-primary-500' : 'text-slate-400 hover:text-white'}`}><LayoutGrid size={20} /><span className="text-[10px] mt-1">More</span></button>
         </>
       )}
       {userRole === 'DELIVERY' && (
         <>
           <Link to="/seller" className={`flex flex-col items-center p-2 ${isActive('/seller') ? 'text-primary-500' : 'text-slate-400'}`}><TerminalSquare size={20} /><span className="text-[10px] mt-1">Dashboard</span></Link>
           <Link to="/delivery" className={`flex flex-col items-center p-2 ${isActive('/delivery') ? 'text-primary-500' : 'text-slate-400'}`}><Navigation size={20} /><span className="text-[10px] mt-1">Deliveries</span></Link>
+          <button onClick={onToggleMore} className={`flex flex-col items-center p-2 transition-colors ${moreMenuOpen ? 'text-primary-500' : 'text-slate-400 hover:text-white'}`}><LayoutGrid size={20} /><span className="text-[10px] mt-1">More</span></button>
         </>
       )}
     </nav>
   );
 }
 
+function BottomDrawer({ isOpen, onClose }) {
+  const { userRole, clearAuth } = useAppStore();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  if (!userRole) return null;
+
+  const handleLinkClick = (path) => {
+    onClose();
+    navigate(path);
+  };
+
+  const handleLogout = () => {
+    onClose();
+    clearAuth();
+    navigate('/login');
+  };
+
+  // Define links based on roles
+  const getLinks = () => {
+    const links = [];
+    
+    // Admin / Superuser exclusive
+    if (['ADMIN', 'SUPERUSER'].includes(userRole)) {
+      links.push({
+        path: '/admin',
+        label: 'Platform Admin',
+        icon: <Shield className="text-purple-400" size={20} />,
+        description: 'Global system overview & settings'
+      });
+    }
+
+    // Seller / Admin / Superuser
+    if (['SELLER', 'ADMIN', 'SUPERUSER'].includes(userRole)) {
+      links.push(
+        {
+          path: '/seller',
+          label: 'Seller Dashboard',
+          icon: <TerminalSquare className="text-primary-400" size={20} />,
+          description: 'Live order feeds & queue metrics'
+        },
+        {
+          path: '/seller/reservations',
+          label: 'Host / Reservations',
+          icon: <Calendar className="text-green-400" size={20} />,
+          description: 'Floor plans & seated guest sheets'
+        },
+        {
+          path: '/seller/menu',
+          label: 'Menu Builder',
+          icon: <Utensils className="text-amber-400" size={20} />,
+          description: 'Manage products, prices & categories'
+        },
+        {
+          path: '/seller/inventory',
+          label: 'Stock / Inventory',
+          icon: <Package className="text-blue-400" size={20} />,
+          description: 'Inventory levels & stock adjustments'
+        },
+        {
+          path: '/seller/analytics',
+          label: 'Analytics',
+          icon: <BarChart3 className="text-rose-400" size={20} />,
+          description: 'Platform revenue & daily trends'
+        },
+        {
+          path: '/seller/qrcodes',
+          label: 'Table QR Codes',
+          icon: <QrCode className="text-indigo-400" size={20} />,
+          description: 'Generate scan-to-order codes'
+        },
+        {
+          path: '/tv/1',
+          label: 'Public TV Display',
+          icon: <Tv className="text-teal-400" size={20} />,
+          description: 'Real-time kitchen order board'
+        }
+      );
+    } else {
+      // Specialized staff roles (Chef, Accountant, Delivery)
+      if (userRole === 'CHEF') {
+        links.push(
+          {
+            path: '/seller',
+            label: 'Kitchen Dashboard',
+            icon: <TerminalSquare className="text-amber-400" size={20} />,
+            description: 'Live kitchen orders & prep queue'
+          },
+          {
+            path: '/tv/1',
+            label: 'TV Display',
+            icon: <Tv className="text-teal-400" size={20} />,
+            description: 'Public kitchen order board'
+          }
+        );
+      }
+      if (userRole === 'ACCOUNTANT') {
+        links.push({
+          path: '/seller',
+          label: 'Accounting Center',
+          icon: <TerminalSquare className="text-emerald-400" size={20} />,
+          description: 'Payment verification & invoices'
+        });
+      }
+      if (userRole === 'DELIVERY') {
+        links.push(
+          {
+            path: '/seller',
+            label: 'Driver Dashboard',
+            icon: <TerminalSquare className="text-blue-400" size={20} />,
+            description: 'Dispatch feeds & order queue'
+          },
+          {
+            path: '/delivery',
+            label: 'Driver Dispatch',
+            icon: <Navigation className="text-indigo-400" size={20} />,
+            description: 'Fulfillment & active deliveries'
+          }
+        );
+      }
+    }
+
+    return links;
+  };
+
+  const links = getLinks();
+  if (links.length === 0) return null;
+
+  return (
+    <>
+      {/* Backdrop Overlay */}
+      <div 
+        onClick={onClose}
+        className={`fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+      />
+
+      {/* Slide-Up Drawer */}
+      <div 
+        className={`fixed bottom-0 left-0 right-0 z-[101] max-h-[85vh] bg-dark-950/98 backdrop-blur-xl border-t border-white/10 rounded-t-[2.5rem] px-6 pt-4 pb-8 transition-transform duration-300 ease-out transform ${isOpen ? 'translate-y-0' : 'translate-y-full'} overflow-y-auto`}
+      >
+        {/* Handle bar */}
+        <div className="flex justify-center mb-6">
+          <div className="w-12 h-1 bg-white/20 rounded-full" />
+        </div>
+
+        {/* Header */}
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h3 className="text-lg font-black text-white uppercase tracking-wider">Control Directory</h3>
+            <p className="text-xs text-slate-400">All tools authorized for your role</p>
+          </div>
+          <button 
+            onClick={onClose} 
+            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* 2-Column Grid Directory */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {links.map((link, idx) => {
+            const active = location.pathname === link.path;
+            return (
+              <button
+                key={idx}
+                onClick={() => handleLinkClick(link.path)}
+                className={`flex items-start gap-4 p-4 rounded-2xl text-left transition-all border ${active ? 'bg-primary-500/10 border-primary-500/30' : 'bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/10'}`}
+              >
+                <div className={`p-3 rounded-xl ${active ? 'bg-primary-500/20 text-primary-400' : 'bg-dark-900 text-slate-400'}`}>
+                  {link.icon}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className={`block text-sm font-bold truncate ${active ? 'text-primary-400' : 'text-white'}`}>
+                    {link.label}
+                  </span>
+                  <span className="block text-xs text-slate-400 line-clamp-2 mt-0.5 leading-snug">
+                    {link.description}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Footer Actions */}
+        <div className="mt-8 pt-6 border-t border-white/5 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            <span className="text-xs text-slate-400 uppercase font-black tracking-widest">{userRole}</span>
+          </div>
+          <button 
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all text-xs font-bold uppercase tracking-wider"
+          >
+            <LogOut size={14} /> Logout
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
 function App() {
   const clearAuth = useAppStore(state => state.clearAuth);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
 
   useEffect(() => {
     setStoreResetFn(clearAuth);
@@ -255,7 +462,8 @@ function App() {
             <Route path="/delivery" element={<ProtectedRoute role="DELIVERY"><DeliveryDashboard /></ProtectedRoute>} />
           </Routes>
         </main>
-        <BottomNav />
+        <BottomNav moreMenuOpen={moreMenuOpen} onToggleMore={() => setMoreMenuOpen(!moreMenuOpen)} />
+        <BottomDrawer isOpen={moreMenuOpen} onClose={() => setMoreMenuOpen(false)} />
       </div>
     </Router>
   );

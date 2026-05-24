@@ -4,7 +4,7 @@ import {
     Shield, Store, Users, UserPlus, Home, Save, BarChart3, TrendingUp, 
     DollarSign, Bell, Plus, Edit2, Trash2, Check, X, Ban, Power, 
     Phone, Mail, MessageSquare, AlertTriangle, RefreshCw, Search,
-    Award, Zap, Coins, Star
+    Award, Zap, Coins, Star, LayoutGrid
 } from 'lucide-react';
 import { 
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, 
@@ -17,6 +17,7 @@ import { useAppStore } from '../store/useStore';
 
 export default function AdminDashboard() {
     const [stores, setStores] = useState([]);
+    const [showGridModal, setShowGridModal] = useState(false);
     const [users, setUsers] = useState([]);
     const [orders, setOrders] = useState([]);
     const [globalPaymentMethods, setGlobalPaymentMethods] = useState([]);
@@ -505,27 +506,37 @@ export default function AdminDashboard() {
             </div>
 
             {/* Mobile Scrollable top navigation tabs */}
-            <div className="flex bg-dark-900 border border-white/5 rounded-2xl p-1.5 overflow-x-auto w-full mb-8 scrollbar-none no-scrollbar sticky top-2 z-30 backdrop-blur-md bg-dark-900/90 gap-1.5">
-                <button onClick={() => setActiveTab('ANALYTICS')} className={`px-4 py-2 rounded-xl text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${activeTab === 'ANALYTICS' ? 'bg-primary-500 text-dark-950 shadow-lg shadow-primary-500/20' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
-                    <BarChart3 size={16} /> Analytics
-                </button>
-                <button onClick={() => setActiveTab('MANAGEMENT')} className={`px-4 py-2 rounded-xl text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${activeTab === 'MANAGEMENT' ? 'bg-primary-500 text-dark-950 shadow-lg shadow-primary-500/20' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
-                    <Store size={16} /> Stores Hub
-                </button>
-                <button onClick={() => setActiveTab('PAYMENTS')} className={`px-4 py-2 rounded-xl text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${activeTab === 'PAYMENTS' ? 'bg-primary-500 text-dark-950 shadow-lg shadow-primary-500/20' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
-                    <DollarSign size={16} /> Payments
-                </button>
-                <button onClick={() => setActiveTab('COMMISSIONS')} className={`px-4 py-2 rounded-xl text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${activeTab === 'COMMISSIONS' ? 'bg-primary-500 text-dark-950 shadow-lg shadow-primary-500/20' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
-                    <Coins size={16} /> Commissions
-                </button>
-                <button onClick={() => setActiveTab('USERS')} className={`px-4 py-2 rounded-xl text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${activeTab === 'USERS' ? 'bg-primary-500 text-dark-950 shadow-lg shadow-primary-500/20' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
-                    <Users size={16} /> Roles
-                </button>
-                <button onClick={() => setActiveTab('NOTICES')} className={`px-4 py-2 rounded-xl text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${activeTab === 'NOTICES' ? 'bg-primary-500 text-dark-950 shadow-lg shadow-primary-500/20' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
-                    <Bell size={16} /> Notices
-                </button>
-                <button onClick={() => setActiveTab('SUPPORT_SETTINGS')} className={`px-4 py-2 rounded-xl text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${activeTab === 'SUPPORT_SETTINGS' ? 'bg-primary-500 text-dark-950 shadow-lg shadow-primary-500/20' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
-                    <Shield size={16} /> Support & Safety
+            <div className="flex items-center gap-2 mb-8 sticky top-2 z-30">
+                <div className="flex bg-dark-900 border border-white/5 rounded-2xl p-1.5 overflow-x-auto w-full backdrop-blur-md bg-dark-900/90 gap-1.5 scrollbar-none no-scrollbar flex-1 min-w-0">
+                    <button onClick={() => setActiveTab('ANALYTICS')} className={`px-4 py-2 rounded-xl text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${activeTab === 'ANALYTICS' ? 'bg-primary-500 text-dark-950 shadow-lg shadow-primary-500/20' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
+                        <BarChart3 size={16} /> Analytics
+                    </button>
+                    <button onClick={() => setActiveTab('MANAGEMENT')} className={`px-4 py-2 rounded-xl text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${activeTab === 'MANAGEMENT' ? 'bg-primary-500 text-dark-950 shadow-lg shadow-primary-500/20' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
+                        <Store size={16} /> Stores Hub
+                    </button>
+                    <button onClick={() => setActiveTab('PAYMENTS')} className={`px-4 py-2 rounded-xl text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${activeTab === 'PAYMENTS' ? 'bg-primary-500 text-dark-950 shadow-lg shadow-primary-500/20' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
+                        <DollarSign size={16} /> Payments
+                    </button>
+                    <button onClick={() => setActiveTab('COMMISSIONS')} className={`px-4 py-2 rounded-xl text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${activeTab === 'COMMISSIONS' ? 'bg-primary-500 text-dark-950 shadow-lg shadow-primary-500/20' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
+                        <Coins size={16} /> Commissions
+                    </button>
+                    <button onClick={() => setActiveTab('USERS')} className={`px-4 py-2 rounded-xl text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${activeTab === 'USERS' ? 'bg-primary-500 text-dark-950 shadow-lg shadow-primary-500/20' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
+                        <Users size={16} /> Roles
+                    </button>
+                    <button onClick={() => setActiveTab('NOTICES')} className={`px-4 py-2 rounded-xl text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${activeTab === 'NOTICES' ? 'bg-primary-500 text-dark-950 shadow-lg shadow-primary-500/20' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
+                        <Bell size={16} /> Notices
+                    </button>
+                    <button onClick={() => setActiveTab('SUPPORT_SETTINGS')} className={`px-4 py-2 rounded-xl text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${activeTab === 'SUPPORT_SETTINGS' ? 'bg-primary-500 text-dark-950 shadow-lg shadow-primary-500/20' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
+                        <Shield size={16} /> Support & Safety
+                    </button>
+                </div>
+                {/* Mobile localized grid switcher trigger */}
+                <button 
+                    onClick={() => setShowGridModal(true)} 
+                    className="lg:hidden w-10 h-10 shrink-0 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer backdrop-blur-md"
+                    title="Control Panel Map"
+                >
+                    <LayoutGrid size={16} />
                 </button>
             </div>
 
@@ -1786,6 +1797,118 @@ export default function AdminDashboard() {
                             </form>
                         </motion.div>
                     </div>
+                )}
+            </AnimatePresence>
+
+            {/* Local Dashboard Tab Swapping Grid Drawer */}
+            <AnimatePresence>
+                {showGridModal && (
+                    <>
+                        {/* Backdrop */}
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setShowGridModal(false)}
+                            className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"
+                        />
+                        {/* Drawer */}
+                        <motion.div
+                            initial={{ y: '100%' }}
+                            animate={{ y: 0 }}
+                            exit={{ y: '100%' }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                            className="fixed bottom-0 left-0 right-0 z-[101] max-h-[80vh] bg-dark-950/98 backdrop-blur-xl border-t border-white/10 rounded-t-[2.5rem] px-6 pt-4 pb-8 overflow-y-auto"
+                        >
+                            {/* Handle */}
+                            <div className="flex justify-center mb-6">
+                                <div className="w-12 h-1 bg-white/20 rounded-full" />
+                            </div>
+
+                            {/* Header */}
+                            <div className="flex justify-between items-center mb-6">
+                                <div>
+                                    <h3 className="text-lg font-black text-white uppercase tracking-wider">Admin Control Panel</h3>
+                                    <p className="text-xs text-slate-400">Select an administrative console panel</p>
+                                </div>
+                                <button 
+                                    onClick={() => setShowGridModal(false)} 
+                                    className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
+                                >
+                                    <X size={18} />
+                                </button>
+                            </div>
+
+                            {/* Grid Layout */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <button
+                                    onClick={() => { setActiveTab('ANALYTICS'); setShowGridModal(false); }}
+                                    className={`flex flex-col items-center justify-center p-5 rounded-2xl border transition-all text-center ${activeTab === 'ANALYTICS' ? 'bg-primary-500/10 border-primary-500/30 text-primary-400' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
+                                >
+                                    <BarChart3 size={24} className="mb-2" />
+                                    <span className="text-xs font-bold uppercase tracking-wider">Analytics</span>
+                                </button>
+
+                                <button
+                                    onClick={() => { setActiveTab('MANAGEMENT'); setShowGridModal(false); }}
+                                    className={`flex flex-col items-center justify-center p-5 rounded-2xl border transition-all text-center ${activeTab === 'MANAGEMENT' ? 'bg-primary-500/10 border-primary-500/30 text-primary-400' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
+                                >
+                                    <Store size={24} className="mb-2" />
+                                    <span className="text-xs font-bold uppercase tracking-wider">Stores Hub</span>
+                                </button>
+
+                                <button
+                                    onClick={() => { setActiveTab('PAYMENTS'); setShowGridModal(false); }}
+                                    className={`flex flex-col items-center justify-center p-5 rounded-2xl border transition-all text-center relative ${activeTab === 'PAYMENTS' ? 'bg-primary-500/10 border-primary-500/30 text-primary-400' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
+                                >
+                                    <DollarSign size={24} className="mb-2" />
+                                    <span className="text-xs font-bold uppercase tracking-wider">Payments</span>
+                                    {pendingPayments?.length > 0 && (
+                                        <span className="absolute top-2 right-2 bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full border-2 border-dark-950 font-black animate-pulse">
+                                            {pendingPayments.length}
+                                        </span>
+                                    )}
+                                </button>
+
+                                <button
+                                    onClick={() => { setActiveTab('COMMISSIONS'); setShowGridModal(false); }}
+                                    className={`flex flex-col items-center justify-center p-5 rounded-2xl border transition-all text-center ${activeTab === 'COMMISSIONS' ? 'bg-primary-500/10 border-primary-500/30 text-primary-400' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
+                                >
+                                    <Coins size={24} className="mb-2" />
+                                    <span className="text-xs font-bold uppercase tracking-wider">Commissions</span>
+                                </button>
+
+                                <button
+                                    onClick={() => { setActiveTab('USERS'); setShowGridModal(false); }}
+                                    className={`flex flex-col items-center justify-center p-5 rounded-2xl border transition-all text-center ${activeTab === 'USERS' ? 'bg-primary-500/10 border-primary-500/30 text-primary-400' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
+                                >
+                                    <Users size={24} className="mb-2" />
+                                    <span className="text-xs font-bold uppercase tracking-wider">Roles</span>
+                                </button>
+
+                                <button
+                                    onClick={() => { setActiveTab('NOTICES'); setShowGridModal(false); }}
+                                    className={`flex flex-col items-center justify-center p-5 rounded-2xl border transition-all text-center ${activeTab === 'NOTICES' ? 'bg-primary-500/10 border-primary-500/30 text-primary-400' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
+                                >
+                                    <Bell size={24} className="mb-2" />
+                                    <span className="text-xs font-bold uppercase tracking-wider">Notices</span>
+                                </button>
+
+                                <button
+                                    onClick={() => { setActiveTab('SUPPORT_SETTINGS'); setShowGridModal(false); }}
+                                    className={`flex flex-col items-center justify-center p-5 rounded-2xl border transition-all text-center relative ${activeTab === 'SUPPORT_SETTINGS' ? 'bg-primary-500/10 border-primary-500/30 text-primary-400' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
+                                >
+                                    <Shield size={24} className="mb-2" />
+                                    <span className="text-xs font-bold uppercase tracking-wider">Support & Safety</span>
+                                    {platformAnalytics?.safety_disputes?.locked_orders_count > 0 && (
+                                        <span className="absolute top-2 right-2 bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full border-2 border-dark-950 font-black animate-bounce">
+                                            {platformAnalytics.safety_disputes.locked_orders_count}
+                                        </span>
+                                    )}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </>
                 )}
             </AnimatePresence>
         </div>

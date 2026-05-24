@@ -6,7 +6,7 @@ import {
     SquareTerminal, Star, MessageSquare, Truck, Bell, QrCode, Calendar, 
     Store, Plus, Edit2, Trash2, X, ShoppingBag, ShoppingCart, Users, 
     UserPlus, Key, Power, Search, BarChart3, Settings, Save, Phone, Mail, 
-    TerminalSquare, Shield, RefreshCw, AlertTriangle, Image, Upload
+    TerminalSquare, Shield, RefreshCw, AlertTriangle, Image, Upload, LayoutGrid
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAppStore } from '../store/useStore';
@@ -44,6 +44,7 @@ export default function SellerDashboard() {
                         userRole === 'ACCOUNTANT' ? 'ACCOUNTING' : 'KITCHEN';
 
     const [activeView, setActiveView] = useState(defaultView); 
+    const [showGridModal, setShowGridModal] = useState(false);
     const [reviews, setReviews] = useState([]);
     const [notices, setNotices] = useState([]);
     const [wsConnected, setWsConnected] = useState(false);
@@ -668,6 +669,67 @@ export default function SellerDashboard() {
             });
     };
 
+    const getViewOptions = () => {
+        const options = [];
+        if (canSeeKitchen) {
+            options.push({
+                id: 'KITCHEN',
+                label: 'Kitchen View',
+                icon: <Utensils size={20} className="text-amber-400" />,
+                badge: kitchenCount,
+                description: 'Live prep queues & kitchen orders'
+            });
+        }
+        if (canSeeAccounting) {
+            options.push({
+                id: 'ACCOUNTING',
+                label: 'Accounting View',
+                icon: <CreditCard size={20} className="text-emerald-400" />,
+                badge: accountingCount,
+                description: 'Payment verification & invoices'
+            });
+        }
+        if (canSeeDelivery) {
+            options.push({
+                id: 'DELIVERY',
+                label: 'Delivery View',
+                icon: <Truck size={20} className="text-purple-400" />,
+                badge: deliveryCount,
+                description: 'Dispatch feeds & order deliveries'
+            });
+        }
+        if (canSeeAdminStuff) {
+            options.push({
+                id: 'TEAM',
+                label: 'Team Management',
+                icon: <Users size={20} className="text-blue-400" />,
+                description: 'Manage staff, roles & credentials'
+            });
+            options.push({
+                id: 'BILLING',
+                label: 'Platform Billing',
+                icon: <CreditCard size={20} className="text-rose-400" />,
+                description: 'Store invoices & subscription ledger'
+            });
+        }
+        options.push({
+            id: 'NOTICES',
+            label: 'Staff Notices',
+            icon: <Bell size={20} className="text-teal-400" />,
+            badge: unreadNoticesCount,
+            description: 'Important announcements & broadcasts'
+        });
+        if (canSeeAdminStuff) {
+            options.push({
+                id: 'SETTINGS',
+                label: 'Store Settings',
+                icon: <Store size={20} className="text-indigo-400" />,
+                description: 'Business hours, details & parameters'
+            });
+        }
+        return options;
+    };
+
     return (
         <div className="w-full min-h-screen flex flex-col pt-2 pb-8 px-2 md:px-4 overflow-y-auto">
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
@@ -743,6 +805,15 @@ export default function SellerDashboard() {
                                 <Store size={14} /> Settings
                             </button>
                         )}
+                        
+                        {/* Mobile Localized Grid Switcher Icon */}
+                        <button 
+                            onClick={() => setShowGridModal(true)} 
+                            className="lg:hidden sticky right-0 bg-dark-900/95 backdrop-blur-md px-3.5 rounded-lg text-slate-400 hover:text-white transition-all border-l border-white/10 flex items-center justify-center shrink-0 z-10"
+                            title="Grid Switcher"
+                        >
+                            <LayoutGrid size={16} className="text-primary-400 animate-pulse-slow" />
+                        </button>
                     </div>
 
                     <div className="flex gap-2 shrink-0">
@@ -1956,6 +2027,84 @@ export default function SellerDashboard() {
                             </form>
                         </motion.div>
                     </div>
+                )}
+            </AnimatePresence>
+
+            {/* Localized Grid Switcher Drawer */}
+            <AnimatePresence>
+                {showGridModal && (
+                    <>
+                        {/* Backdrop Overlay */}
+                        <motion.div 
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setShowGridModal(false)}
+                            className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"
+                        />
+
+                        {/* Slide-Up Drawer */}
+                        <motion.div 
+                            initial={{ y: '100%' }}
+                            animate={{ y: 0 }}
+                            exit={{ y: '100%' }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                            className="fixed bottom-0 left-0 right-0 z-[101] max-h-[80vh] bg-dark-950/98 backdrop-blur-xl border-t border-white/10 rounded-t-[2.5rem] px-6 pt-4 pb-8 overflow-y-auto"
+                        >
+                            {/* Handle bar */}
+                            <div className="flex justify-center mb-6">
+                                <div className="w-12 h-1 bg-white/20 rounded-full" />
+                            </div>
+
+                            {/* Header */}
+                            <div className="flex justify-between items-center mb-6">
+                                <div>
+                                    <h3 className="text-lg font-black text-white uppercase tracking-wider">Dashboard Navigation</h3>
+                                    <p className="text-xs text-slate-400">Quickly toggle dashboard sections</p>
+                                </div>
+                                <button 
+                                    onClick={() => setShowGridModal(false)} 
+                                    className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
+                                >
+                                    <X size={18} />
+                                </button>
+                            </div>
+
+                            {/* Grid Options */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {getViewOptions().map((opt) => {
+                                    const isActive = activeView === opt.id;
+                                    return (
+                                        <button
+                                            key={opt.id}
+                                            onClick={() => {
+                                                setActiveView(opt.id);
+                                                setShowGridModal(false);
+                                            }}
+                                            className={`flex items-start gap-4 p-4 rounded-2xl text-left transition-all border relative ${isActive ? 'bg-primary-500/10 border-primary-500/30' : 'bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/10'}`}
+                                        >
+                                            <div className={`p-3 rounded-xl ${isActive ? 'bg-primary-500/20 text-primary-400' : 'bg-dark-900 text-slate-400'}`}>
+                                                {opt.icon}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <span className={`block text-sm font-bold truncate ${isActive ? 'text-primary-400' : 'text-white'}`}>
+                                                    {opt.label}
+                                                </span>
+                                                <span className="block text-xs text-slate-400 line-clamp-2 mt-0.5 leading-snug">
+                                                    {opt.description}
+                                                </span>
+                                            </div>
+                                            {opt.badge > 0 && (
+                                                <span className="absolute top-3 right-3 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full border border-dark-950 animate-pulse animate-bounce">
+                                                    {opt.badge}
+                                                </span>
+                                            )}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </motion.div>
+                    </>
                 )}
             </AnimatePresence>
         </div>
