@@ -164,7 +164,7 @@ export default function CustomerDashboard() {
                         {/* Store Image Underlay */}
                         {selectedStore.image_url && (
                             <div className="absolute inset-0 -z-10 pointer-events-none">
-                                <OptimizedImage src={selectedStore.image_url} alt={selectedStore.name} className="w-full h-full object-cover opacity-20" wrapperClassName="w-full h-full" eager />
+                                <OptimizedImage src={selectedStore.image_url} alt={selectedStore.name} className="w-full h-full object-cover opacity-20" wrapperClassName="w-full h-full" placeholderType="store" eager />
                                 <div className="absolute inset-0 bg-gradient-to-b from-dark-950/10 via-dark-950/60 to-dark-950"></div>
                             </div>
                         )}
@@ -181,7 +181,7 @@ export default function CustomerDashboard() {
                         <div className="flex-1 flex justify-between items-start">
                             <div className="flex items-start gap-4">
                                 {selectedStore.image_url && (
-                                    <OptimizedImage src={selectedStore.image_url} alt={selectedStore.name} className="w-16 h-16 rounded-2xl object-cover border border-white/10 shadow-lg" wrapperClassName="w-16 h-16 rounded-2xl hidden md:block" eager />
+                                    <OptimizedImage src={selectedStore.image_url} alt={selectedStore.name} className="w-16 h-16 rounded-2xl object-cover border border-white/10 shadow-lg" wrapperClassName="w-16 h-16 rounded-2xl hidden md:block" placeholderType="store" eager />
                                 )}
                                 <div>
                                     <h2 className="text-xl md:text-3xl font-bold tracking-tight bg-gradient-to-r from-primary-400 to-primary-600 bg-clip-text text-transparent flex items-center gap-2 md:gap-3">
@@ -275,6 +275,7 @@ export default function CustomerDashboard() {
                                         alt={img.caption || 'Store image'} 
                                         className="w-full h-full object-cover" 
                                         wrapperClassName="w-full h-full"
+                                        placeholderType="store"
                                         eager
                                     />
                                     <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors"></div>
@@ -332,13 +333,19 @@ export default function CustomerDashboard() {
 
                     {/* Product Grid */}
                     {loading ? (
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                             {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
-                                <div key={i} className="glass-dark rounded-2xl h-64 animate-pulse">
-                                    <div className="h-32 bg-white/5 rounded-t-2xl"></div>
-                                    <div className="p-4 space-y-2">
-                                        <div className="h-4 w-3/4 bg-white/10 rounded"></div>
-                                        <div className="h-3 w-1/2 bg-white/5 rounded"></div>
+                                <div key={i} className="glass-dark border border-white/5 rounded-3xl overflow-hidden flex flex-col h-[320px] animate-pulse">
+                                    <div className="relative w-full aspect-[4/3] bg-white/5 flex items-center justify-center border-b border-white/5">
+                                        <ChefHat size={48} className="text-white/10" />
+                                    </div>
+                                    <div className="p-5 flex-grow space-y-3">
+                                        <div className="h-5 w-3/4 bg-white/5 rounded"></div>
+                                        <div className="h-3.5 w-1/2 bg-white/5 rounded"></div>
+                                        <div className="pt-4 border-t border-white/5 flex justify-between">
+                                            <div className="h-4 w-16 bg-white/5 rounded"></div>
+                                            <div className="h-6 w-10 bg-white/5 rounded-xl"></div>
+                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -357,7 +364,7 @@ export default function CustomerDashboard() {
                                         {category}
                                         <span className="text-xs text-slate-500 font-normal ml-1">({items.length})</span>
                                     </h3>
-                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                                         {items.map(p => {
                                             const cartArray = Array.isArray(cart) ? cart : [];
                                             const cartItem = cartArray.find(i => i.product.id === p.id);
@@ -365,37 +372,37 @@ export default function CustomerDashboard() {
                                             
                                             return (
                                                 <motion.div
-                                                    whileHover={{ y: -3 }}
+                                                    whileHover={{ y: -4 }}
                                                     key={p.id}
-                                                    className={`glass-dark rounded-2xl border border-white/5 hover:border-primary-500/30 transition-all flex flex-col overflow-hidden group ${!isAvailable ? 'opacity-60 grayscale-[50%]' : ''}`}
+                                                    className={`glass-dark border border-white/5 rounded-3xl overflow-hidden hover:border-primary-500/50 transition-all flex flex-col group relative ${!isAvailable ? 'opacity-60 grayscale-[50%]' : ''}`}
                                                 >
                                                     {/* Product Image */}
-                                                    <div className="relative w-full aspect-[4/3] bg-dark-900 overflow-hidden cursor-pointer" onClick={() => { setPreviewImageIndex(0); setPreviewImageProduct(p); }}>
+                                                    <div className="relative w-full aspect-[4/3] bg-dark-900 border-b border-white/5 overflow-hidden cursor-pointer" onClick={() => { setPreviewImageIndex(0); setPreviewImageProduct(p); }}>
                                                         {p.image_url ? (
-                                                            <OptimizedImage src={p.image_url} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" wrapperClassName="w-full h-full" />
+                                                            <OptimizedImage src={p.image_url} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" wrapperClassName="w-full h-full" placeholderType="product" />
                                                         ) : (
                                                             <div className="w-full h-full flex items-center justify-center">
-                                                                <UtensilsCrossed size={28} className="text-white/10" />
+                                                                <UtensilsCrossed size={48} className="text-white/10" />
                                                             </div>
                                                         )}
                                                         {!isAvailable && (
-                                                            <div className="absolute inset-0 bg-dark-950/60 flex items-center justify-center">
+                                                            <div className="absolute inset-0 bg-dark-950/60 flex items-center justify-center z-10">
                                                                 <span className="bg-red-500 text-white font-bold px-3 py-1 rounded-lg text-sm shadow-lg transform -rotate-12">Out of Stock</span>
                                                             </div>
                                                         )}
                                                     </div>
 
                                                     {/* Product Info */}
-                                                    <div className="p-3 md:p-4 flex flex-col flex-grow">
-                                                        <h4 className="font-semibold text-sm md:text-base text-slate-100 line-clamp-1">{p.name}</h4>
+                                                    <div className="p-5 flex flex-col flex-grow text-left">
+                                                        <h4 className="text-lg font-bold text-slate-100 group-hover:text-primary-400 transition-colors line-clamp-1">{p.name}</h4>
                                                         {p.requires_inventory && p.stock_quantity !== null && (
                                                             <span className="text-[10px] font-bold text-orange-400 bg-orange-400/10 px-2 py-0.5 rounded border border-orange-400/20 w-fit mt-1">
                                                                 {p.stock_quantity} in stock
                                                             </span>
                                                         )}
-                                                        <p className="text-xs text-slate-500 mt-1 line-clamp-2 flex-grow">{p.description}</p>
+                                                        <p className="text-xs text-slate-500 mt-1.5 line-clamp-2 flex-grow">{p.description}</p>
 
-                                                        <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/5">
+                                                        <div className="flex items-center justify-between mt-auto pt-3 border-t border-white/5">
                                                             <span className="text-lg font-bold text-primary-400">{formatPrice(p.price)}</span>
 
                                                             {!isAvailable ? (
@@ -608,6 +615,7 @@ export default function CustomerDashboard() {
                                                 alt={previewImageProduct.name} 
                                                 className="max-w-full max-h-full object-contain rounded-2xl pointer-events-none shadow-2xl" 
                                                 wrapperClassName="w-full h-full flex items-center justify-center"
+                                                placeholderType="product"
                                                 eager 
                                             />
                                         )}
@@ -734,6 +742,7 @@ export default function CustomerDashboard() {
                                         alt={selectedStore.gallery_images[lightboxIndex].caption || 'Store Gallery Image'} 
                                         className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl border border-white/5"
                                         wrapperClassName="w-full h-full flex items-center justify-center"
+                                        placeholderType="store"
                                         eager
                                     />
                                 </motion.div>
