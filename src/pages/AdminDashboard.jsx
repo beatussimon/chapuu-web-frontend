@@ -4,7 +4,7 @@ import {
     Shield, Store, Users, UserPlus, Home, Save, BarChart3, TrendingUp, 
     DollarSign, Bell, Plus, Edit2, Trash2, Check, X, Ban, Power, 
     Phone, Mail, MessageSquare, AlertTriangle, RefreshCw, Search,
-    Award, Zap, Coins, Star, LayoutGrid
+    Award, Zap, Coins, Star, LayoutGrid, MapPin, Navigation, Compass
 } from 'lucide-react';
 import { 
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, 
@@ -14,6 +14,13 @@ import toast from 'react-hot-toast';
 import apiClient from '../api/client';
 import { useCurrency } from '../utils/useCurrency';
 import { useAppStore } from '../store/useStore';
+const formatDateTimeLocal = (isoString) => {
+    if (!isoString) return '';
+    const date = new Date(isoString);
+    if (isNaN(date.getTime())) return '';
+    const pad = (num) => String(num).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
 
 export default function AdminDashboard() {
     const [stores, setStores] = useState([]);
@@ -68,11 +75,85 @@ export default function AdminDashboard() {
     const [newContactEmail, setNewContactEmail] = useState('');
     const [newStoreImage, setNewStoreImage] = useState(null);
     const [newStoreType, setNewStoreType] = useState('RESTAURANT');
+    const [newLatitude, setNewLatitude] = useState('');
+    const [newLongitude, setNewLongitude] = useState('');
 
     // Edit Store State
     const [editingStore, setEditingStore] = useState(null);
-    const [editStoreData, setEditStoreData] = useState({ name: '', location: '', contact_phone: '', contact_email: '', is_active: true });
+    const [editStoreData, setEditStoreData] = useState({ name: '', location: '', contact_phone: '', contact_email: '', is_active: true, directions: '', requires_table_for_dine_in: true, free_trial_start: '', free_trial_end: '' });
     const [editStoreImage, setEditStoreImage] = useState(null);
+    const [editLatitude, setEditLatitude] = useState('');
+    const [editLongitude, setEditLongitude] = useState('');
+
+    const handleGetNewStoreLocation = () => {
+        if (!navigator.geolocation) {
+            toast.error("Geolocation is not supported by this browser.");
+            return;
+        }
+        const tid = toast.loading("Getting current device coordinates...");
+        navigator.geolocation.getCurrentPosition(
+            async (pos) => {
+                const { latitude, longitude } = pos.coords;
+                setNewLatitude(latitude.toFixed(6));
+                setNewLongitude(longitude.toFixed(6));
+                
+                toast.loading("Reverse geocoding address...", { id: tid });
+                try {
+                    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`, {
+                        headers: { 'User-Agent': 'Chapuu-Admin' }
+                    });
+                    const data = await res.json();
+                    if (data && data.display_name) {
+                        const shortName = data.display_name.split(',').slice(0, 2).join(',');
+                        setNewStoreAddress(shortName);
+                        toast.success(`Located at ${shortName}`, { id: tid });
+                    } else {
+                        toast.success(`Located: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`, { id: tid });
+                    }
+                } catch (err) {
+                    toast.success(`Coordinates fetched successfully!`, { id: tid });
+                }
+            },
+            (err) => {
+                toast.error("Location lookup denied or unavailable.", { id: tid });
+            }
+        );
+    };
+
+    const handleGetEditStoreLocation = () => {
+        if (!navigator.geolocation) {
+            toast.error("Geolocation is not supported.");
+            return;
+        }
+        const tid = toast.loading("Getting coordinates...");
+        navigator.geolocation.getCurrentPosition(
+            async (pos) => {
+                const { latitude, longitude } = pos.coords;
+                setEditLatitude(latitude.toFixed(6));
+                setEditLongitude(longitude.toFixed(6));
+                
+                toast.loading("Reverse geocoding address...", { id: tid });
+                try {
+                    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`, {
+                        headers: { 'User-Agent': 'Chapuu-Admin' }
+                    });
+                    const data = await res.json();
+                    if (data && data.display_name) {
+                        const shortName = data.display_name.split(',').slice(0, 2).join(',');
+                        setEditStoreData(prev => ({ ...prev, location: shortName }));
+                        toast.success(`Located at ${shortName}`, { id: tid });
+                    } else {
+                        toast.success(`Located: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`, { id: tid });
+                    }
+                } catch (err) {
+                    toast.success(`Coordinates locked successfully!`, { id: tid });
+                }
+            },
+            (err) => {
+                toast.error("Location lookup denied.", { id: tid });
+            }
+        );
+    };
 
     // Global Payment Method form state
     const [editingGlobalPayment, setEditingGlobalPayment] = useState(null); // null or { id, name, requires_account_details, is_active }
@@ -275,6 +356,8 @@ export default function AdminDashboard() {
         formData.append('owner', selectedOwner);
         formData.append('store_type', newStoreType);
         formData.append('is_active', true);
+        if (newLatitude) formData.append('latitude', newLatitude);
+        if (newLongitude) formData.append('longitude', newLongitude);
         if (newContactPhone) formData.append('contact_phone', newContactPhone);
         if (newContactEmail) formData.append('contact_email', newContactEmail);
         if (newStoreImage) formData.append('image', newStoreImage);
@@ -285,6 +368,7 @@ export default function AdminDashboard() {
         }).then(res => {
             toast.success(`Store ${newStoreName} created!`, { id: toastId });
             setNewStoreName(''); setNewStoreAddress(''); setNewContactPhone(''); setNewContactEmail(''); setNewStoreImage(null); setSelectedOwner('');
+            setNewLatitude(''); setNewLongitude('');
             fetchData();
         }).catch(err => toast.error(`Failed to create store`, { id: toastId }));
     };
@@ -297,6 +381,12 @@ export default function AdminDashboard() {
         formData.append('contact_phone', editStoreData.contact_phone);
         formData.append('contact_email', editStoreData.contact_email);
         formData.append('is_active', editStoreData.is_active);
+        formData.append('latitude', editLatitude || '');
+        formData.append('longitude', editLongitude || '');
+        formData.append('directions', editStoreData.directions || '');
+        formData.append('requires_table_for_dine_in', editStoreData.requires_table_for_dine_in ? 'true' : 'false');
+        formData.append('free_trial_start', editStoreData.free_trial_start ? new Date(editStoreData.free_trial_start).toISOString() : '');
+        formData.append('free_trial_end', editStoreData.free_trial_end ? new Date(editStoreData.free_trial_end).toISOString() : '');
         if (editStoreImage) formData.append('image', editStoreImage);
 
         apiClient.patch(`/stores/${editingStore.id}/`, formData, { headers: { 'Content-Type': 'multipart/form-data' } })
@@ -304,6 +394,8 @@ export default function AdminDashboard() {
                 toast.success(`Store updated!`);
                 setEditingStore(null);
                 setEditStoreImage(null);
+                setEditLatitude('');
+                setEditLongitude('');
                 fetchData();
             })
             .catch(err => toast.error("Failed to update store."));
@@ -699,7 +791,126 @@ export default function AdminDashboard() {
                             </div>
                         </div>
                     </div>
+ 
+                    {/* Spatial & Logistics Analytics Section */}
+                    {platformAnalytics?.spatial_analytics && (
+                        <div className="glass-dark border border-white/5 rounded-3xl p-4 md:p-6 shadow-xl space-y-6 mt-6">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/5 pb-4">
+                                <div>
+                                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                        <MapPin className="text-primary-400" size={20} /> Geolocation & Delivery Logistics
+                                    </h3>
+                                    <p className="text-xs text-slate-400 mt-1">Spatial density modeling and dispatch distance metrics</p>
+                                </div>
+                                <div className="text-xs bg-dark-900 border border-white/5 text-slate-300 px-3 py-1.5 rounded-full font-mono flex items-center gap-1.5">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    {platformAnalytics.spatial_analytics.total_deliveries_analyzed} Deliveries Tracked
+                                </div>
+                            </div>
 
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                {/* Proximity KPIs */}
+                                <div className="space-y-4">
+                                    <div className="p-5 bg-dark-950/60 border border-white/5 rounded-2xl flex items-center gap-4 relative overflow-hidden group hover:border-emerald-500/30 transition-colors">
+                                        <div className="absolute -right-4 -bottom-4 w-16 h-16 bg-emerald-500/5 rounded-full blur-xl pointer-events-none group-hover:bg-emerald-500/10 transition-all"></div>
+                                        <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400">
+                                            <Navigation size={20} className="rotate-45" />
+                                        </div>
+                                        <div>
+                                            <span className="text-xs text-slate-500 uppercase font-black tracking-wider">Avg Proximity</span>
+                                            <div className="text-2xl font-bold text-white font-mono mt-0.5">
+                                                {platformAnalytics.spatial_analytics.average_distance_km} <span className="text-xs font-sans text-slate-400 font-normal">km</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="p-5 bg-dark-950/60 border border-white/5 rounded-2xl flex items-center gap-4 relative overflow-hidden group hover:border-cyan-500/30 transition-colors">
+                                        <div className="absolute -right-4 -bottom-4 w-16 h-16 bg-cyan-500/5 rounded-full blur-xl pointer-events-none group-hover:bg-cyan-500/10 transition-all"></div>
+                                        <div className="p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-xl text-cyan-400">
+                                            <Compass size={20} />
+                                        </div>
+                                        <div>
+                                            <span className="text-xs text-slate-500 uppercase font-black tracking-wider">Max Dispatch Reach</span>
+                                            <div className="text-2xl font-bold text-white font-mono mt-0.5">
+                                                {platformAnalytics.spatial_analytics.max_distance_km} <span className="text-xs font-sans text-slate-400 font-normal">km</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Logistics Range Zone Distributions */}
+                                <div className="p-5 bg-dark-950/40 border border-white/5 rounded-2xl flex flex-col justify-between">
+                                    <div>
+                                        <h4 className="text-xs font-black uppercase text-slate-500 tracking-wider mb-4">Logistics Zone Demographics</h4>
+                                        <div className="space-y-4">
+                                            {/* Hyper-local */}
+                                            <div>
+                                                <div className="flex justify-between text-xs font-bold mb-1">
+                                                    <span className="text-emerald-400">Hyper-Local (≤ 0.5km)</span>
+                                                    <span className="text-white font-mono">{platformAnalytics.spatial_analytics.zones.hyperlocal} ({platformAnalytics.spatial_analytics.total_deliveries_analyzed ? Math.round((platformAnalytics.spatial_analytics.zones.hyperlocal / platformAnalytics.spatial_analytics.total_deliveries_analyzed) * 100) : 0}%)</span>
+                                                </div>
+                                                <div className="w-full bg-dark-950 h-2.5 rounded-full overflow-hidden border border-white/5">
+                                                    <div 
+                                                        className="bg-emerald-500 h-full rounded-full transition-all duration-1000 shadow-[0_0_8px_rgba(16,185,129,0.3)]" 
+                                                        style={{ width: `${platformAnalytics.spatial_analytics.total_deliveries_analyzed ? (platformAnalytics.spatial_analytics.zones.hyperlocal / platformAnalytics.spatial_analytics.total_deliveries_analyzed) * 100 : 0}%` }}
+                                                    ></div>
+                                                </div>
+                                            </div>
+
+                                            {/* Medium-range */}
+                                            <div>
+                                                <div className="flex justify-between text-xs font-bold mb-1">
+                                                    <span className="text-cyan-400">Medium-Range (0.5 - 2km)</span>
+                                                    <span className="text-white font-mono">{platformAnalytics.spatial_analytics.zones.medium} ({platformAnalytics.spatial_analytics.total_deliveries_analyzed ? Math.round((platformAnalytics.spatial_analytics.zones.medium / platformAnalytics.spatial_analytics.total_deliveries_analyzed) * 100) : 0}%)</span>
+                                                </div>
+                                                <div className="w-full bg-dark-950 h-2.5 rounded-full overflow-hidden border border-white/5">
+                                                    <div 
+                                                        className="bg-cyan-500 h-full rounded-full transition-all duration-1000 shadow-[0_0_8px_rgba(6,182,212,0.3)]" 
+                                                        style={{ width: `${platformAnalytics.spatial_analytics.total_deliveries_analyzed ? (platformAnalytics.spatial_analytics.zones.medium / platformAnalytics.spatial_analytics.total_deliveries_analyzed) * 100 : 0}%` }}
+                                                    ></div>
+                                                </div>
+                                            </div>
+
+                                            {/* Long-range */}
+                                            <div>
+                                                <div className="flex justify-between text-xs font-bold mb-1">
+                                                    <span className="text-indigo-400">Long-Range (&gt; 2km)</span>
+                                                    <span className="text-white font-mono">{platformAnalytics.spatial_analytics.zones.long} ({platformAnalytics.spatial_analytics.total_deliveries_analyzed ? Math.round((platformAnalytics.spatial_analytics.zones.long / platformAnalytics.spatial_analytics.total_deliveries_analyzed) * 100) : 0}%)</span>
+                                                </div>
+                                                <div className="w-full bg-dark-950 h-2.5 rounded-full overflow-hidden border border-white/5">
+                                                    <div 
+                                                        className="bg-indigo-500 h-full rounded-full transition-all duration-1000 shadow-[0_0_8px_rgba(99,102,241,0.3)]" 
+                                                        style={{ width: `${platformAnalytics.spatial_analytics.total_deliveries_analyzed ? (platformAnalytics.spatial_analytics.zones.long / platformAnalytics.spatial_analytics.total_deliveries_analyzed) * 100 : 0}%` }}
+                                                    ></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Platform Automated Insights Feed */}
+                                <div className="p-5 bg-dark-950/40 border border-white/5 rounded-2xl flex flex-col justify-between">
+                                    <div>
+                                        <h4 className="text-xs font-black uppercase text-slate-500 tracking-wider mb-3">AI Logistics & Platform Insights</h4>
+                                        <div className="space-y-2.5 max-h-[180px] overflow-y-auto pr-1 custom-scrollbar">
+                                            {platformAnalytics.insights && platformAnalytics.insights.map((insight, idx) => (
+                                                <div key={idx} className="flex gap-2 text-xs text-slate-300 bg-dark-900/50 p-2.5 border border-white/5 rounded-xl leading-relaxed">
+                                                    <span className="text-primary-400 select-none font-bold">💡</span>
+                                                    <span>{insight}</span>
+                                                </div>
+                                            ))}
+                                            {(!platformAnalytics.insights || platformAnalytics.insights.length === 0) && (
+                                                <div className="text-xs text-slate-500 text-center py-8">
+                                                    Generating platform insights...
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+ 
                     {/* Safety & Dispute Alert Banner */}
                     {platformAnalytics?.safety_disputes?.locked_orders_count > 0 && (
                         <div className="p-5 bg-red-950/20 border border-red-500/30 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 animate-pulse shadow-lg">
@@ -779,7 +990,17 @@ export default function AdminDashboard() {
                                 </div>
                                 <div>
                                     <label className="block text-xs text-slate-400 mb-1">Address / Location</label>
-                                    <input type="text" required placeholder="Address / location" value={newStoreAddress} onChange={e => setNewStoreAddress(e.target.value)} className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary-500 placeholder-slate-600 transition-all text-white" />
+                                    <div className="flex gap-2">
+                                        <input type="text" required placeholder="Address / location" value={newStoreAddress} onChange={e => setNewStoreAddress(e.target.value)} className="flex-1 bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary-500 placeholder-slate-600 transition-all text-white" />
+                                        <button type="button" onClick={handleGetNewStoreLocation} className="px-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs font-bold text-slate-300 hover:text-white transition-colors cursor-pointer flex items-center gap-1">
+                                            📍 Locate
+                                        </button>
+                                    </div>
+                                    {(newLatitude || newLongitude) && (
+                                        <div className="text-[10px] text-primary-400 mt-1 font-mono">
+                                            Coordinates: {newLatitude || '0.000000'}, {newLongitude || '0.000000'}
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
@@ -825,6 +1046,32 @@ export default function AdminDashboard() {
                                                 {s.store_type}
                                             </span>
                                         </div>
+                                        {(() => {
+                                            if (!s.free_trial_start || !s.free_trial_end) return null;
+                                            const now = new Date();
+                                            const start = new Date(s.free_trial_start);
+                                            const end = new Date(s.free_trial_end);
+                                            
+                                            if (now >= start && now <= end) {
+                                                return (
+                                                    <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded mb-2 self-start animate-pulse">
+                                                        🎁 Trial (Active)
+                                                    </span>
+                                                );
+                                            } else if (now < start) {
+                                                return (
+                                                    <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-2 py-0.5 rounded mb-2 self-start">
+                                                        🎁 Trial (Scheduled)
+                                                    </span>
+                                                );
+                                            } else {
+                                                return (
+                                                    <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase bg-white/5 text-slate-500 border border-white/5 px-2 py-0.5 rounded mb-2 self-start">
+                                                        🎁 Trial (Expired)
+                                                    </span>
+                                                );
+                                            }
+                                        })()}
                                         <p className="text-xs text-slate-400 mb-3 line-clamp-1 flex items-center gap-1">Location: {s.location}</p>
                                         
                                         {/* Store information indicators */}
@@ -857,7 +1104,9 @@ export default function AdminDashboard() {
                                             <button 
                                                 onClick={() => { 
                                                     setEditingStore(s); 
-                                                    setEditStoreData({ name: s.name, location: s.location, contact_phone: s.contact_phone || '', contact_email: s.contact_email || '', is_active: s.is_active }); 
+                                                    setEditStoreData({ name: s.name, location: s.location, contact_phone: s.contact_phone || '', contact_email: s.contact_email || '', is_active: s.is_active, directions: s.directions || '', requires_table_for_dine_in: s.requires_table_for_dine_in !== false, free_trial_start: formatDateTimeLocal(s.free_trial_start), free_trial_end: formatDateTimeLocal(s.free_trial_end) }); 
+                                                    setEditLatitude(s.latitude || '');
+                                                    setEditLongitude(s.longitude || '');
                                                 }} 
                                                 className="px-3 py-1.5 bg-primary-500/10 text-primary-500 border border-primary-500/20 rounded-lg hover:bg-primary-500 hover:text-dark-950 transition-all text-xs font-bold cursor-pointer"
                                             >
@@ -1773,7 +2022,45 @@ export default function AdminDashboard() {
                                 </div>
                                 <div>
                                     <label className="block text-xs text-slate-400 mb-1">Location</label>
-                                    <input type="text" required value={editStoreData.location} onChange={e => setEditStoreData({ ...editStoreData, location: e.target.value })} className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none text-white transition-all" />
+                                    <div className="flex gap-2">
+                                        <input type="text" required value={editStoreData.location} onChange={e => setEditStoreData({ ...editStoreData, location: e.target.value })} className="flex-1 bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none text-white transition-all" />
+                                        <button type="button" onClick={handleGetEditStoreLocation} className="px-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs font-bold text-slate-300 hover:text-white transition-colors cursor-pointer flex items-center gap-1">
+                                            📍 Locate
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs text-slate-400 mb-1">Latitude</label>
+                                        <input 
+                                            type="number" 
+                                            step="0.000001" 
+                                            value={editLatitude} 
+                                            onChange={e => setEditLatitude(e.target.value)} 
+                                            className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none text-white font-mono transition-all" 
+                                            placeholder="e.g. -6.7634" 
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-slate-400 mb-1">Longitude</label>
+                                        <input 
+                                            type="number" 
+                                            step="0.000001" 
+                                            value={editLongitude} 
+                                            onChange={e => setEditLongitude(e.target.value)} 
+                                            className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none text-white font-mono transition-all" 
+                                            placeholder="e.g. 39.2827" 
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-slate-400 mb-1">Delivery Directions / Landmarks</label>
+                                    <textarea 
+                                        value={editStoreData.directions || ''} 
+                                        onChange={e => setEditStoreData({ ...editStoreData, directions: e.target.value })} 
+                                        className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none text-white transition-all h-20" 
+                                        placeholder="e.g. Opposite the main market, Green door..." 
+                                    />
                                 </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
@@ -1788,6 +2075,80 @@ export default function AdminDashboard() {
                                 <div>
                                     <label className="block text-xs text-slate-400 mb-1">Update Store Image</label>
                                     <input type="file" accept="image/*" onChange={e => setEditStoreImage(e.target.files[0])} className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none text-slate-400 file:mr-3 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-xs file:font-bold file:bg-primary-500/10 file:text-primary-500 transition-all focus:outline-none" />
+                                </div>
+                                <div className="flex items-center gap-2 py-2">
+                                    <input 
+                                        type="checkbox" 
+                                        id="requires_table_for_dine_in_edit" 
+                                        checked={editStoreData.requires_table_for_dine_in !== false} 
+                                        onChange={e => setEditStoreData({ ...editStoreData, requires_table_for_dine_in: e.target.checked })} 
+                                        className="w-4 h-4 rounded border-white/10 text-primary-500 focus:ring-primary-500 bg-dark-900 cursor-pointer" 
+                                    />
+                                    <label htmlFor="requires_table_for_dine_in_edit" className="text-sm text-slate-300 font-medium cursor-pointer select-none">
+                                        Require Table Selection for Dine-In
+                                    </label>
+                                </div>
+
+                                <div className="border-t border-white/5 pt-4 space-y-4">
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-sm font-bold text-white flex items-center gap-1.5">
+                                            🎁 Promotional Free Trial Program
+                                        </span>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                        <div>
+                                            <label className="block text-xs text-slate-400 mb-1">Quick Grant Preset</label>
+                                            <select
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    if (val === 'none') {
+                                                        setEditStoreData(prev => ({ ...prev, free_trial_start: '', free_trial_end: '' }));
+                                                    } else if (val !== 'custom') {
+                                                        const days = parseInt(val);
+                                                        const start = new Date();
+                                                        const end = new Date();
+                                                        end.setDate(end.getDate() + days);
+                                                        setEditStoreData(prev => ({
+                                                            ...prev,
+                                                            free_trial_start: formatDateTimeLocal(start.toISOString()),
+                                                            free_trial_end: formatDateTimeLocal(end.toISOString())
+                                                        }));
+                                                    }
+                                                }}
+                                                defaultValue="custom"
+                                                className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none text-white transition-all cursor-pointer"
+                                            >
+                                                <option value="custom">Custom Date Range</option>
+                                                <option value="none">None (Clear Promotion)</option>
+                                                <option value="7">7 Days Trial</option>
+                                                <option value="14">14 Days Trial</option>
+                                                <option value="30">30 Days Trial</option>
+                                                <option value="60">60 Days Trial</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs text-slate-400 mb-1">Start Date & Time</label>
+                                            <input 
+                                                type="datetime-local" 
+                                                value={editStoreData.free_trial_start}
+                                                onChange={e => setEditStoreData({ ...editStoreData, free_trial_start: e.target.value })}
+                                                className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none text-white font-sans transition-all" 
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs text-slate-400 mb-1">End Date & Time</label>
+                                            <input 
+                                                type="datetime-local" 
+                                                value={editStoreData.free_trial_end}
+                                                onChange={e => setEditStoreData({ ...editStoreData, free_trial_end: e.target.value })}
+                                                className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none text-white font-sans transition-all" 
+                                            />
+                                        </div>
+                                    </div>
+                                    <p className="text-[11px] text-slate-500 leading-normal">
+                                        Stores under an active free trial are 100% exempt from platform billing commissions. The completion ledger will record 0.00 platform shares, acting as a clear promotion waiver.
+                                    </p>
                                 </div>
  
                                 <div className="flex justify-end gap-2 pt-4">

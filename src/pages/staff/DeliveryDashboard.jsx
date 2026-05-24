@@ -143,16 +143,33 @@ export default function DeliveryDashboard() {
                                 <div className="bg-dark-900/50 p-4 rounded-xl border border-white/5">
                                     <div className="flex items-start gap-3 mb-3">
                                         <MapPin size={18} className="text-slate-400 mt-0.5 shrink-0" />
-                                        <div>
-                                            <p className="text-xs text-slate-500 uppercase font-semibold mb-1">Deliver To</p>
-                                            <p className="text-sm font-medium">{order.delivery_location || 'No location provided'}</p>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex justify-between items-start">
+                                                <p className="text-xs text-slate-500 uppercase font-semibold mb-1">Deliver To</p>
+                                                {order.delivery_latitude && order.delivery_longitude && (
+                                                    <a 
+                                                        href={`https://www.google.com/maps/search/?api=1&query=${order.delivery_latitude},${order.delivery_longitude}`} 
+                                                        target="_blank" 
+                                                        rel="noopener noreferrer"
+                                                        className="text-[10px] text-primary-400 hover:underline font-bold flex items-center gap-0.5 shrink-0 cursor-pointer"
+                                                    >
+                                                        <Navigation size={10} /> Open Map
+                                                    </a>
+                                                )}
+                                            </div>
+                                            <p className="text-sm font-medium break-words">{order.delivery_location || 'No location provided'}</p>
+                                            {order.delivery_directions && (
+                                                <p className="text-[11px] text-amber-400 bg-amber-500/5 border border-amber-500/10 rounded-lg p-1.5 mt-1.5 leading-normal">
+                                                    🗺️ Directions: {order.delivery_directions}
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="flex items-start gap-3">
                                         <Phone size={18} className="text-slate-400 mt-0.5 shrink-0" />
                                         <div>
                                             <p className="text-xs text-slate-500 uppercase font-semibold mb-1">Customer Phone</p>
-                                            <p className="text-sm font-medium">{order.customer_phone || 'No phone provided'}</p>
+                                            <a href={`tel:${order.customer_phone}`} className="text-sm font-medium text-slate-200 hover:text-white hover:underline">{order.customer_phone || 'No phone provided'}</a>
                                         </div>
                                     </div>
                                 </div>

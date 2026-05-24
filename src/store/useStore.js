@@ -110,7 +110,16 @@ export const useAppStore = create(
             // Reservations
             activeReservation: null,
             setActiveReservation: (resId) => set({ activeReservation: resId }),
-            clearActiveReservation: () => set({ activeReservation: null })
+            clearActiveReservation: () => set({ activeReservation: null }),
+
+            // Location Slice
+            userLocation: { lat: null, lng: null, name: null, granted: false },
+            setUserLocation: (loc) => set((state) => ({
+                userLocation: { ...state.userLocation, ...loc }
+            })),
+            clearUserLocation: () => set({
+                userLocation: { lat: null, lng: null, name: null, granted: false }
+            })
         }),
         {
             name: 'chapuu-storage',
@@ -119,7 +128,8 @@ export const useAppStore = create(
                 userRole: state.userRole,
                 cart: state.cart,
                 selectedStore: state.selectedStore,
-                activeReservation: state.activeReservation
+                activeReservation: state.activeReservation,
+                userLocation: state.userLocation
             }),
         }
     )

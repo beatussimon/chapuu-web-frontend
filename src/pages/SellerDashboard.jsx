@@ -18,9 +18,16 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
 
 const softChime = new Audio('/media/sounds/soft_chime.mp3');
 softChime.preload = 'auto';
+softChime.volume = 0.2; // Set volume to 20% for a premium, gentle background notification level
 
+let lastChimePlayed = 0;
 const playCachedChime = () => {
     try {
+        const now = Date.now();
+        // Rate-limit chimes to once every 1.5 seconds to prevent harsh overlapping spikes
+        if (now - lastChimePlayed < 1500) return;
+        lastChimePlayed = now;
+
         softChime.currentTime = 0; // Reset playhead
         softChime.play().catch(err => {
             console.log("Audio playback deferred until user interaction", err);
@@ -28,6 +35,26 @@ const playCachedChime = () => {
     } catch (e) {
         console.error("Audio trigger failed", e);
     }
+};
+
+const calculateExactDueDate = (storeCreatedAt, invYear, invMonth) => {
+    if (!storeCreatedAt) return null;
+    const creation = new Date(storeCreatedAt);
+    const targetMonthDate = new Date(invYear, invMonth, 1);
+    const targetYear = targetMonthDate.getFullYear();
+    const targetMonth = targetMonthDate.getMonth();
+    const lastDayOfTargetMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+    const creationDay = creation.getDate();
+    const dueDay = Math.min(creationDay, lastDayOfTargetMonth);
+    const exactDueDate = new Date(
+        targetYear,
+        targetMonth,
+        dueDay,
+        creation.getHours(),
+        creation.getMinutes(),
+        creation.getSeconds()
+    );
+    return exactDueDate;
 };
 
 export default function SellerDashboard() {
@@ -122,6 +149,17 @@ export default function SellerDashboard() {
             .catch(() => toast.error("Action failed.", { id: toastId }));
     };
 
+    const handleReactivateStaff = (id) => {
+        if (!confirm("Are you sure you want to re-hire this person? This will restore their system access.")) return;
+        const toastId = toast.loading("Re-hiring worker...");
+        apiClient.post(`/staff/${id}/reactivate/`)
+            .then(() => {
+                toast.success("Worker rehired successfully!", { id: toastId });
+                fetchStaff();
+            })
+            .catch(() => toast.error("Action failed.", { id: toastId }));
+    };
+
     const handleResetStaffPassword = (id) => {
         const newPass = prompt("Enter new temporary password:");
         if (!newPass) return;
@@ -173,6 +211,48 @@ export default function SellerDashboard() {
     const [storeDetails, setStoreDetails] = useState(null);
     const [userProfile, setUserProfile] = useState(null);
     const [isSavingProfile, setIsSavingProfile] = useState(false);
+    const [requiresTableForDineIn, setRequiresTableForDineIn] = useState(true);
+    
+    // Geolocation / Location states
+    const [editLocation, setEditLocation] = useState('');
+    const [editLatitude, setEditLatitude] = useState('');
+    const [editLongitude, setEditLongitude] = useState('');
+    const [currentMonthPreview, setCurrentMonthPreview] = useState(null);
+
+    const handleGetEditStoreLocation = () => {
+        if (!navigator.geolocation) {
+            toast.error("Geolocation is not supported by this browser.");
+            return;
+        }
+        const tid = toast.loading("Getting current device coordinates...");
+        navigator.geolocation.getCurrentPosition(
+            async (pos) => {
+                const { latitude, longitude } = pos.coords;
+                setEditLatitude(latitude.toFixed(6));
+                setEditLongitude(longitude.toFixed(6));
+                
+                toast.loading("Reverse geocoding address...", { id: tid });
+                try {
+                    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`, {
+                        headers: { 'User-Agent': 'Chapuu-Seller' }
+                    });
+                    const data = await res.json();
+                    if (data && data.display_name) {
+                        const shortName = data.display_name.split(',').slice(0, 2).join(',');
+                        setEditLocation(shortName);
+                        toast.success(`Located at ${shortName}`, { id: tid });
+                    } else {
+                        toast.success(`Located: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`, { id: tid });
+                    }
+                } catch (err) {
+                    toast.success(`Coordinates fetched successfully!`, { id: tid });
+                }
+            },
+            (err) => {
+                toast.error("Location lookup denied or unavailable.", { id: tid });
+            }
+        );
+    };
 
     // Modals
     const [showPOSModal, setShowPOSModal] = useState(false);
@@ -385,6 +465,10 @@ export default function SellerDashboard() {
         apiClient.get('/billing/payment-methods/')
             .then(res => setPlatformPaymentMethods(Array.isArray(res.data) ? res.data : []))
             .catch(e => console.error("Failed to fetch platform payment methods", e));
+
+        apiClient.get('/billing/invoices/current_month_preview/')
+            .then(res => setCurrentMonthPreview(res.data))
+            .catch(e => console.error("Failed to fetch current month billing preview", e));
     }, [userRole]);
 
     const handleSubmitPaymentProof = (e) => {
@@ -438,6 +522,10 @@ export default function SellerDashboard() {
                     const store = storeRes.data;
                     setStoreDetails(store);
                     setStoreType(store.store_type || 'RESTAURANT');
+                    setEditLocation(store.location || '');
+                    setEditLatitude(store.latitude || '');
+                    setEditLongitude(store.longitude || '');
+                    setRequiresTableForDineIn(store.requires_table_for_dine_in !== false);
                     
                     if (['SELLER', 'ADMIN', 'SUPERUSER'].includes(userRole)) {
                         apiClient.get(`/stores/${store.id}/reviews/`)
@@ -1020,8 +1108,44 @@ export default function SellerDashboard() {
                     </div>
 
                     {/* KPI Balances Overview */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+                        {currentMonthPreview && (
+                            <div className="relative overflow-hidden bg-gradient-to-br from-primary-500/10 via-slate-900/60 to-dark-900 border border-primary-500/20 rounded-2xl p-6 flex flex-col justify-between group shadow-xl text-left">
+                                <div className="absolute top-0 right-0 w-24 h-24 bg-primary-500/10 rounded-full blur-2xl pointer-events-none group-hover:scale-125 transition-transform duration-500"></div>
+                                <span className="text-[10px] font-black uppercase text-primary-400 tracking-wider">This Month So Far</span>
+                                <div className="mt-2 flex flex-col">
+                                    <span className="text-2xl font-black text-white font-mono leading-none">
+                                        {formatPrice(currentMonthPreview.accrued_commission)}
+                                    </span>
+                                    <span className="text-[10px] text-slate-300 font-bold mt-1.5 uppercase tracking-widest font-mono">
+                                        {currentMonthPreview.order_count} Meals Served
+                                    </span>
+                                </div>
+                                <div className="mt-4 flex items-center justify-between border-t border-white/5 pt-3">
+                                    <div className="flex flex-col">
+                                        <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest leading-none">Billing Cycle</span>
+                                        {(() => {
+                                            const currentYear = new Date().getFullYear();
+                                            const currentMonth = new Date().getMonth() + 1;
+                                            const exactDue = storeDetails?.created_at ? calculateExactDueDate(storeDetails.created_at, currentYear, currentMonth) : null;
+                                            let daysRemaining = currentMonthPreview.days_remaining;
+                                            if (exactDue) {
+                                                const diffMs = exactDue - new Date();
+                                                daysRemaining = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+                                            }
+                                            return (
+                                                <span className="text-[10px] text-slate-300 font-bold mt-0.5">{daysRemaining} days left</span>
+                                            );
+                                        })()}
+                                    </div>
+                                    <div className="w-8 h-8 rounded-full bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-primary-400">
+                                        <Clock size={14} className="animate-spin-slow" />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between text-left">
                             <span className="text-xs font-black uppercase text-slate-500 tracking-wider">Outstanding Dues</span>
                             <span className="text-2xl font-black text-white mt-2 font-mono">
                                 {formatPrice(
@@ -1033,7 +1157,7 @@ export default function SellerDashboard() {
                             <span className="text-[10px] text-slate-400 mt-1">Sum of unpaid & overdue invoices</span>
                         </div>
 
-                        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between">
+                        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between text-left">
                             <span className="text-xs font-black uppercase text-slate-500 tracking-wider">Total Commission Paid</span>
                             <span className="text-2xl font-black text-slate-300 mt-2 font-mono">
                                 {formatPrice(
@@ -1045,7 +1169,7 @@ export default function SellerDashboard() {
                             <span className="text-[10px] text-slate-400 mt-1">Accrued platform fee verified by admin</span>
                         </div>
 
-                        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between">
+                        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between text-left">
                             <span className="text-xs font-black uppercase text-slate-500 tracking-wider">Platform Order Volume</span>
                             <span className="text-2xl font-black text-slate-300 mt-2 font-mono">
                                 {formatPrice(
@@ -1056,68 +1180,163 @@ export default function SellerDashboard() {
                         </div>
                     </div>
 
-                    {/* Monthly Invoices Table */}
-                    <div className="bg-dark-900 border border-white/10 rounded-2xl p-6">
-                        <h3 className="text-base font-bold text-white mb-4">Monthly Statements</h3>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left text-xs md:text-sm text-slate-300">
-                                <thead>
-                                    <tr className="border-b border-white/5 text-[10px] uppercase font-black tracking-wider text-slate-500">
-                                        <th className="pb-3">Period</th>
-                                        <th className="pb-3">Order Count</th>
-                                        <th className="pb-3">Gross Sales</th>
-                                        <th className="pb-3">Commission (3%)</th>
-                                        <th className="pb-3">Due Date</th>
-                                        <th className="pb-3">Status</th>
-                                        <th className="pb-3 text-right">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {invoices.map(inv => (
-                                        <tr key={inv.id} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
-                                            <td className="py-4 font-bold text-white">
-                                                {new Date(inv.year, inv.month - 1).toLocaleString('default', { month: 'long', year: 'numeric' })}
-                                            </td>
-                                            <td className="py-4">{inv.order_count}</td>
-                                            <td className="py-4 font-mono">{formatPrice(inv.total_order_amount)}</td>
-                                            <td className="py-4 font-mono text-primary-400 font-bold">{formatPrice(inv.total_commission)}</td>
-                                            <td className="py-4">{new Date(inv.due_date).toLocaleDateString()}</td>
-                                            <td className="py-4">
-                                                <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
-                                                    inv.status === 'PAID' ? 'bg-green-500/20 text-green-400' :
-                                                    inv.status === 'PENDING_REVIEW' ? 'bg-yellow-500/20 text-yellow-400' :
-                                                    inv.status === 'OVERDUE' ? 'bg-red-500/20 text-red-400' :
-                                                    'bg-slate-700/20 text-slate-400'
-                                                }`}>
-                                                    {inv.status}
+                    {/* Timeline Invoice List */}
+                    <div className="bg-dark-900 border border-white/10 rounded-3xl p-6">
+                        <h3 className="text-lg font-bold text-white mb-6">Statement Timeline</h3>
+                        
+                        <div className="relative border-l border-white/10 pl-6 ml-4 space-y-8 text-left">
+                            {/* Upcoming Projected Statement */}
+                            {currentMonthPreview && (
+                                <div className="relative group">
+                                    {/* Timeline Node */}
+                                    <div className="absolute -left-[31px] top-1.5 w-4 h-4 rounded-full bg-dark-900 border-2 border-dashed border-primary-500 flex items-center justify-center">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-primary-500 animate-ping"></div>
+                                    </div>
+                                    
+                                    <div className="glass-dark border border-white/5 hover:border-primary-500/20 rounded-2xl p-5 transition-all duration-300">
+                                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                            <div>
+                                                <span className="text-[10px] font-black uppercase text-primary-400 tracking-wider">Upcoming Statement</span>
+                                                {(() => {
+                                                    const currentYear = new Date().getFullYear();
+                                                    const currentMonth = new Date().getMonth() + 1;
+                                                    const exactDue = storeDetails?.created_at ? calculateExactDueDate(storeDetails.created_at, currentYear, currentMonth) : null;
+                                                    
+                                                    let billingPeriodText = currentMonthPreview.month;
+                                                    if (exactDue && storeDetails?.created_at) {
+                                                        const exactStart = new Date(exactDue);
+                                                        exactStart.setMonth(exactStart.getMonth() - 1);
+                                                        const opt = { month: 'short', day: 'numeric', year: 'numeric' };
+                                                        billingPeriodText = `${exactStart.toLocaleDateString(undefined, opt)} – ${exactDue.toLocaleDateString(undefined, opt)}`;
+                                                    }
+                                                    
+                                                    return (
+                                                        <>
+                                                            <h4 className="text-lg font-bold text-white mt-1">{billingPeriodText}</h4>
+                                                            <p className="text-xs text-slate-500 mt-0.5">
+                                                                Accruing platform fee — due on: {exactDue ? exactDue.toLocaleString() : "the 15th of next month."}
+                                                            </p>
+                                                        </>
+                                                    );
+                                                })()}
+                                            </div>
+                                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-primary-500/10 text-primary-400 border border-primary-500/20">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse"></span>
+                                                ⚪ ACCRUING
+                                            </span>
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-3 gap-4 mt-6 pt-4 border-t border-white/5">
+                                            <div>
+                                                <span className="block text-[9px] font-black text-slate-500 uppercase tracking-widest">Accrued Orders</span>
+                                                <span className="block text-base font-bold text-slate-300 mt-1 font-mono">{currentMonthPreview.order_count}</span>
+                                            </div>
+                                            <div>
+                                                <span className="block text-[9px] font-black text-slate-500 uppercase tracking-widest">Est. Gross Sales</span>
+                                                <span className="block text-base font-bold text-slate-300 mt-1 font-mono">
+                                                    {formatPrice(currentMonthPreview.accrued_commission / 0.03)}
                                                 </span>
-                                            </td>
-                                            <td className="py-4 text-right">
-                                                {['UNPAID', 'OVERDUE'].includes(inv.status) ? (
-                                                    <button
-                                                        onClick={() => {
-                                                            setShowPaymentModal({ open: true, invoice: inv });
-                                                            setPaymentForm({ amount: inv.total_commission, transactionId: '', receiptScreenshot: null });
-                                                        }}
-                                                        className="bg-primary-500 hover:bg-primary-400 text-dark-950 text-xs font-black uppercase px-3 py-1.5 rounded-lg transition-all"
-                                                    >
-                                                        Upload Receipt
-                                                    </button>
-                                                ) : (
-                                                    <span className="text-slate-500 text-xs">-</span>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    {invoices.length === 0 && (
-                                        <tr>
-                                            <td colSpan="7" className="py-12 text-center text-slate-500">
-                                                No monthly invoices generated yet.
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
+                                            </div>
+                                            <div>
+                                                <span className="block text-[9px] font-black text-slate-500 uppercase tracking-widest">Commission (3%)</span>
+                                                <span className="block text-base font-black text-primary-400 mt-1 font-mono">
+                                                    {formatPrice(currentMonthPreview.accrued_commission)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* List of generated invoices */}
+                            {invoices.map((inv) => {
+                                const invoiceDateStr = new Date(inv.year, inv.month - 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+                                const isUnpaid = ['UNPAID', 'OVERDUE'].includes(inv.status);
+                                
+                                return (
+                                    <div key={inv.id} className="relative group">
+                                        {/* Timeline Node Icon */}
+                                        <div className={`absolute -left-[33px] top-1 w-5 h-5 rounded-full bg-dark-900 border-2 flex items-center justify-center z-10 transition-all ${
+                                            inv.status === 'PAID' ? 'border-green-500 text-green-500' :
+                                            inv.status === 'PENDING_REVIEW' ? 'border-yellow-500 text-yellow-500' :
+                                            inv.status === 'OVERDUE' ? 'border-red-500 text-red-500' :
+                                            'border-slate-500 text-slate-500'
+                                        }`}>
+                                            {inv.status === 'PAID' ? <CheckCircle2 size={12} /> : 
+                                             inv.status === 'PENDING_REVIEW' ? <Clock size={12} className="animate-spin-slow" /> : 
+                                             inv.status === 'OVERDUE' ? <AlertTriangle size={12} /> : 
+                                             <CreditCard size={12} />}
+                                        </div>
+                                        
+                                        <div className={`glass-dark border rounded-2xl p-5 hover:border-white/20 transition-all duration-300 ${
+                                            inv.status === 'OVERDUE' ? 'border-red-500/20 bg-red-500/[0.02]' : 'border-white/5'
+                                        }`}>
+                                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                                <div>
+                                                    <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Statement Period</span>
+                                                    <h4 className="text-lg font-bold text-white mt-1">{invoiceDateStr}</h4>
+                                                    {(() => {
+                                                        const exactDue = storeDetails?.created_at ? calculateExactDueDate(storeDetails.created_at, inv.year, inv.month) : null;
+                                                        return (
+                                                            <p className="text-xs text-slate-400 mt-0.5">
+                                                                Due Date: {exactDue ? exactDue.toLocaleString() : new Date(inv.due_date).toLocaleDateString()}
+                                                            </p>
+                                                        );
+                                                    })()}
+                                                </div>
+                                                
+                                                <div className="flex items-center gap-3">
+                                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                                                        inv.status === 'PAID' ? 'bg-green-500/10 text-green-400 border border-green-500/20' :
+                                                        inv.status === 'PENDING_REVIEW' ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20' :
+                                                        inv.status === 'OVERDUE' ? 'bg-red-500/10 text-red-400 border border-red-500/20 animate-pulse' :
+                                                        'bg-slate-500/10 text-slate-400 border border-white/5'
+                                                    }`}>
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
+                                                        {inv.status === 'PAID' ? '🟢 PAID' :
+                                                         inv.status === 'PENDING_REVIEW' ? '🟡 PENDING REVIEW' :
+                                                         inv.status === 'OVERDUE' ? '🔴 OVERDUE' :
+                                                         '⚪ UNPAID'}
+                                                    </span>
+                                                    
+                                                    {isUnpaid && (
+                                                        <button
+                                                            onClick={() => {
+                                                                setShowPaymentModal({ open: true, invoice: inv });
+                                                                setPaymentForm({ amount: inv.total_commission, transactionId: '', receiptScreenshot: null });
+                                                            }}
+                                                            className="bg-primary-500 hover:bg-primary-400 text-dark-950 text-xs font-black uppercase px-3 py-2 rounded-xl transition-all shadow-lg active:scale-95 cursor-pointer shrink-0"
+                                                        >
+                                                            Pay Invoice
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="grid grid-cols-3 gap-4 mt-6 pt-4 border-t border-white/5">
+                                                <div>
+                                                    <span className="block text-[9px] font-black text-slate-500 uppercase tracking-widest">Total Orders</span>
+                                                    <span className="block text-base font-bold text-slate-300 mt-1 font-mono">{inv.order_count}</span>
+                                                </div>
+                                                <div>
+                                                    <span className="block text-[9px] font-black text-slate-500 uppercase tracking-widest">Gross Sales</span>
+                                                    <span className="block text-base font-bold text-slate-300 mt-1 font-mono">{formatPrice(inv.total_order_amount)}</span>
+                                                </div>
+                                                <div>
+                                                    <span className="block text-[9px] font-black text-slate-500 uppercase tracking-widest">Platform Cut (3%)</span>
+                                                    <span className="block text-base font-black text-primary-400 mt-1 font-mono">{formatPrice(inv.total_commission)}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            
+                            {invoices.length === 0 && !currentMonthPreview && (
+                                <div className="text-center py-12 text-slate-500">
+                                    No statements recorded yet.
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -1178,13 +1397,56 @@ export default function SellerDashboard() {
                         <h3 className="text-lg font-bold text-white mb-4">Store Profile</h3>
                         <p className="text-sm text-slate-400 mb-6">Update your store details, contact info, and picture.</p>
                         
+                        {/* Free Trial Banner Alert */}
+                        {(() => {
+                            if (!storeDetails.free_trial_start || !storeDetails.free_trial_end) return null;
+                            const now = new Date();
+                            const start = new Date(storeDetails.free_trial_start);
+                            const end = new Date(storeDetails.free_trial_end);
+                            
+                            if (now >= start && now <= end) {
+                                return (
+                                    <div className="mb-6 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-start gap-3 text-left">
+                                        <span className="text-xl">🎁</span>
+                                        <div>
+                                            <h4 className="text-sm font-bold text-emerald-400">Active Free Trial Program</h4>
+                                            <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                                                Congratulations! Your store is operating under the platform's promotional Free Trial. Platform commission cuts (3%) are <strong>100% waived</strong> on all completed transactions until <strong>{end.toLocaleString()}</strong>.
+                                            </p>
+                                        </div>
+                                    </div>
+                                );
+                            } else if (now < start) {
+                                return (
+                                    <div className="mb-6 p-4 bg-cyan-500/10 border border-cyan-500/20 rounded-2xl flex items-start gap-3 text-left">
+                                        <span className="text-xl">📅</span>
+                                        <div>
+                                            <h4 className="text-sm font-bold text-cyan-400">Scheduled Free Trial Promotion</h4>
+                                            <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                                                Your store has been enrolled in the platform's promotional Free Trial. Commission-free selling starts on <strong>{start.toLocaleString()}</strong> and runs until <strong>{end.toLocaleString()}</strong>.
+                                            </p>
+                                        </div>
+                                    </div>
+                                );
+                            }
+                            return null;
+                        })()}
+                        
                         <form onSubmit={(e) => {
                             e.preventDefault();
                             const toastId = toast.loading('Saving store profile...');
                             const formData = new FormData(e.target);
+                            formData.set('requires_table_for_dine_in', requiresTableForDineIn ? 'true' : 'false');
                             apiClient.patch(`/stores/${storeDetails.id}/`, formData, { headers: { 'Content-Type': 'multipart/form-data' }})
-                                .then(() => {
+                                .then((res) => {
                                     toast.success('Store profile updated!', { id: toastId });
+                                    if (res.data) {
+                                        setStoreDetails(res.data);
+                                        setEditLocation(res.data.location || '');
+                                        setEditLatitude(res.data.latitude || '');
+                                        setEditLongitude(res.data.longitude || '');
+                                        setRequiresTableForDineIn(res.data.requires_table_for_dine_in !== false);
+                                    }
                                     fetchDashboard();
                                 })
                                 .catch(err => toast.error('Failed to update profile', { id: toastId }));
@@ -1203,8 +1465,78 @@ export default function SellerDashboard() {
                                     <input type="email" name="contact_email" defaultValue={storeDetails.contact_email || ''} className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none text-white" />
                                 </div>
                                 <div className="md:col-span-2">
-                                    <label className="text-xs text-slate-400 block mb-1">Location</label>
-                                    <textarea name="location" defaultValue={storeDetails.location || ''} className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none text-white h-20" />
+                                    <div className="flex justify-between items-center mb-1">
+                                        <label className="text-xs text-slate-400 block font-medium">
+                                            {storeDetails.latitude && storeDetails.longitude ? (
+                                                <span className="text-emerald-400 font-bold flex items-center gap-1.5">
+                                                    <Shield size={14} /> Location Registered & Secured
+                                                </span>
+                                            ) : (
+                                                "Location"
+                                            )}
+                                        </label>
+                                        {!(storeDetails.latitude && storeDetails.longitude) && (
+                                            <button 
+                                                type="button" 
+                                                onClick={handleGetEditStoreLocation} 
+                                                className="text-xs text-primary-400 font-bold hover:underline flex items-center gap-1"
+                                            >
+                                                📍 Get Location
+                                            </button>
+                                        )}
+                                    </div>
+                                    <textarea 
+                                        name="location" 
+                                        value={editLocation} 
+                                        onChange={(e) => setEditLocation(e.target.value)} 
+                                        required 
+                                        readOnly={true}
+                                        className="w-full bg-dark-950/50 border border-white/5 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none text-slate-400 h-20 font-sans cursor-not-allowed select-none" 
+                                    />
+                                    {storeDetails.latitude && storeDetails.longitude && (
+                                        <div className="mt-2 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-start gap-2.5 text-xs text-emerald-400">
+                                            <Shield className="text-emerald-400 shrink-0 mt-0.5" size={16} />
+                                            <div>
+                                                <div className="font-bold flex items-center gap-1.5">
+                                                    Location Registered & Secured
+                                                </div>
+                                                <p className="mt-1 text-emerald-400/80 leading-relaxed">
+                                                    Under security policy, coordinates cannot be manually edited by sellers. If your store has relocated, please contact system administration for override verification.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                                <input type="hidden" name="latitude" value={editLatitude} />
+                                <input type="hidden" name="longitude" value={editLongitude} />
+                                <div className="md:col-span-2">
+                                    <label className="text-xs text-slate-400 block mb-1">Delivery Directions / Landmarks</label>
+                                    <textarea 
+                                        name="directions" 
+                                        defaultValue={storeDetails.directions || ''} 
+                                        placeholder="e.g. Opposite the main market, Green door, 2nd floor" 
+                                        className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none text-white h-20 font-sans" 
+                                    />
+                                    <p className="mt-1 text-[11px] text-slate-500 leading-normal">
+                                        Provide landmarks or special delivery instructions to help customers and drivers locate your business. This field remains editable at any time.
+                                    </p>
+                                </div>
+                                <div className="md:col-span-2 bg-dark-950/40 border border-white/5 rounded-xl p-4 flex items-start gap-3">
+                                    <input
+                                        type="checkbox"
+                                        id="requires_table_for_dine_in"
+                                        checked={requiresTableForDineIn}
+                                        onChange={(e) => setRequiresTableForDineIn(e.target.checked)}
+                                        className="mt-1 w-4 h-4 rounded border-white/10 text-primary-500 focus:ring-primary-500 bg-dark-900 cursor-pointer"
+                                    />
+                                    <div className="flex-1 cursor-pointer select-none" onClick={() => setRequiresTableForDineIn(!requiresTableForDineIn)}>
+                                        <label htmlFor="requires_table_for_dine_in" className="text-sm font-semibold text-white cursor-pointer block">
+                                            Require Table Selection for Dine-In
+                                        </label>
+                                        <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                                            When enabled, customers ordering for Dine-In must select a table number. When disabled, customers can check out without table numbers (Free Seating / Sit Anywhere).
+                                        </p>
+                                    </div>
                                 </div>
                                 <div className="md:col-span-2">
                                     <label className="text-xs text-slate-400 block mb-1">Store Picture</label>
@@ -1539,9 +1871,13 @@ export default function SellerDashboard() {
                                     <button onClick={() => handleResetStaffPassword(staff.id)} className="flex-1 bg-white/5 hover:bg-white/10 text-slate-300 py-2 rounded-lg text-[10px] font-black uppercase transition-all flex items-center justify-center gap-2">
                                         <Key size={12} /> Reset Pass
                                     </button>
-                                    {staff.is_active && (
-                                        <button onClick={() => handleDeactivateStaff(staff.id)} className="px-3 bg-red-500/10 hover:bg-red-500/20 text-red-500 py-2 rounded-lg transition-colors border border-red-500/20">
+                                    {staff.is_active ? (
+                                        <button onClick={() => handleDeactivateStaff(staff.id)} className="px-3 bg-red-500/10 hover:bg-red-500/20 text-red-500 py-2 rounded-lg transition-colors border border-red-500/20" title="Fire Staff">
                                             <Power size={14} />
+                                        </button>
+                                    ) : (
+                                        <button onClick={() => handleReactivateStaff(staff.id)} className="px-3 bg-green-500/10 hover:bg-green-500/20 text-green-500 py-2 rounded-lg transition-colors border border-green-500/20" title="Rehire Staff">
+                                            <UserPlus size={14} />
                                         </button>
                                     )}
                                 </div>
@@ -2171,9 +2507,28 @@ const OrderCard = ({ order, markItemReadyFn, advanceOrderStateFn, onVerifyPaymen
                     <span className={`px-2 py-1 rounded text-xs font-bold ${order.fulfillment_mode === 'DELIVERY' ? 'bg-purple-500/20 text-purple-400' : 'bg-orange-500/20 text-orange-400'}`}>
                         {order.fulfillment_mode}
                     </span>
-                    {order.delivery_location && (
+                     {order.delivery_location && (
                         <div className="mt-1 text-right bg-dark-900 border border-white/5 p-2 rounded-lg text-xs text-slate-300 max-w-[200px] break-words">
-                            📍 {order.delivery_location} <br/> 📞 {order.customer_phone}
+                            <div className="flex items-center justify-end gap-1 font-bold text-slate-200">
+                                📍 Address
+                                {order.delivery_latitude && order.delivery_longitude && (
+                                    <a 
+                                        href={`https://www.google.com/maps/search/?api=1&query=${order.delivery_latitude},${order.delivery_longitude}`} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="text-[10px] text-primary-400 hover:underline font-normal shrink-0"
+                                    >
+                                        [Open Map]
+                                    </a>
+                                )}
+                            </div>
+                            <span className="text-slate-400">{order.delivery_location}</span>
+                            {order.delivery_directions && (
+                                <div className="mt-1 text-[11px] text-amber-400 bg-amber-500/5 p-1 rounded border border-amber-500/10 text-left">
+                                    Landmark/Directions: {order.delivery_directions}
+                                </div>
+                            )}
+                            <div className="mt-1 text-slate-400">📞 {order.customer_phone}</div>
                         </div>
                     )}
                 </div>

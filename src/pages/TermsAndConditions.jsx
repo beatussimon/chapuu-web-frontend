@@ -175,6 +175,36 @@ export default function TermsAndConditions() {
                         In case of any dispute between a Customer and a Store, both parties must attempt to resolve the issue directly with the store owner first. If unresolved, the user may report the vendor using our support forms. However, Chapuu holds no authority to enforce refunds, adjust bank accounts, or arbitrate claims, and all financial reconciliations must be requested directly from the corresponding merchant.
                     </p>
                 </div>
+
+                <hr className="border-white/5" />
+
+                {/* SECTION 6 */}
+                <div className="space-y-4 text-left">
+                    <h2 className="text-2xl font-bold text-white flex items-center gap-3">
+                        <span className="text-primary-500">06.</span> Location Data & Privacy
+                    </h2>
+                    <p className="text-slate-300 leading-relaxed">
+                        Chapuu utilizes your browser or device geolocation coordinates during active sessions under the following conditions:
+                    </p>
+                    <ul className="grid grid-cols-1 md:grid-cols-2 gap-4 text-slate-400 text-sm">
+                        <li className="flex items-start gap-3 bg-white/5 p-4 rounded-xl border border-white/5">
+                            <CheckCircle size={18} className="text-primary-500 shrink-0 mt-0.5" />
+                            <span><strong>Nearby Suggestions & Proximity Radius:</strong> Location data is used strictly to rank closest food spots first and filter menus within dynamic proximity bounds (e.g. 500m, 1km, 2km).</span>
+                        </li>
+                        <li className="flex items-start gap-3 bg-white/5 p-4 rounded-xl border border-white/5">
+                            <CheckCircle size={18} className="text-primary-500 shrink-0 mt-0.5" />
+                            <span><strong>Session Proximity Calculations:</strong> Your current coordinates are processed on active pages to calculate estimated distances in real-time, and are never permanently stored on our databases.</span>
+                        </li>
+                        <li className="flex items-start gap-3 bg-white/5 p-4 rounded-xl border border-white/5">
+                            <CheckCircle size={18} className="text-primary-500 shrink-0 mt-0.5" />
+                            <span><strong>Optional Usage Consent:</strong> Enabling device location is entirely voluntary. Customers may opt-out at any time and manually browse without real-time distance sorting features.</span>
+                        </li>
+                        <li className="flex items-start gap-3 bg-white/5 p-4 rounded-xl border border-white/5">
+                            <CheckCircle size={18} className="text-primary-500 shrink-0 mt-0.5" />
+                            <span><strong>Store Owner Consent:</strong> Store owners who utilize the auto-locate feature consent to their store coordinates being calculated, shared, and displayed on maps for proximity sorting and navigation.</span>
+                        </li>
+                    </ul>
+                </div>
             </div>
 
             {/* Back Button */}

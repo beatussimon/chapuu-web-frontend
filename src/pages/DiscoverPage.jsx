@@ -1,12 +1,74 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, MapPin, TrendingUp, Star, ChefHat, ShoppingBag, ArrowRight, Utensils, X, Store } from 'lucide-react';
+import { Search, MapPin, TrendingUp, Star, ChefHat, ShoppingBag, ArrowRight, Utensils, X, Store, Navigation, SlidersHorizontal, Clock, Compass, Tag, Map as MapIcon } from 'lucide-react';
 import apiClient from '../api/client';
 import { useAppStore } from '../store/useStore';
 import { useCurrency } from '../utils/useCurrency';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import OptimizedImage from '../components/OptimizedImage';
+import { useLocation } from '../hooks/useLocation';
+import SearchResults from '../components/SearchResults';
+import MapModal from '../components/MapModal';
+
+// Localized proximity slider component to achieve 60fps drag performance without triggering parent rerenders
+function ProximitySlider({ hasLocation, activeRadius, onChange }) {
+    const [localRadius, setLocalRadius] = useState(2.0);
+
+    // Sync localRadius when activeRadius is cleared/reset externally
+    useEffect(() => {
+        if (activeRadius === null) {
+            setLocalRadius(2.0);
+        } else {
+            setLocalRadius(activeRadius);
+        }
+    }, [activeRadius]);
+
+    // Debounce range slider updates by 350ms to ensure 60fps drag performance without rapid API queries
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (hasLocation) {
+                onChange(localRadius);
+            }
+        }, 350);
+        return () => clearTimeout(timer);
+    }, [localRadius, hasLocation, onChange]);
+
+    return (
+        <div className="space-y-3">
+            <div className="flex justify-between items-center">
+                <label className="text-xs font-black uppercase text-slate-400 tracking-wider flex items-center gap-1.5">
+                    <Compass size={13} className="text-primary-500 shrink-0" />
+                    Proximity Range
+                </label>
+                <span className="text-xs font-mono font-bold text-white bg-primary-500/10 text-primary-400 border border-primary-500/20 px-2 py-0.5 rounded-lg">
+                    {!hasLocation ? "Enable Location first" :
+                     localRadius <= 0.5 ? "Closest (< 500m)" :
+                     localRadius >= 10.0 ? "Any distance (10km+)" :
+                     `Within ${localRadius.toFixed(1)} km`}
+                </span>
+            </div>
+            <div className="relative flex items-center pt-2">
+                <input
+                    type="range"
+                    min="0.5"
+                    max="10.0"
+                    step="0.5"
+                    disabled={!hasLocation}
+                    value={localRadius}
+                    onChange={(e) => setLocalRadius(parseFloat(e.target.value))}
+                    className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary-500 disabled:opacity-30 disabled:cursor-not-allowed"
+                />
+            </div>
+            <div className="flex justify-between text-[9px] font-black uppercase text-slate-600 tracking-widest font-mono">
+                <span>500m</span>
+                <span>2.0km</span>
+                <span>5.0km</span>
+                <span>10.0km</span>
+            </div>
+        </div>
+    );
+}
 
 export default function DiscoverPage() {
     const [stores, setStores] = useState([]);
@@ -17,17 +79,49 @@ export default function DiscoverPage() {
     });
     const [searchQuery, setSearchQuery] = useState('');
     const [activeFilter, setActiveFilter] = useState('ALL');
-    const [loading, setLoading] = useState(true);
+    const [initialLoading, setInitialLoading] = useState(true);
+    const [storesLoading, setStoresLoading] = useState(false);
     const { setSelectedStore, token } = useAppStore();
     const isAuthenticated = !!token;
     const { formatPrice } = useCurrency();
     const navigate = useNavigate();
 
+    // Proximity state integration
+    const { location, requestLocation, hasLocation, clearLocation } = useLocation();
+    const [activeRadius, setActiveRadius] = useState(null);
+    const [selectedCategory, setSelectedCategory] = useState(null);
+    const [isOpenOnly, setIsOpenOnly] = useState(false);
+    const [categories, setCategories] = useState([]);
+    const [searchResults, setSearchResults] = useState({ products: [], stores: [], categories: [] });
+    const [searchLoading, setSearchLoading] = useState(false);
+    const [mapOpen, setMapOpen] = useState(false);
+    const [showFiltersPanel, setShowFiltersPanel] = useState(false);
+
+    // Baseline listings load
     useEffect(() => {
+        if (initialLoading) {
+            // Keep initial full-page loader active
+        } else {
+            setStoresLoading(true);
+        }
+        const params = {};
+        if (hasLocation && location?.lat && location?.lng) {
+            params.lat = location.lat;
+            params.lng = location.lng;
+            if (activeRadius) params.radius = activeRadius;
+        }
+        if (activeFilter !== 'ALL') {
+            params.store_type = activeFilter;
+        }
+        if (isOpenOnly) {
+            params.is_open = true;
+        }
+
         Promise.all([
-            apiClient.get('/stores/'),
-            apiClient.get('/stats/billboard/')
-        ]).then(([storesRes, statsRes]) => {
+            apiClient.get('/stores/', { params }),
+            apiClient.get('/stats/billboard/', { params: hasLocation && location?.lat ? { lat: location.lat, lng: location.lng } : {} }),
+            apiClient.get('/categories/')
+        ]).then(([storesRes, statsRes, categoriesRes]) => {
             setStores(Array.isArray(storesRes.data) ? storesRes.data : []);
             const statsData = statsRes.data || {};
             setStats({
@@ -35,26 +129,73 @@ export default function DiscoverPage() {
                 top_stores: Array.isArray(statsData.top_stores) ? statsData.top_stores : [],
                 trending_items: Array.isArray(statsData.trending_items) ? statsData.trending_items : []
             });
-            setLoading(false);
-        }).catch(() => {
+            setCategories(Array.isArray(categoriesRes.data) ? categoriesRes.data : []);
+            setInitialLoading(false);
+            setStoresLoading(false);
+        }).catch((err) => {
+            console.error("Discover load error:", err);
             toast.error("Failed to load discover data");
-            setLoading(false);
+            setInitialLoading(false);
+            setStoresLoading(false);
         });
-    }, []);
+    }, [hasLocation, location?.lat, location?.lng, activeRadius, activeFilter, isOpenOnly]);
 
-    const storesArray = Array.isArray(stores) ? stores : [];
-    const filteredStores = storesArray.filter(s => {
-        const matchesSearch = !searchQuery || s.name.toLowerCase().includes(searchQuery.toLowerCase()) || s.location?.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesFilter = activeFilter === 'ALL' || s.store_type === activeFilter;
-        return matchesSearch && matchesFilter;
-    });
+    // Search query & category pill debouncer
+    useEffect(() => {
+        if (!searchQuery.trim() && !selectedCategory) {
+            setSearchResults({ products: [], stores: [], categories: [] });
+            return;
+        }
+
+        setSearchLoading(true);
+        const delayDebounceFn = setTimeout(() => {
+            const params = {
+                q: searchQuery,
+                type: 'all'
+            };
+            
+            if (hasLocation && location?.lat && location?.lng) {
+                params.lat = location.lat;
+                params.lng = location.lng;
+                params.radius = activeRadius || 2.0;
+            }
+            if (activeFilter !== 'ALL') {
+                params.store_type = activeFilter;
+            }
+            if (isOpenOnly) {
+                params.is_open = true;
+            }
+            if (selectedCategory) {
+                params.category = selectedCategory;
+            }
+
+            apiClient.get('/search/', { params })
+                .then((res) => {
+                    const data = res.data?.results || {};
+                    setSearchResults({
+                        products: Array.isArray(data.products) ? data.products : [],
+                        stores: Array.isArray(data.stores) ? data.stores : [],
+                        categories: Array.isArray(data.categories) ? data.categories : []
+                    });
+                    setSearchLoading(false);
+                })
+                .catch((err) => {
+                    console.error("Search error:", err);
+                    setSearchLoading(false);
+                });
+        }, 300);
+
+        return () => clearTimeout(delayDebounceFn);
+    }, [searchQuery, hasLocation, location?.lat, location?.lng, activeRadius, activeFilter, isOpenOnly, selectedCategory]);
 
     const handleSelectStore = (store) => {
         setSelectedStore(store);
         navigate('/menu');
     };
 
-    if (loading) {
+    const isSearching = searchQuery.trim().length > 0 || selectedCategory !== null;
+
+    if (initialLoading) {
         return (
             <div className="w-full max-w-6xl mx-auto py-8 space-y-6 px-4">
                 <div className="h-32 bg-white/5 rounded-2xl animate-pulse"></div>
@@ -72,13 +213,29 @@ export default function DiscoverPage() {
             <div className="glass-dark border border-white/5 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row gap-6 items-center justify-between shadow-2xl relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-primary-500/10 rounded-full blur-[80px] pointer-events-none"></div>
                 
-                <div className="z-10 text-center md:text-left">
-                    <h1 className="text-3xl md:text-4xl font-black text-white mb-2 tracking-tight">
+                <div className="z-10 text-center md:text-left space-y-2">
+                    <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight">
                         {isAuthenticated ? "What are you craving?" : "Discover & Order."}
                     </h1>
-                    <p className="text-sm md:text-base text-slate-400">
-                        {stats.metrics?.total_stores ?? '...'} spots delivering {stats.metrics?.total_meals_served ?? '...'} meals.
-                    </p>
+                    
+                    {/* Deliver Location Indicator */}
+                    {hasLocation ? (
+                        <div className="flex items-center justify-center md:justify-start gap-1.5 text-xs font-bold text-primary-400">
+                            <Navigation size={12} className="animate-pulse" />
+                            <span>Delivering to: <span className="underline">{location.name}</span></span>
+                            <button 
+                                onClick={clearLocation} 
+                                className="text-[10px] text-slate-500 hover:text-white ml-1 bg-white/5 px-1.5 py-0.5 rounded cursor-pointer"
+                            >
+                                Change
+                            </button>
+                        </div>
+                    ) : (
+                        <p className="text-sm md:text-base text-slate-400">
+                            {stats.metrics?.total_stores ?? '...'} spots delivering {stats.metrics?.total_meals_served ?? '...'} meals.
+                        </p>
+                    )}
+
                     {!isAuthenticated && (
                         <div className="mt-4 flex gap-3 justify-center md:justify-start">
                             <Link to="/register" className="bg-primary-500 text-dark-900 font-bold px-5 py-2 rounded-xl text-sm transition-transform hover:-translate-y-0.5">Sign Up</Link>
@@ -87,145 +244,404 @@ export default function DiscoverPage() {
                     )}
                 </div>
 
-                <div className="w-full md:w-96 z-10 space-y-3">
-                    <div className="relative">
-                        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
-                        <input
-                            type="text"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Search burgers, pizza, shops..."
-                            className="w-full bg-dark-950 border border-white/10 rounded-2xl py-3.5 pl-11 pr-10 text-sm text-white placeholder-slate-500 focus:border-primary-500 outline-none transition-all shadow-inner"
-                        />
-                        {searchQuery && (
-                            <button onClick={() => setSearchQuery('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white">
-                                <X size={16} />
+                <div className="w-full md:w-96 z-10 space-y-4">
+                    {/* Search Bar Input & Sleek Filter Toggle Button */}
+                    <div className="flex items-center gap-3">
+                        <div className="relative flex-grow">
+                            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                            <input
+                                type="text"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                placeholder="Search meals, spots, categories..."
+                                className="w-full bg-dark-950 border border-white/10 rounded-2xl py-3.5 pl-11 pr-10 text-sm text-white placeholder-slate-500 focus:border-primary-500 outline-none transition-all shadow-inner"
+                            />
+                            {searchQuery && (
+                                <button onClick={() => setSearchQuery('')} className="absolute right-12 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer">
+                                    <X size={16} />
+                                </button>
+                            )}
+                        </div>
+                        
+                        <button
+                            onClick={() => setShowFiltersPanel(!showFiltersPanel)}
+                            className={`w-12 h-12 rounded-2xl border flex items-center justify-center transition-all cursor-pointer relative shrink-0 ${
+                                showFiltersPanel || activeFilter !== 'ALL' || activeRadius || isOpenOnly || selectedCategory
+                                    ? 'bg-primary-500 text-dark-900 border-primary-500 shadow-lg shadow-primary-500/20'
+                                    : 'bg-dark-950 hover:bg-white/5 text-slate-400 hover:text-white border-white/10'
+                            }`}
+                            title="Refine Search Filters"
+                        >
+                            <SlidersHorizontal size={18} />
+                            {/* Active Filters Count Badge */}
+                            {((activeFilter !== 'ALL' ? 1 : 0) + (activeRadius ? 1 : 0) + (isOpenOnly ? 1 : 0) + (selectedCategory ? 1 : 0)) > 0 && (
+                                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[8px] font-black rounded-full flex items-center justify-center border-2 border-dark-900">
+                                    {(activeFilter !== 'ALL' ? 1 : 0) + (activeRadius ? 1 : 0) + (isOpenOnly ? 1 : 0) + (selectedCategory ? 1 : 0)}
+                                </span>
+                            )}
+                        </button>
+                    </div>
+
+                    {/* Geolocation Authorization Prompt Banner */}
+                    {!hasLocation && (
+                        <div className="bg-primary-500/10 border border-primary-500/20 p-3 rounded-2xl flex items-center justify-between gap-3 text-left">
+                            <div className="text-[10px] font-bold text-slate-300 flex items-center gap-1.5">
+                                <MapPin size={12} className="text-primary-400 shrink-0" />
+                                Enable location to get nearby food & delivery rates!
+                            </div>
+                            <button
+                                onClick={() => requestLocation()}
+                                className="bg-primary-500 text-dark-900 font-black text-[10px] px-3 py-1.5 rounded-lg cursor-pointer hover:bg-primary-400 transition-colors"
+                            >
+                                Turn On
+                            </button>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Collapsible Filter Panel */}
+            <AnimatePresence>
+                {showFiltersPanel && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0, y: -10 }}
+                        animate={{ height: 'auto', opacity: 1, y: 0 }}
+                        exit={{ height: 0, opacity: 0, y: -10 }}
+                        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                        className="overflow-hidden px-2 z-20"
+                    >
+                        <div className="glass-dark border border-white/10 rounded-3xl p-6 shadow-xl space-y-6 text-left">
+                            <div className="flex justify-between items-center pb-3 border-b border-white/5">
+                                <h3 className="text-xs font-black uppercase text-primary-400 tracking-wider">Refine Proximity & Search Filters</h3>
+                                <button
+                                    onClick={() => {
+                                        setActiveFilter('ALL');
+                                        setActiveRadius(null);
+                                        setIsOpenOnly(false);
+                                        setSelectedCategory(null);
+                                    }}
+                                    className="text-[10px] text-slate-500 hover:text-white uppercase font-black tracking-widest cursor-pointer bg-white/5 px-2 py-1 rounded transition-colors"
+                                >
+                                    Reset Filters
+                                </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                {/* Spot Type Group */}
+                                <div className="space-y-3">
+                                    <label className="text-xs font-black uppercase text-slate-400 tracking-wider flex items-center gap-1.5">
+                                        <Store size={13} className="text-primary-500 shrink-0" />
+                                        Spot Type
+                                    </label>
+                                    <div className="flex bg-dark-950 border border-white/10 p-1 rounded-xl w-fit">
+                                        {[
+                                            { label: 'All', value: 'ALL', icon: <Compass size={12} /> },
+                                            { label: 'Restaurants', value: 'RESTAURANT', icon: <Utensils size={12} /> },
+                                            { label: 'Shops', value: 'SHOP', icon: <ShoppingBag size={12} /> }
+                                        ].map(type => (
+                                            <button
+                                                key={type.value}
+                                                onClick={() => setActiveFilter(type.value)}
+                                                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                                    activeFilter === type.value
+                                                        ? 'bg-primary-500 text-dark-900 shadow-md font-black'
+                                                        : 'text-slate-400 hover:text-white hover:bg-white/5'
+                                                }`}
+                                            >
+                                                {type.icon}
+                                                {type.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Proximity Range Slider */}
+                                <ProximitySlider
+                                    hasLocation={hasLocation}
+                                    activeRadius={activeRadius}
+                                    onChange={setActiveRadius}
+                                />
+
+                                {/* Availability Selector */}
+                                <div className="space-y-3">
+                                    <label className="text-xs font-black uppercase text-slate-400 tracking-wider flex items-center gap-1.5">
+                                        <Clock size={13} className="text-primary-500 shrink-0" />
+                                        Spot Availability
+                                    </label>
+                                    <div>
+                                        <button
+                                            onClick={() => setIsOpenOnly(!isOpenOnly)}
+                                            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                                                isOpenOnly
+                                                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-md shadow-emerald-500/5'
+                                                    : 'bg-dark-950 border-white/10 text-slate-400 hover:text-white hover:bg-white/5'
+                                            }`}
+                                        >
+                                            <span className={`w-1.5 h-1.5 rounded-full ${isOpenOnly ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`}></span>
+                                            Only Open Spots
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Spot Category Wrap Grid */}
+                            {categories.length > 0 && (
+                                <div className="space-y-3 pt-4 border-t border-white/5">
+                                    <label className="text-xs font-black uppercase text-slate-400 tracking-wider flex items-center gap-1.5">
+                                        <Tag size={13} className="text-primary-500 shrink-0" />
+                                        Food Categories
+                                    </label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {categories.map(cat => {
+                                            const isActive = selectedCategory === cat.id;
+                                            return (
+                                                <button
+                                                    key={cat.id}
+                                                    onClick={() => setSelectedCategory(isActive ? null : cat.id)}
+                                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                                                        isActive
+                                                            ? 'bg-primary-500 text-dark-900 border-primary-500 font-black'
+                                                            : 'bg-dark-950 border-white/10 text-slate-400 hover:text-white hover:bg-white/5'
+                                                    }`}
+                                                >
+                                                    {cat.name}
+                                                    {cat.product_count !== undefined && (
+                                                        <span className={`text-[9px] px-1.5 py-0.5 rounded-md font-mono ${isActive ? 'bg-dark-900/10 text-dark-900' : 'bg-white/5 text-slate-500'}`}>
+                                                            {cat.product_count}
+                                                        </span>
+                                                    )}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Search Results Display */}
+            {isSearching ? (
+                <div className="px-2">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                            Search matches in Chapuu
+                        </h2>
+                        {selectedCategory && (
+                            <button 
+                                onClick={() => setSelectedCategory(null)}
+                                className="text-xs text-primary-500 font-bold hover:text-white flex items-center gap-1 cursor-pointer"
+                            >
+                                Clear Category <X size={12} />
                             </button>
                         )}
                     </div>
-                    <div className="flex gap-2 justify-center md:justify-start">
-                        {['ALL', 'RESTAURANT', 'SHOP'].map(f => (
-                            <button
-                                key={f}
-                                onClick={() => setActiveFilter(f)}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeFilter === f ? 'bg-primary-500 text-dark-900' : 'bg-white/5 text-slate-400 hover:text-white border border-white/5'}`}
-                            >
-                                {f === 'ALL' ? 'All' : f === 'RESTAURANT' ? 'Food' : 'Shops'}
-                            </button>
-                        ))}
-                    </div>
+                    <SearchResults
+                        results={searchResults}
+                        loading={searchLoading}
+                        query={searchQuery || (selectedCategory ? categories.find(c => c.id === selectedCategory)?.name : '')}
+                        onSelectStore={handleSelectStore}
+                        onSelectProduct={async (item) => {
+                            let s = stores.find(store => store.id === item.store_id);
+                            if (!s) {
+                                const tid = toast.loading("Loading store details...");
+                                try {
+                                    const res = await apiClient.get(`/stores/${item.store_id}/`);
+                                    s = res.data;
+                                    toast.dismiss(tid);
+                                } catch (err) {
+                                    toast.error("Failed to load store details", { id: tid });
+                                    return;
+                                }
+                            }
+                            if (s) {
+                                setSelectedStore(s);
+                                navigate('/menu', { state: { highlightProductId: item.id } });
+                            }
+                        }}
+                        onSelectCategory={setSelectedCategory}
+                        onIncreaseRadius={() => {
+                            setActiveRadius(prev => prev ? Math.min(prev + 1.0, 10.0) : 2.0);
+                        }}
+                    />
                 </div>
-            </div>
+            ) : (
+                /* Standard Browse Mode */
+                <>
+                    {/* Trending Products Row */}
+                    {activeFilter === 'ALL' && stats.trending_items?.length > 0 && (
+                        <div>
+                            <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2 px-2">
+                                <TrendingUp className="text-orange-500" size={20} /> 
+                                {hasLocation ? "Trending Nearby" : "Trending Right Now"}
+                            </h2>
+                            <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-5 px-2 transition-opacity duration-200 ${storesLoading ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
+                                {stats.trending_items.slice(0, 5).map(item => (
+                                    <motion.div
+                                        key={item.id}
+                                        whileHover={{ y: -4 }}
+                                        onClick={async () => {
+                                            let s = stores.find(store => store.id === item.store_id);
+                                            if (!s) {
+                                                const tid = toast.loading("Loading store details...");
+                                                try {
+                                                    const res = await apiClient.get(`/stores/${item.store_id}/`);
+                                                    s = res.data;
+                                                    toast.dismiss(tid);
+                                                } catch (err) {
+                                                    toast.error("Failed to load store details", { id: tid });
+                                                    return;
+                                                }
+                                            }
+                                            if (s) {
+                                                setSelectedStore(s);
+                                                navigate('/menu', { state: { highlightProductId: item.id } });
+                                            }
+                                        }}
+                                        className="cursor-pointer glass-dark rounded-2xl border border-white/5 hover:border-primary-500/30 transition-all overflow-hidden flex flex-col group relative"
+                                    >
+                                        <div className="relative w-full aspect-[4/3] bg-dark-900 overflow-hidden">
+                                            {item.image_url ? (
+                                                <OptimizedImage src={item.image_url} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" wrapperClassName="w-full h-full" />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-dark-800 to-dark-900">
+                                                    <Utensils size={24} className="text-white/10" />
+                                                </div>
+                                            )}
+                                            
+                                            {/* Distance Badge */}
+                                            {item.distance_km !== undefined && item.distance_km !== null && (
+                                                <div className="absolute top-2 left-2 z-10">
+                                                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded backdrop-blur-md border bg-dark-950/80 border-white/10 text-primary-400 flex items-center gap-1">
+                                                        <MapPin size={9} className="text-primary-400" /> {item.distance_km} km
+                                                    </span>
+                                                </div>
+                                            )}
 
-            {/* Trending Products Row */}
-            {!searchQuery && activeFilter === 'ALL' && stats.trending_items?.length > 0 && (
-                <div>
-                    <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2 px-2">
-                        <TrendingUp className="text-orange-500" size={20} /> Trending Right Now
-                    </h2>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-5 px-2">
-                        {stats.trending_items.slice(0, 5).map(item => (
-                            <motion.div
-                                key={item.id}
-                                whileHover={{ y: -4 }}
-                                onClick={() => {
-                                    const s = stores.find(s => s.id === item.store_id);
-                                    if (s) {
-                                        setSelectedStore(s);
-                                        navigate('/menu', { state: { highlightProductId: item.id } });
-                                    }
-                                }}
-                                className="cursor-pointer glass-dark rounded-2xl border border-white/5 hover:border-primary-500/30 transition-all overflow-hidden flex flex-col group relative"
-                            >
-                                <div className="relative w-full aspect-[4/3] bg-dark-900 overflow-hidden">
-                                    {item.image_url ? (
-                                        <OptimizedImage src={item.image_url} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" wrapperClassName="w-full h-full" />
-                                    ) : (
-                                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-dark-800 to-dark-900">
-                                            <Utensils size={24} className="text-white/10" />
+                                            <div className="absolute bottom-2 left-2">
+                                                <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded backdrop-blur-md border bg-orange-500/80 border-orange-500/50 text-white">
+                                                    🔥 TRENDING
+                                                </span>
+                                            </div>
                                         </div>
-                                    )}
-                                    <div className="absolute bottom-2 left-2">
-                                        <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded backdrop-blur-md border bg-orange-500/80 border-orange-500/50 text-white">
-                                            🔥 TRENDING
-                                        </span>
-                                    </div>
-                                </div>
-                                <div className="p-3 flex flex-col flex-1 justify-between bg-gradient-to-t from-dark-950 to-transparent">
-                                    <div>
-                                        <h3 className="font-bold text-white text-sm line-clamp-1">{item.name}</h3>
-                                        <p className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1 line-clamp-1">
-                                            <Store size={10} className="text-primary-500" /> {stores.find(s => s.id === item.store_id)?.name || 'Store'}
-                                        </p>
-                                    </div>
-                                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5">
-                                        <span className="text-[10px] font-bold text-primary-400">{formatPrice(item.price)}</span>
-                                        <span className="text-[9px] text-slate-500 font-medium px-1.5 py-0.5 bg-white/5 rounded">🔥 {item.times_ordered}x</span>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        ))}
+                                        <div className="p-3 flex flex-col flex-1 justify-between bg-gradient-to-t from-dark-950 to-transparent">
+                                            <div>
+                                                <h3 className="font-bold text-white text-sm line-clamp-1">{item.name}</h3>
+                                                <p className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1 line-clamp-1">
+                                                    <Store size={10} className="text-primary-500" /> {item.store_name || 'Store'}
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5">
+                                                <span className="text-[10px] font-bold text-primary-400">{formatPrice(item.price)}</span>
+                                                <span className="text-[9px] text-slate-500 font-medium px-1.5 py-0.5 bg-white/5 rounded">🔥 {item.times_ordered}x</span>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Main Directory / Grid */}
+                    <div className="px-2">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                                <Store className="text-primary-500" size={20} /> 
+                                {hasLocation ? "Closest spots to you" : "Discover spots"}
+                            </h2>
+                            <button
+                                onClick={() => setMapOpen(true)}
+                                className="flex items-center gap-1.5 text-xs text-primary-500 font-black hover:text-primary-400 bg-white/5 border border-white/10 px-3.5 py-2 rounded-xl cursor-pointer hover:bg-white/10 transition-all shadow-md"
+                            >
+                                <MapIcon size={12} /> View Map
+                            </button>
+                        </div>
+                        
+                        {stores.length === 0 ? (
+                            <div className="text-center py-12 text-slate-500 bg-white/5 rounded-3xl border border-dashed border-white/10 space-y-3">
+                                <p>No spots found matching your proximity criteria.</p>
+                                {activeRadius && (
+                                    <button 
+                                        onClick={() => setActiveRadius(null)}
+                                        className="bg-white/5 hover:bg-white/10 text-white font-bold px-4 py-2 rounded-xl text-xs transition-colors border border-white/10 cursor-pointer"
+                                    >
+                                        Remove Radius Constraint
+                                    </button>
+                                )}
+                            </div>
+                        ) : (
+                            <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-5 transition-opacity duration-200 ${storesLoading ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
+                                {stores.map(store => {
+                                    const isTop = stats.top_stores?.some(ts => ts.id === store.id);
+                                    
+                                    return (
+                                        <motion.div
+                                            key={store.id}
+                                            whileHover={{ y: -4 }}
+                                            onClick={() => handleSelectStore(store)}
+                                            className="cursor-pointer glass-dark rounded-2xl border border-white/5 hover:border-primary-500/30 transition-all overflow-hidden flex flex-col group relative"
+                                        >
+                                            {isTop && (
+                                                <div className="absolute top-2 right-2 z-20 bg-orange-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-lg">HOT</div>
+                                            )}
+                                            <div className="relative w-full aspect-[4/3] bg-dark-900 overflow-hidden">
+                                                {store.image_url ? (
+                                                    <OptimizedImage src={store.image_url} alt={store.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" wrapperClassName="w-full h-full" />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-dark-800 to-dark-900">
+                                                        {store.store_type === 'SHOP' ? <ShoppingBag size={24} className="text-white/10" /> : <ChefHat size={24} className="text-white/10" />}
+                                                    </div>
+                                                )}
+                                                
+                                                {/* Proximity distance badge */}
+                                                {store.distance_km !== undefined && store.distance_km !== null && (
+                                                    <div className="absolute top-2 left-2 z-10">
+                                                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded backdrop-blur-md border bg-dark-950/80 border-white/10 text-primary-400 flex items-center gap-1">
+                                                            <MapPin size={9} className="text-primary-400" /> {store.distance_km < 0.3 ? "Nearby" : `${store.distance_km} km`}
+                                                        </span>
+                                                    </div>
+                                                )}
+
+                                                <div className="absolute bottom-2 left-2">
+                                                    <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded backdrop-blur-md border ${store.store_type === 'SHOP' ? 'bg-purple-500/80 border-purple-500/50 text-white' : 'bg-dark-950/80 border-white/10 text-primary-400'}`}>
+                                                        {store.store_type}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="p-3 flex flex-col flex-1 justify-between bg-gradient-to-t from-dark-950 to-transparent">
+                                                <div>
+                                                    <h3 className="font-bold text-white text-sm line-clamp-1">{store.name}</h3>
+                                                    <p className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1 line-clamp-1">
+                                                        <MapPin size={10} /> 
+                                                        {store.location || 'Online'}
+                                                    </p>
+                                                </div>
+                                                <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5">
+                                                    <div className="flex items-center gap-1 text-[10px] text-slate-400 font-bold">
+                                                        <Star size={10} className="text-yellow-500 fill-current" /> {parseFloat(store.avg_rating || 4.5).toFixed(1)}
+                                                    </div>
+                                                    <ArrowRight size={14} className="text-primary-500 opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0 transform duration-300" />
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
-                </div>
+                </>
             )}
 
-            {/* Main Directory / Grid */}
-            <div className="px-2">
-                <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                    {searchQuery ? `Results for "${searchQuery}"` : <><Store className="text-primary-500" size={20} /> Discover Food spots</>}
-                </h2>
-                
-                {filteredStores.length === 0 ? (
-                    <div className="text-center py-12 text-slate-500 bg-white/5 rounded-3xl border border-dashed border-white/10">
-                        No food spots found matching your criteria.
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-5">
-                        {filteredStores.map(store => {
-                            const isTop = stats.top_stores?.some(ts => ts.id === store.id);
-                            
-                            return (
-                                <motion.div
-                                    key={store.id}
-                                    whileHover={{ y: -4 }}
-                                    onClick={() => handleSelectStore(store)}
-                                    className="cursor-pointer glass-dark rounded-2xl border border-white/5 hover:border-primary-500/30 transition-all overflow-hidden flex flex-col group relative"
-                                >
-                                    {isTop && !searchQuery && (
-                                        <div className="absolute top-2 right-2 z-20 bg-orange-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-lg">HOT</div>
-                                    )}
-                                    <div className="relative w-full aspect-[4/3] bg-dark-900 overflow-hidden">
-                                        {store.image_url ? (
-                                            <OptimizedImage src={store.image_url} alt={store.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" wrapperClassName="w-full h-full" />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-dark-800 to-dark-900">
-                                                {store.store_type === 'SHOP' ? <ShoppingBag size={24} className="text-white/10" /> : <ChefHat size={24} className="text-white/10" />}
-                                            </div>
-                                        )}
-                                        <div className="absolute bottom-2 left-2">
-                                            <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded backdrop-blur-md border ${store.store_type === 'SHOP' ? 'bg-purple-500/80 border-purple-500/50 text-white' : 'bg-dark-950/80 border-white/10 text-primary-400'}`}>
-                                                {store.store_type}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div className="p-3 flex flex-col flex-1 justify-between bg-gradient-to-t from-dark-950 to-transparent">
-                                        <div>
-                                            <h3 className="font-bold text-white text-sm line-clamp-1">{store.name}</h3>
-                                            <p className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1 line-clamp-1"><MapPin size={10} /> {store.location || 'Online'}</p>
-                                        </div>
-                                        <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5">
-                                            <div className="flex items-center gap-1 text-[10px] text-slate-400 font-bold">
-                                                <Star size={10} className="text-yellow-500 fill-current" /> {store.avg_rating?.toFixed(1) || '4.5'}
-                                            </div>
-                                            <ArrowRight size={14} className="text-primary-500 opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0 transform duration-300" />
-                                        </div>
-                                    </div>
-                                </motion.div>
-                            );
-                        })}
-                    </div>
-                )}
-            </div>
+            {/* Subtle Maps Popup Overlay */}
+            <MapModal
+                isOpen={mapOpen}
+                onClose={() => setMapOpen(false)}
+                userLocation={hasLocation ? location : null}
+                stores={stores}
+                onSelectStore={handleSelectStore}
+            />
+
         </div>
     );
 }

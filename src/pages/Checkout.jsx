@@ -21,6 +21,10 @@ export default function Checkout() {
     const [selectedTable, setSelectedTable] = useState(localStorage.getItem('scanned_table_id') || '');
     const [customerPhone, setCustomerPhone] = useState('');
     const [deliveryLocation, setDeliveryLocation] = useState('');
+    const [deliveryLatitude, setDeliveryLatitude] = useState('');
+    const [deliveryLongitude, setDeliveryLongitude] = useState('');
+    const [deliveryDirections, setDeliveryDirections] = useState('');
+    const [isLocatingCustomer, setIsLocatingCustomer] = useState(false);
     const [paymentMessage, setPaymentMessage] = useState('');
     const [paymentReceipt, setPaymentReceipt] = useState(null);
     const [isCheckingOut, setIsCheckingOut] = useState(false);
@@ -40,6 +44,51 @@ export default function Checkout() {
             setFulfillmentMode(isShop ? 'PICKUP' : 'TAKEAWAY');
         }
     }, [isInstantPayment, isShop]);
+
+    const triggerGeolocation = () => {
+        if (navigator.geolocation) {
+            setIsLocatingCustomer(true);
+            const toastId = toast.loading("Automatically fetching your delivery coordinates for GPS accuracy...");
+            navigator.geolocation.getCurrentPosition(
+                async (pos) => {
+                    const { latitude, longitude } = pos.coords;
+                    setDeliveryLatitude(latitude.toFixed(6));
+                    setDeliveryLongitude(longitude.toFixed(6));
+                    
+                    try {
+                        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`, {
+                            headers: { 'User-Agent': 'Chapuu-Checkout' }
+                        });
+                        const data = await res.json();
+                        if (data && data.display_name) {
+                            const shortName = data.display_name.split(',').slice(0, 3).join(',');
+                            setDeliveryLocation(shortName);
+                            toast.success(`Delivery address located: ${shortName}`, { id: toastId });
+                        } else {
+                            setDeliveryLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+                            toast.success(`Located at your GPS coordinates`, { id: toastId });
+                        }
+                    } catch (err) {
+                        setDeliveryLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+                        toast.success(`Coordinates fetched successfully!`, { id: toastId });
+                    } finally {
+                        setIsLocatingCustomer(false);
+                    }
+                },
+                (err) => {
+                    toast.error("Could not fetch location automatically. Please enable location permissions.", { id: toastId });
+                    setIsLocatingCustomer(false);
+                },
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
+        }
+    };
+
+    useEffect(() => {
+        if (fulfillmentMode === 'DELIVERY' && !deliveryLocation) {
+            triggerGeolocation();
+        }
+    }, [fulfillmentMode]);
 
     useEffect(() => {
         if (selectedStore) {
@@ -89,8 +138,11 @@ export default function Checkout() {
 
     const handleCheckout = () => {
         if (fulfillmentMode === 'DINE_IN' && !selectedTable) {
-            toast.error("Please select a table to dine in.", { icon: '🪑' });
-            return;
+            const tableRequired = selectedStore?.requires_table_for_dine_in !== false;
+            if (tableRequired) {
+                toast.error("Please select a table to dine in.", { icon: '🪑' });
+                return;
+            }
         }
 
         if (fulfillmentMode === 'DELIVERY') {
@@ -141,7 +193,13 @@ export default function Checkout() {
             store: selectedStore.id,
             fulfillment_mode: isReservationOrder ? 'RESERVATION' : fulfillmentMode,
             ...(fulfillmentMode === 'DINE_IN' && { table: selectedTable }),
-            ...(fulfillmentMode === 'DELIVERY' && { customer_phone: customerPhone, delivery_location: deliveryLocation }),
+            ...(fulfillmentMode === 'DELIVERY' && { 
+                customer_phone: customerPhone, 
+                delivery_location: deliveryLocation,
+                delivery_latitude: deliveryLatitude,
+                delivery_longitude: deliveryLongitude,
+                delivery_directions: deliveryDirections
+            }),
             payment_message: isInstantPayment ? `Instant Payment (Walk-in)` : paymentMessage,
             is_instant_payment: isInstantPayment,
             items: storeCart.map(i => ({ product: i.product.id, quantity: i.quantity, unit_price: i.product.price })),
@@ -383,13 +441,19 @@ export default function Checkout() {
                                         exit={{ opacity: 0, height: 0 }}
                                         className="space-y-2 overflow-hidden mt-4 pt-4 border-t border-white/5"
                                     >
-                                        <label className="text-sm font-medium text-slate-400">Select Table</label>
+                                        <label className="text-sm font-medium text-slate-400">
+                                            {selectedStore.requires_table_for_dine_in !== false ? "Select Table" : "Select Table (Optional)"}
+                                        </label>
                                         <select
                                             value={selectedTable}
                                             onChange={(e) => setSelectedTable(e.target.value)}
                                             className="w-full bg-dark-950 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-primary-500 transition-all appearance-none"
                                         >
-                                            <option value="" disabled>Choose your table...</option>
+                                            {selectedStore.requires_table_for_dine_in !== false ? (
+                                                <option value="" disabled>Choose your table...</option>
+                                            ) : (
+                                                <option value="">Sit Anywhere / Free Seating</option>
+                                            )}
                                             {tables.map(t => (
                                                 <option key={t.id} value={t.id}>Table {t.number} ({t.capacity} seats)</option>
                                             ))}
@@ -415,14 +479,38 @@ export default function Checkout() {
                                             />
                                         </div>
                                         <div>
-                                            <label className="text-sm font-medium text-slate-400">Delivery Location</label>
+                                            <div className="flex justify-between items-center mb-1">
+                                                <label className="text-sm font-medium text-slate-400">Delivery Address (GPS Located)</label>
+                                                <button
+                                                    type="button"
+                                                    onClick={triggerGeolocation}
+                                                    className="text-xs text-primary-400 hover:underline font-bold bg-transparent border-0 cursor-pointer"
+                                                    disabled={isLocatingCustomer}
+                                                >
+                                                    {isLocatingCustomer ? "Locating..." : "📍 Recenter GPS"}
+                                                </button>
+                                            </div>
                                             <textarea
                                                 value={deliveryLocation}
-                                                onChange={(e) => setDeliveryLocation(e.target.value)}
-                                                placeholder="Full delivery address/instructions..."
+                                                readOnly={true}
+                                                placeholder={isLocatingCustomer ? "Auto-detecting your coordinates..." : "GPS coordinates required for delivery..."}
+                                                rows="2"
+                                                className="w-full bg-dark-950/60 border border-white/5 rounded-xl px-4 py-3 text-sm text-slate-400 focus:outline-none focus:border-primary-500 transition-all resize-none cursor-not-allowed select-none"
+                                            ></textarea>
+
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-medium text-slate-400">Delivery Directions & Landmarks</label>
+                                            <textarea
+                                                value={deliveryDirections}
+                                                onChange={(e) => setDeliveryDirections(e.target.value)}
+                                                placeholder="e.g. Opposite the main market, green gate, 2nd floor"
                                                 rows="2"
                                                 className="w-full mt-1 bg-dark-950 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-primary-500 transition-all resize-none"
                                             ></textarea>
+                                            <p className="text-[10px] text-slate-500 mt-1">
+                                                Provide rider instructions, building name, house number, or landmarks to ensure fast delivery.
+                                            </p>
                                         </div>
                                     </motion.div>
                                 )}
