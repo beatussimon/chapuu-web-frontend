@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAppStore } from '../store/useStore';
 import { Lock, User, Loader2, Utensils } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -12,6 +12,7 @@ export default function Login() {
 
     const login = useAppStore(state => state.login);
     const navigate = useNavigate();
+    const location = useLocation();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -23,7 +24,8 @@ export default function Login() {
             toast.success(`Welcome back, ${username}!`, { id: toastId });
 
             if (role === 'CUSTOMER') {
-                navigate('/');
+                const destination = location.state?.from || '/';
+                navigate(destination);
             } else {
                 navigate('/seller');
             }

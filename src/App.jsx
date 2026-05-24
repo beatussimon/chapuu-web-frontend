@@ -31,7 +31,7 @@ import { setStoreResetFn } from './api/client';
 function ProtectedRoute({ children, role }) {
   const userRole = useAppStore(state => state.userRole);
   const location = useLocation();
-  if (!userRole) return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+  if (!userRole) return <Navigate to="/login" state={{ from: location }} replace />;
   if (role && userRole !== role && userRole !== 'ADMIN' && userRole !== 'SUPERUSER') {
     return <div className="p-8 text-center text-red-400">Access Denied</div>;
   }

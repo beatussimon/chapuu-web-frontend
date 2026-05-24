@@ -16,7 +16,7 @@ import OptimizedImage from '../components/OptimizedImage';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
 
-const softChime = new Audio('/media/sounds/soft_chime.mp3');
+const softChime = new Audio('/media/sounds/chapuunotification.mp3');
 softChime.preload = 'auto';
 softChime.volume = 0.2; // Set volume to 20% for a premium, gentle background notification level
 
@@ -55,6 +55,28 @@ const calculateExactDueDate = (storeCreatedAt, invYear, invMonth) => {
         creation.getSeconds()
     );
     return exactDueDate;
+};
+
+const formatTime12h = (timeStr) => {
+    if (!timeStr) return '';
+    const [hoursStr, minutesStr] = timeStr.split(':');
+    const hours = parseInt(hoursStr, 10);
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const hours12 = hours % 12 || 12;
+    const formattedHours = hours12 < 10 ? `0${hours12}` : hours12;
+    return `${formattedHours}:${minutesStr} ${ampm}`;
+};
+
+const parseTime12h = (time12hStr) => {
+    if (!time12hStr) return '';
+    const [time, ampm] = time12hStr.trim().split(' ');
+    if (!time || !ampm) return '';
+    let [hoursStr, minutesStr] = time.split(':');
+    let hours = parseInt(hoursStr, 10);
+    if (ampm.toUpperCase() === 'PM' && hours < 12) hours += 12;
+    if (ampm.toUpperCase() === 'AM' && hours === 12) hours = 0;
+    const formattedHours = hours < 10 ? `0${hours}` : hours;
+    return `${formattedHours}:${minutesStr}`;
 };
 
 export default function SellerDashboard() {
@@ -950,6 +972,70 @@ export default function SellerDashboard() {
 
             {activeView === 'KITCHEN' && canSeeKitchen && (
                 <div className="flex flex-col gap-6 flex-grow animate-fadeIn">
+                    {/* Operational Status Controls Bar */}
+                    {storeDetails && (
+                        <div className="glass-dark border border-white/5 rounded-2xl md:rounded-3xl p-4 md:p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                            <div className="flex flex-col gap-1">
+                                <h3 className="text-base md:text-lg font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                                    <Store size={18} className="text-primary-400" /> Store Operations Panel
+                                </h3>
+                                <p className="text-xs text-slate-400 leading-normal">
+                                    Manage your shop's open status, current prep queue, and customer working hours in real-time.
+                                </p>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                                {/* Open/Closed Toggle */}
+                                <button
+                                    onClick={async () => {
+                                        const toastId = toast.loading(storeDetails.is_open ? 'Closing store...' : 'Opening store...');
+                                        try {
+                                            const res = await apiClient.patch(`/stores/${storeDetails.id}/toggle_status/`);
+                                            setStoreDetails(prev => ({ ...prev, is_open: res.data.is_open }));
+                                            toast.success(res.data.is_open ? 'Store is now OPEN!' : 'Store is now CLOSED.', { id: toastId });
+                                        } catch (err) {
+                                            toast.error('Failed to change store status.', { id: toastId });
+                                        }
+                                    }}
+                                    className={`px-4 py-2.5 rounded-xl font-bold text-xs md:text-sm flex items-center gap-2 transition-all cursor-pointer ${
+                                        storeDetails.is_open 
+                                            ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 shadow-lg shadow-emerald-500/5' 
+                                            : 'bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 shadow-lg shadow-red-500/5'
+                                    }`}
+                                >
+                                    <span className={`w-2 h-2 rounded-full ${storeDetails.is_open ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`}></span>
+                                    {storeDetails.is_open ? 'Status: OPEN' : 'Status: CLOSED'}
+                                </button>
+
+                                {/* Pause Kitchen Toggle */}
+                                <button
+                                    onClick={async () => {
+                                        const toastId = toast.loading(storeDetails.kitchen_settings?.is_kitchen_paused ? 'Resuming kitchen...' : 'Pausing kitchen...');
+                                        try {
+                                            const res = await apiClient.patch(`/stores/${storeDetails.id}/toggle_kitchen_pause/`);
+                                            setStoreDetails(prev => ({
+                                                ...prev,
+                                                kitchen_settings: {
+                                                    ...prev.kitchen_settings,
+                                                    is_kitchen_paused: res.data.paused
+                                                }
+                                            }));
+                                            toast.success(res.data.paused ? 'Kitchen PAUSED!' : 'Kitchen ACTIVE.', { id: toastId });
+                                        } catch (err) {
+                                            toast.error('Failed to toggle kitchen pause.', { id: toastId });
+                                        }
+                                    }}
+                                    className={`px-4 py-2.5 rounded-xl font-bold text-xs md:text-sm flex items-center gap-2 transition-all cursor-pointer ${
+                                        storeDetails.kitchen_settings?.is_kitchen_paused 
+                                            ? 'bg-orange-500/10 border border-orange-500/30 text-orange-400 hover:bg-orange-500/20' 
+                                            : 'bg-primary-500/10 border border-primary-500/30 text-primary-400 hover:bg-primary-500/20'
+                                    }`}
+                                >
+                                    <Clock size={14} />
+                                    {storeDetails.kitchen_settings?.is_kitchen_paused ? 'Kitchen: PAUSED' : 'Kitchen: ACTIVE'}
+                                </button>
+                            </div>
+                        </div>
+                    )}
                     {upcomingScheduledOrders.length > 0 && (
                         <div className="glass-dark border border-primary-500/20 bg-primary-500/5 rounded-3xl p-6 mb-2">
                             <h3 className="text-sm font-black uppercase text-primary-400 mb-4 tracking-widest flex items-center gap-2">
@@ -1048,8 +1134,8 @@ export default function SellerDashboard() {
                                 <h4 className="text-lg font-bold text-white mb-1">Security Alert: {lockedOrders.length} Locked Order{lockedOrders.length > 1 ? 's' : ''} Detected</h4>
                                 <p className="text-xs text-slate-300 leading-relaxed">
                                     Orders have been locked due to excessive failed PIN verification attempts. This has been flagged as suspicious to the admin panel. 
-                                    <span className="text-red-400 font-bold block mt-1">
-                                        ⚠️ WARNING: {supportConfig.policy_warning}
+                                    <span className="text-red-400 font-bold flex items-center gap-1.5 mt-1">
+                                        <AlertTriangle size={12} className="shrink-0" /> WARNING: {supportConfig.policy_warning}
                                     </span>
                                 </p>
                             </div>
@@ -1222,7 +1308,7 @@ export default function SellerDashboard() {
                                             </div>
                                             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-primary-500/10 text-primary-400 border border-primary-500/20">
                                                 <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse"></span>
-                                                ⚪ ACCRUING
+                                                ACCRUING
                                             </span>
                                         </div>
                                         
@@ -1293,10 +1379,10 @@ export default function SellerDashboard() {
                                                         'bg-slate-500/10 text-slate-400 border border-white/5'
                                                     }`}>
                                                         <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
-                                                        {inv.status === 'PAID' ? '🟢 PAID' :
-                                                         inv.status === 'PENDING_REVIEW' ? '🟡 PENDING REVIEW' :
-                                                         inv.status === 'OVERDUE' ? '🔴 OVERDUE' :
-                                                         '⚪ UNPAID'}
+                                                        {inv.status === 'PAID' ? 'PAID' :
+                                                         inv.status === 'PENDING_REVIEW' ? 'PENDING REVIEW' :
+                                                         inv.status === 'OVERDUE' ? 'OVERDUE' :
+                                                         'UNPAID'}
                                                     </span>
                                                     
                                                     {isUnpaid && (
@@ -1437,6 +1523,12 @@ export default function SellerDashboard() {
                             const toastId = toast.loading('Saving store profile...');
                             const formData = new FormData(e.target);
                             formData.set('requires_table_for_dine_in', requiresTableForDineIn ? 'true' : 'false');
+                            
+                            // Clean & format time values into structured string before patching
+                            const openTimeFormatted = formatTime12h(e.target.opening_time.value);
+                            const closeTimeFormatted = formatTime12h(e.target.closing_time.value);
+                            formData.set('working_hours', `${openTimeFormatted} - ${closeTimeFormatted}`);
+                            
                             apiClient.patch(`/stores/${storeDetails.id}/`, formData, { headers: { 'Content-Type': 'multipart/form-data' }})
                                 .then((res) => {
                                     toast.success('Store profile updated!', { id: toastId });
@@ -1463,6 +1555,22 @@ export default function SellerDashboard() {
                                 <div>
                                     <label className="text-xs text-slate-400 block mb-1">Contact Email</label>
                                     <input type="email" name="contact_email" defaultValue={storeDetails.contact_email || ''} className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none text-white" />
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="text-xs text-slate-400 block mb-1">Opening Hour</label>
+                                        <input type="time" name="opening_time" defaultValue={(() => {
+                                            const parts = (storeDetails.working_hours || '08:00 AM - 10:00 PM').split(' - ');
+                                            return parseTime12h(parts[0]) || '08:00';
+                                        })()} required className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none text-white font-sans cursor-pointer" />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-slate-400 block mb-1">Closing Hour</label>
+                                        <input type="time" name="closing_time" defaultValue={(() => {
+                                            const parts = (storeDetails.working_hours || '08:00 AM - 10:00 PM').split(' - ');
+                                            return parseTime12h(parts[1]) || '22:00';
+                                        })()} required className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none text-white font-sans cursor-pointer" />
+                                    </div>
                                 </div>
                                 <div className="md:col-span-2">
                                     <div className="flex justify-between items-center mb-1">
@@ -2220,7 +2328,10 @@ export default function SellerDashboard() {
                                 {isLocked ? (
                                     <div className="space-y-4 text-center mt-4">
                                         <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl text-left">
-                                            <p className="text-xs text-red-400 font-bold mb-2">⚠️ SAFETY POLICY WARNING</p>
+                                            <p className="text-xs text-red-400 font-bold mb-2 flex items-center gap-1.5">
+                                                <AlertTriangle size={12} />
+                                                SAFETY POLICY WARNING
+                                            </p>
                                             <p className="text-xs text-slate-300 leading-relaxed font-medium">
                                                 Order is locked due to too many failed attempts (5/5). 
                                                 {supportConfig.policy_warning}
@@ -2468,7 +2579,7 @@ const OrderCard = ({ order, markItemReadyFn, advanceOrderStateFn, onVerifyPaymen
             {order.is_locked && (
                 <div className="mb-4 bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-xl flex items-center gap-2 text-red-400 text-xs font-black animate-pulse text-left uppercase tracking-wider">
                     <AlertTriangle size={14} className="shrink-0 text-red-500" />
-                    <span>⚠️ Security Lock Active (5/5 Failed PINs)</span>
+                    <span>Security Lock Active (5/5 Failed PINs)</span>
                 </div>
             )}
             

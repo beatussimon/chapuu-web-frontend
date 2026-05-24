@@ -608,6 +608,13 @@ export default function DiscoverPage() {
                                                         {store.store_type}
                                                     </span>
                                                 </div>
+                                                {!store.is_open && (
+                                                    <div className="absolute inset-0 bg-dark-950/65 z-10 flex items-center justify-center backdrop-blur-[1px]">
+                                                        <span className="bg-red-500/90 text-white font-black px-3 py-1 rounded-xl text-xs uppercase tracking-widest shadow-lg shadow-red-500/25 border border-red-400/20 transform -rotate-6 animate-fadeIn">
+                                                            Closed
+                                                        </span>
+                                                    </div>
+                                                )}
                                             </div>
                                             <div className="p-3 flex flex-col flex-1 justify-between bg-gradient-to-t from-dark-950 to-transparent">
                                                 <div>
@@ -618,8 +625,13 @@ export default function DiscoverPage() {
                                                     </p>
                                                 </div>
                                                 <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5">
-                                                    <div className="flex items-center gap-1 text-[10px] text-slate-400 font-bold">
+                                                    <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-400 font-bold">
                                                         <Star size={10} className="text-yellow-500 fill-current" /> {parseFloat(store.avg_rating || 4.5).toFixed(1)}
+                                                        <span className="text-[10px] text-slate-700 font-black">·</span>
+                                                        <span className="text-[9px] text-slate-400 font-medium tracking-tighter flex items-center gap-1">
+                                                            <Clock size={9} className="text-slate-400 shrink-0" />
+                                                            {store.working_hours || '08:00 AM - 10:00 PM'}
+                                                        </span>
                                                     </div>
                                                     <ArrowRight size={14} className="text-primary-500 opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0 transform duration-300" />
                                                 </div>

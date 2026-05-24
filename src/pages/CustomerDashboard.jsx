@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Navigate, useLocation } from 'react-router-dom';
 import apiClient from '../api/client';
 import { useAppStore } from '../store/useStore';
-import { ShoppingCart, ChefHat, Plus, Minus, CreditCard, UtensilsCrossed, Trash2, ArrowLeft, Star, Search, ShoppingBag, X, Phone, Mail, ChevronUp, ChevronLeft, ChevronRight, Image } from 'lucide-react';
+import { ShoppingCart, ChefHat, Plus, Minus, CreditCard, UtensilsCrossed, Trash2, ArrowLeft, Star, Search, ShoppingBag, X, Phone, Mail, ChevronUp, ChevronLeft, ChevronRight, Image, Clock } from 'lucide-react';
 import { useCurrency } from '../utils/useCurrency';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -189,12 +189,27 @@ export default function CustomerDashboard() {
                                         {selectedStore.name}
                                     </h2>
                                     <div className="flex flex-wrap items-center gap-2 md:gap-3 mt-1 md:mt-1.5">
+                                        <div className={`px-2 py-0.5 rounded-full text-[9px] md:text-xs font-black uppercase tracking-wider flex items-center gap-1 border ${
+                                            selectedStore.is_open 
+                                                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
+                                                : 'bg-red-500/10 border-red-500/20 text-red-400'
+                                        }`}>
+                                            <span className={`w-1.5 h-1.5 rounded-full ${selectedStore.is_open ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`}></span>
+                                            {selectedStore.is_open ? 'Open Now' : 'Closed'}
+                                        </div>
+
+                                        <span className="text-[9px] md:text-xs text-slate-400 font-bold bg-white/5 border border-white/10 px-2.5 py-0.5 rounded-full flex items-center gap-1.5">
+                                            <Clock size={10} className="md:w-3 md:h-3 text-slate-400 shrink-0" />
+                                            {selectedStore.working_hours || '08:00 AM - 10:00 PM'}
+                                        </span>
+
+                                        {selectedStore.location && <span className="w-1 h-1 rounded-full bg-white/20"></span>}
+
                                         {selectedStore.location && (
                                             <span className="text-slate-400 text-[10px] md:text-sm flex items-center gap-1">
                                                 {selectedStore.location}
                                             </span>
                                         )}
-                                        {selectedStore.location && <span className="w-1 h-1 rounded-full bg-white/20"></span>}
 
                                         <div className="flex items-center gap-2 md:gap-3">
                                             <a 

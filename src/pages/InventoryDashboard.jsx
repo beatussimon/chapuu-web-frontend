@@ -14,6 +14,7 @@ export default function InventoryDashboard() {
     const [activeTab, setActiveTab] = useState('stock'); // 'stock' or 'recipes'
     const [search, setSearch] = useState('');
     const [storeId, setStoreId] = useState(null);
+    const [typedValues, setTypedValues] = useState({});
     const { formatPrice } = useCurrency();
 
     const [newIngredient, setNewIngredient] = useState({ name: '', unit_of_measure: '', image: null });
@@ -48,10 +49,70 @@ export default function InventoryDashboard() {
         return () => clearInterval(interval);
     }, []);
 
-    const handleAdjustStock = (stockId, adjustment) => {
-        apiClient.post(`/inventory/${stockId}/adjust/`, { adjustment })
+    const handleAdjustStock = (inv, adjustment) => {
+        const currentQtyInDb = parseFloat(inv.quantity);
+        const currentDisplayedVal = typedValues[inv.id] !== undefined ? parseFloat(typedValues[inv.id]) : currentQtyInDb;
+        
+        if (isNaN(currentDisplayedVal)) {
+            toast.error("Please enter a valid stock quantity first");
+            return;
+        }
+
+        const newAbsoluteValue = currentDisplayedVal + adjustment;
+        if (newAbsoluteValue < 0) {
+            toast.error("Stock quantity cannot be negative");
+            return;
+        }
+
+        const actualDelta = newAbsoluteValue - currentQtyInDb;
+
+        if (actualDelta === 0) {
+            setTypedValues(prev => {
+                const copy = { ...prev };
+                delete copy[inv.id];
+                return copy;
+            });
+            return;
+        }
+
+        apiClient.post(`/inventory/${inv.id}/adjust/`, { adjustment: actualDelta })
             .then(res => {
-                toast.success(`Stock adjusted by ${adjustment > 0 ? '+' : ''}${adjustment}`);
+                toast.success(`Stock adjusted by ${adjustment > 0 ? '+' : ''}${adjustment} (New stock: ${newAbsoluteValue})`);
+                setTypedValues(prev => {
+                    const copy = { ...prev };
+                    delete copy[inv.id];
+                    return copy;
+                });
+                fetchData();
+            })
+            .catch(err => toast.error(err.response?.data?.error || "Failed to adjust stock"));
+    };
+
+    const handleSetAbsoluteStock = (inv, newStrValue) => {
+        const newValue = parseFloat(newStrValue);
+        if (isNaN(newValue) || newValue < 0) {
+            toast.error("Please enter a valid stock quantity");
+            return;
+        }
+        const currentQty = parseFloat(inv.quantity);
+        const adjustment = newValue - currentQty;
+        if (adjustment === 0) {
+            setTypedValues(prev => {
+                const copy = { ...prev };
+                delete copy[inv.id];
+                return copy;
+            });
+            return;
+        }
+        
+        apiClient.post(`/inventory/${inv.id}/adjust/`, { adjustment })
+            .then(res => {
+                toast.success(`Stock set to ${newValue}`);
+                setTypedValues(prev => {
+                    const copy = { ...prev };
+                    delete copy[inv.id];
+                    return copy;
+                });
                 fetchData();
             })
             .catch(err => toast.error(err.response?.data?.error || "Failed to adjust stock"));
@@ -207,16 +268,28 @@ export default function InventoryDashboard() {
                                         </div>
 
                                         <div className="flex items-center gap-4">
-                                            <div className="flex flex-col items-end mr-2">
-                                                <span className={`text-xl font-bold ${isLow ? 'text-orange-400' : 'text-primary-400'}`}>{parseFloat(inv.quantity).toFixed(0)}</span>
-                                                {isLow && <span className="text-xs text-orange-400 flex items-center gap-1"><AlertTriangle size={12} /> Low Stock!</span>}
+                                            <div className="flex flex-col items-end mr-1">
+                                                <input
+                                                    type="number"
+                                                    value={typedValues[inv.id] !== undefined ? typedValues[inv.id] : parseFloat(inv.quantity).toFixed(0)}
+                                                    onChange={(e) => setTypedValues({ ...typedValues, [inv.id]: e.target.value })}
+                                                    onBlur={(e) => handleSetAbsoluteStock(inv, e.target.value)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') {
+                                                            handleSetAbsoluteStock(inv, e.target.value);
+                                                            e.target.blur();
+                                                        }
+                                                    }}
+                                                    className={`w-16 bg-black/30 border border-white/10 rounded-lg px-1.5 py-1 text-center font-bold font-mono text-sm focus:outline-none focus:border-orange-500 ${isLow ? 'text-orange-400 border-orange-500/30' : 'text-primary-400'}`}
+                                                />
+                                                {isLow && <span className="text-[10px] text-orange-400 flex items-center gap-0.5 mt-1"><AlertTriangle size={10} /> Low!</span>}
                                             </div>
 
-                                            <div className="flex items-center bg-black/40 rounded-lg overflow-hidden border border-white/10">
-                                                <button onClick={() => handleAdjustStock(inv.id, -1)} className="p-2 hover:bg-white/10 text-red-400 transition-colors"><Minus size={16} /></button>
-                                                <button onClick={() => handleAdjustStock(inv.id, -10)} className="px-2 py-2 hover:bg-white/10 text-red-400 text-xs font-bold border-x border-white/5 transition-colors">-10</button>
-                                                <button onClick={() => handleAdjustStock(inv.id, 10)} className="px-2 py-2 hover:bg-white/10 text-green-400 text-xs font-bold border-r border-white/5 transition-colors">+10</button>
-                                                <button onClick={() => handleAdjustStock(inv.id, 1)} className="p-2 hover:bg-white/10 text-green-400 transition-colors"><Plus size={16} /></button>
+                                            <div className="flex items-center bg-black/40 rounded-lg overflow-hidden border border-white/10 shrink-0">
+                                                <button onClick={() => handleAdjustStock(inv, -1)} className="p-2 hover:bg-white/10 text-red-400 transition-colors"><Minus size={16} /></button>
+                                                <button onClick={() => handleAdjustStock(inv, -10)} className="px-2 py-2 hover:bg-white/10 text-red-400 text-xs font-bold border-x border-white/5 transition-colors">-10</button>
+                                                <button onClick={() => handleAdjustStock(inv, 10)} className="px-2 py-2 hover:bg-white/10 text-green-400 text-xs font-bold border-r border-white/5 transition-colors">+10</button>
+                                                <button onClick={() => handleAdjustStock(inv, 1)} className="p-2 hover:bg-white/10 text-green-400 transition-colors"><Plus size={16} /></button>
                                             </div>
                                         </div>
                                     </motion.div>

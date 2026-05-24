@@ -9,6 +9,10 @@ import toast from 'react-hot-toast';
 import { triggerHaptic, hapticPatterns } from '../utils/haptics';
 import OptimizedImage from '../components/OptimizedImage';
 
+const orderSuccessChime = new Audio('/media/sounds/chapuunotification.mp3');
+orderSuccessChime.preload = 'auto';
+orderSuccessChime.volume = 0.25; // Balanced notification volume for order success confirmation
+
 export default function Checkout() {
     const { cart, selectedStore, clearStoreCart, activeReservation, userRole } = useAppStore();
     const navigate = useNavigate();
@@ -140,45 +144,45 @@ export default function Checkout() {
         if (fulfillmentMode === 'DINE_IN' && !selectedTable) {
             const tableRequired = selectedStore?.requires_table_for_dine_in !== false;
             if (tableRequired) {
-                toast.error("Please select a table to dine in.", { icon: '🪑' });
+                toast.error("Please select a table to dine in.");
                 return;
             }
         }
 
         if (fulfillmentMode === 'DELIVERY') {
             if (!customerPhone || !deliveryLocation) {
-                toast.error("Please provide phone and delivery location.", { icon: '📍' });
+                toast.error("Please provide phone and delivery location.");
                 return;
             }
         }
 
         if (!isInstantPayment && !paymentMessage.trim()) {
-            toast.error("Please provide a Transaction ID or Proof of Payment.", { icon: '💳' });
+            toast.error("Please provide a Transaction ID or Proof of Payment.");
             return;
         }
 
         if (isScheduled) {
             if (!scheduledTime) {
-                toast.error("Please select a target completion time for scheduling.", { icon: '⏰' });
+                toast.error("Please select a target completion time for scheduling.");
                 return;
             }
             const targetDate = new Date(scheduledTime);
             if (targetDate <= new Date()) {
-                toast.error("Scheduled time must be in the future.", { icon: '⏰' });
+                toast.error("Scheduled time must be in the future.");
                 return;
             }
             if (prepTimeOption === 'CUSTOM') {
                 if (!scheduledStartTime) {
-                    toast.error("Please select a preparation start time.", { icon: '⏰' });
+                    toast.error("Please select a preparation start time.");
                     return;
                 }
                 const startDate = new Date(scheduledStartTime);
                 if (startDate <= new Date()) {
-                    toast.error("Preparation start time must be in the future.", { icon: '⏰' });
+                    toast.error("Preparation start time must be in the future.");
                     return;
                 }
                 if (startDate >= targetDate) {
-                    toast.error("Preparation start time must be before the target delivery/pickup time.", { icon: '⏰' });
+                    toast.error("Preparation start time must be before the target delivery/pickup time.");
                     return;
                 }
             }
@@ -227,6 +231,16 @@ export default function Checkout() {
                 return res;
             })
             .then(res => {
+                try {
+                    // Trigger premium mobile haptic success vibration pattern (tactile double-pulse)
+                    triggerHaptic(hapticPatterns.success);
+                    
+                    orderSuccessChime.currentTime = 0;
+                    orderSuccessChime.play().catch(e => console.log("Audio play deferred until interaction", e));
+                } catch (e) {
+                    console.error("Audio/Haptic trigger failed", e);
+                }
+
                 toast.success('Order placed successfully!', { id: toastId });
                 clearStoreCart(selectedStore.id);
                 localStorage.removeItem('scanned_table_id'); // Clear table session on checkout

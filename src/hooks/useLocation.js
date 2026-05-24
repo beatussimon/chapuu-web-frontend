@@ -2,15 +2,19 @@ import { useAppStore } from '../store/useStore';
 import toast from 'react-hot-toast';
 
 async function reverseGeocode(lat, lng) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2500);
     try {
         const res = await fetch(
             `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
             {
+                signal: controller.signal,
                 headers: {
                     'User-Agent': 'Chapuu-App'
                 }
             }
         );
+        clearTimeout(timeoutId);
         if (!res.ok) throw new Error('Reverse geocoding failed');
         const data = await res.json();
         
@@ -26,7 +30,8 @@ async function reverseGeocode(lat, lng) {
         
         return data.display_name?.split(',').slice(0, 2).join(',') || 'Your Area';
     } catch (err) {
-        console.error("Reverse geocoding error:", err);
+        clearTimeout(timeoutId);
+        // Silently catch and fallback to 'Your Area' to avoid console error spam/crashes in production
         return 'Your Area';
     }
 }
