@@ -158,6 +158,130 @@ function TopNavigation() {
   );
 }
 
+const getBottomNavPaths = (role) => {
+  if (role === 'CUSTOMER') {
+    return ['/', '/stores?type=RESTAURANT', '/cart', '/orders', '/reserve'];
+  }
+  if (['SELLER', 'ADMIN', 'SUPERUSER', 'CHEF'].includes(role)) {
+    return ['/seller', '/seller/menu', '/seller/analytics', '/seller/inventory'];
+  }
+  if (role === 'ACCOUNTANT') {
+    return ['/seller'];
+  }
+  if (role === 'DELIVERY') {
+    return ['/seller', '/delivery'];
+  }
+  return [];
+};
+
+const getDrawerLinks = (userRole) => {
+  const links = [];
+  if (!userRole) return links;
+
+  // Admin / Superuser exclusive
+  if (['ADMIN', 'SUPERUSER'].includes(userRole)) {
+    links.push({
+      path: '/admin',
+      label: 'Platform Admin',
+      icon: <Shield className="text-purple-400" size={20} />,
+      description: 'Global system overview & settings'
+    });
+  }
+
+  // Seller / Admin / Superuser
+  if (['SELLER', 'ADMIN', 'SUPERUSER'].includes(userRole)) {
+    links.push(
+      {
+        path: '/seller',
+        label: 'Seller Dashboard',
+        icon: <TerminalSquare className="text-primary-400" size={20} />,
+        description: 'Live order feeds & queue metrics'
+      },
+      {
+        path: '/seller/reservations',
+        label: 'Host / Reservations',
+        icon: <Calendar className="text-green-400" size={20} />,
+        description: 'Floor plans & seated guest sheets'
+      },
+      {
+        path: '/seller/menu',
+        label: 'Menu Builder',
+        icon: <Utensils className="text-amber-400" size={20} />,
+        description: 'Manage products, prices & categories'
+      },
+      {
+        path: '/seller/inventory',
+        label: 'Stock / Inventory',
+        icon: <Package className="text-blue-400" size={20} />,
+        description: 'Inventory levels & stock adjustments'
+      },
+      {
+        path: '/seller/analytics',
+        label: 'Analytics',
+        icon: <BarChart3 className="text-rose-400" size={20} />,
+        description: 'Platform revenue & daily trends'
+      },
+      {
+        path: '/seller/qrcodes',
+        label: 'Table QR Codes',
+        icon: <QrCode className="text-indigo-400" size={20} />,
+        description: 'Generate scan-to-order codes'
+      },
+      {
+        path: '/tv/1',
+        label: 'Public TV Display',
+        icon: <Tv className="text-teal-400" size={20} />,
+        description: 'Real-time kitchen order board'
+      }
+    );
+  } else {
+    // Specialized staff roles (Chef, Accountant, Delivery)
+    if (userRole === 'CHEF') {
+      links.push(
+        {
+          path: '/seller',
+          label: 'Kitchen Dashboard',
+          icon: <TerminalSquare className="text-amber-400" size={20} />,
+          description: 'Live kitchen orders & prep queue'
+        },
+        {
+          path: '/tv/1',
+          label: 'TV Display',
+          icon: <Tv className="text-teal-400" size={20} />,
+          description: 'Public kitchen order board'
+        }
+      );
+    }
+    if (userRole === 'ACCOUNTANT') {
+      links.push({
+        path: '/seller',
+        label: 'Accounting Center',
+        icon: <TerminalSquare className="text-emerald-400" size={20} />,
+        description: 'Payment verification & invoices'
+      });
+    }
+    if (userRole === 'DELIVERY') {
+      links.push(
+        {
+          path: '/seller',
+          label: 'Driver Dashboard',
+          icon: <TerminalSquare className="text-blue-400" size={20} />,
+          description: 'Dispatch feeds & order queue'
+        },
+        {
+          path: '/delivery',
+          label: 'Driver Dispatch',
+          icon: <Navigation className="text-indigo-400" size={20} />,
+          description: 'Fulfillment & active deliveries'
+        }
+      );
+    }
+  }
+
+  const bottomNavPaths = getBottomNavPaths(userRole);
+  return links.filter(link => !bottomNavPaths.includes(link.path));
+};
+
 function BottomNav({ moreMenuOpen, onToggleMore }) {
   const { userRole, cart } = useAppStore();
   const location = useLocation();
@@ -168,6 +292,8 @@ function BottomNav({ moreMenuOpen, onToggleMore }) {
     if (search) return location.pathname === pathname && location.search.includes(search);
     return location.pathname === pathname;
   };
+
+  const hasMore = getDrawerLinks(userRole).length > 0;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-dark-950/95 backdrop-blur-md border-t border-white/10 flex items-center justify-around px-2 py-2 safe-area-pb">
@@ -190,20 +316,26 @@ function BottomNav({ moreMenuOpen, onToggleMore }) {
           <Link to="/seller/menu" className={`flex flex-col items-center p-2 ${isActive('/seller/menu') ? 'text-primary-500' : 'text-slate-400'}`}><Utensils size={20} /><span className="text-[10px] mt-1">Menu</span></Link>
           <Link to="/seller/analytics" className={`flex flex-col items-center p-2 ${isActive('/seller/analytics') ? 'text-primary-500' : 'text-slate-400'}`}><BarChart3 size={20} /><span className="text-[10px] mt-1">Analytics</span></Link>
           <Link to="/seller/inventory" className={`flex flex-col items-center p-2 ${isActive('/seller/inventory') ? 'text-primary-500' : 'text-slate-400'}`}><Package size={20} /><span className="text-[10px] mt-1">Stock</span></Link>
-          <button onClick={onToggleMore} className={`flex flex-col items-center p-2 transition-colors ${moreMenuOpen ? 'text-primary-500' : 'text-slate-400 hover:text-white'}`}><LayoutGrid size={20} /><span className="text-[10px] mt-1">More</span></button>
+          {hasMore && (
+            <button onClick={onToggleMore} className={`flex flex-col items-center p-2 transition-colors ${moreMenuOpen ? 'text-primary-500' : 'text-slate-400 hover:text-white'}`}><LayoutGrid size={20} /><span className="text-[10px] mt-1">More</span></button>
+          )}
         </>
       )}
       {userRole === 'ACCOUNTANT' && (
         <>
           <Link to="/seller" className={`flex flex-col items-center p-2 ${isActive('/seller') ? 'text-primary-500' : 'text-slate-400'}`}><TerminalSquare size={20} /><span className="text-[10px] mt-1">Dashboard</span></Link>
-          <button onClick={onToggleMore} className={`flex flex-col items-center p-2 transition-colors ${moreMenuOpen ? 'text-primary-500' : 'text-slate-400 hover:text-white'}`}><LayoutGrid size={20} /><span className="text-[10px] mt-1">More</span></button>
+          {hasMore && (
+            <button onClick={onToggleMore} className={`flex flex-col items-center p-2 transition-colors ${moreMenuOpen ? 'text-primary-500' : 'text-slate-400 hover:text-white'}`}><LayoutGrid size={20} /><span className="text-[10px] mt-1">More</span></button>
+          )}
         </>
       )}
       {userRole === 'DELIVERY' && (
         <>
           <Link to="/seller" className={`flex flex-col items-center p-2 ${isActive('/seller') ? 'text-primary-500' : 'text-slate-400'}`}><TerminalSquare size={20} /><span className="text-[10px] mt-1">Dashboard</span></Link>
           <Link to="/delivery" className={`flex flex-col items-center p-2 ${isActive('/delivery') ? 'text-primary-500' : 'text-slate-400'}`}><Navigation size={20} /><span className="text-[10px] mt-1">Deliveries</span></Link>
-          <button onClick={onToggleMore} className={`flex flex-col items-center p-2 transition-colors ${moreMenuOpen ? 'text-primary-500' : 'text-slate-400 hover:text-white'}`}><LayoutGrid size={20} /><span className="text-[10px] mt-1">More</span></button>
+          {hasMore && (
+            <button onClick={onToggleMore} className={`flex flex-col items-center p-2 transition-colors ${moreMenuOpen ? 'text-primary-500' : 'text-slate-400 hover:text-white'}`}><LayoutGrid size={20} /><span className="text-[10px] mt-1">More</span></button>
+          )}
         </>
       )}
     </nav>
@@ -228,114 +360,7 @@ function BottomDrawer({ isOpen, onClose }) {
     navigate('/login');
   };
 
-  // Define links based on roles
-  const getLinks = () => {
-    const links = [];
-    
-    // Admin / Superuser exclusive
-    if (['ADMIN', 'SUPERUSER'].includes(userRole)) {
-      links.push({
-        path: '/admin',
-        label: 'Platform Admin',
-        icon: <Shield className="text-purple-400" size={20} />,
-        description: 'Global system overview & settings'
-      });
-    }
-
-    // Seller / Admin / Superuser
-    if (['SELLER', 'ADMIN', 'SUPERUSER'].includes(userRole)) {
-      links.push(
-        {
-          path: '/seller',
-          label: 'Seller Dashboard',
-          icon: <TerminalSquare className="text-primary-400" size={20} />,
-          description: 'Live order feeds & queue metrics'
-        },
-        {
-          path: '/seller/reservations',
-          label: 'Host / Reservations',
-          icon: <Calendar className="text-green-400" size={20} />,
-          description: 'Floor plans & seated guest sheets'
-        },
-        {
-          path: '/seller/menu',
-          label: 'Menu Builder',
-          icon: <Utensils className="text-amber-400" size={20} />,
-          description: 'Manage products, prices & categories'
-        },
-        {
-          path: '/seller/inventory',
-          label: 'Stock / Inventory',
-          icon: <Package className="text-blue-400" size={20} />,
-          description: 'Inventory levels & stock adjustments'
-        },
-        {
-          path: '/seller/analytics',
-          label: 'Analytics',
-          icon: <BarChart3 className="text-rose-400" size={20} />,
-          description: 'Platform revenue & daily trends'
-        },
-        {
-          path: '/seller/qrcodes',
-          label: 'Table QR Codes',
-          icon: <QrCode className="text-indigo-400" size={20} />,
-          description: 'Generate scan-to-order codes'
-        },
-        {
-          path: '/tv/1',
-          label: 'Public TV Display',
-          icon: <Tv className="text-teal-400" size={20} />,
-          description: 'Real-time kitchen order board'
-        }
-      );
-    } else {
-      // Specialized staff roles (Chef, Accountant, Delivery)
-      if (userRole === 'CHEF') {
-        links.push(
-          {
-            path: '/seller',
-            label: 'Kitchen Dashboard',
-            icon: <TerminalSquare className="text-amber-400" size={20} />,
-            description: 'Live kitchen orders & prep queue'
-          },
-          {
-            path: '/tv/1',
-            label: 'TV Display',
-            icon: <Tv className="text-teal-400" size={20} />,
-            description: 'Public kitchen order board'
-          }
-        );
-      }
-      if (userRole === 'ACCOUNTANT') {
-        links.push({
-          path: '/seller',
-          label: 'Accounting Center',
-          icon: <TerminalSquare className="text-emerald-400" size={20} />,
-          description: 'Payment verification & invoices'
-        });
-      }
-      if (userRole === 'DELIVERY') {
-        links.push(
-          {
-            path: '/seller',
-            label: 'Driver Dashboard',
-            icon: <TerminalSquare className="text-blue-400" size={20} />,
-            description: 'Dispatch feeds & order queue'
-          },
-          {
-            path: '/delivery',
-            label: 'Driver Dispatch',
-            icon: <Navigation className="text-indigo-400" size={20} />,
-            description: 'Fulfillment & active deliveries'
-          }
-        );
-      }
-    }
-
-    return links;
-  };
-
-  const links = getLinks();
+  const links = getDrawerLinks(userRole);
   if (links.length === 0) return null;
 
   return (
@@ -358,8 +383,12 @@ function BottomDrawer({ isOpen, onClose }) {
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h3 className="text-lg font-black text-white uppercase tracking-wider">Control Directory</h3>
-            <p className="text-xs text-slate-400">All tools authorized for your role</p>
+            <h3 className="text-lg font-black text-white uppercase tracking-wider">
+              {['ADMIN', 'SUPERUSER'].includes(userRole) ? 'Control Directory' : 'More Options'}
+            </h3>
+            <p className="text-xs text-slate-400">
+              {['ADMIN', 'SUPERUSER'].includes(userRole) ? 'All tools authorized for your role' : 'Manage all your tools in one place'}
+            </p>
           </div>
           <button 
             onClick={onClose} 

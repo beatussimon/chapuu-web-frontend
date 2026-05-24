@@ -2059,8 +2059,8 @@ export default function SellerDashboard() {
                             {/* Header */}
                             <div className="flex justify-between items-center mb-6">
                                 <div>
-                                    <h3 className="text-lg font-black text-white uppercase tracking-wider">Dashboard Navigation</h3>
-                                    <p className="text-xs text-slate-400">Quickly toggle dashboard sections</p>
+                                    <h3 className="text-lg font-black text-white uppercase tracking-wider">More Options</h3>
+                                    <p className="text-xs text-slate-400">Quickly switch between sections</p>
                                 </div>
                                 <button 
                                     onClick={() => setShowGridModal(false)} 
