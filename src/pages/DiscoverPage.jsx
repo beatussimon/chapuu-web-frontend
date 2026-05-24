@@ -476,8 +476,8 @@ export default function DiscoverPage() {
                                 <TrendingUp className="text-orange-500" size={20} /> 
                                 {hasLocation ? "Trending Nearby" : "Trending Right Now"}
                             </h2>
-                            <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-5 px-2 transition-opacity duration-200 ${storesLoading ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
-                                {stats.trending_items.slice(0, 5).map(item => (
+                            <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 px-2 transition-opacity duration-200 ${storesLoading ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
+                                {stats.trending_items.slice(0, 4).map(item => (
                                     <motion.div
                                         key={item.id}
                                         whileHover={{ y: -4 }}
@@ -499,14 +499,14 @@ export default function DiscoverPage() {
                                                 navigate('/menu', { state: { highlightProductId: item.id } });
                                             }
                                         }}
-                                        className="cursor-pointer glass-dark rounded-2xl border border-white/5 hover:border-primary-500/30 transition-all overflow-hidden flex flex-col group relative"
+                                        className="cursor-pointer glass-dark border border-white/5 rounded-3xl overflow-hidden hover:border-primary-500/50 transition-all flex flex-col group relative"
                                     >
                                         <div className="relative w-full aspect-[4/3] bg-dark-900 overflow-hidden">
                                             {item.image_url ? (
                                                 <OptimizedImage src={item.image_url} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" wrapperClassName="w-full h-full" />
                                             ) : (
-                                                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-dark-800 to-dark-900">
-                                                    <Utensils size={24} className="text-white/10" />
+                                                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
+                                                    <Utensils size={48} className="text-white/10" />
                                                 </div>
                                             )}
                                             
@@ -525,16 +525,16 @@ export default function DiscoverPage() {
                                                 </span>
                                             </div>
                                         </div>
-                                        <div className="p-3 flex flex-col flex-1 justify-between bg-gradient-to-t from-dark-950 to-transparent">
+                                        <div className="p-5 flex flex-col flex-1 justify-between bg-gradient-to-t from-dark-950 to-transparent text-left">
                                             <div>
-                                                <h3 className="font-bold text-white text-sm line-clamp-1">{item.name}</h3>
-                                                <p className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1 line-clamp-1">
-                                                    <Store size={10} className="text-primary-500" /> {item.store_name || 'Store'}
+                                                <h3 className="text-lg font-bold text-white group-hover:text-primary-400 transition-colors line-clamp-1">{item.name}</h3>
+                                                <p className="text-[11px] text-slate-500 mt-1 flex items-center gap-1 line-clamp-1">
+                                                    <Store size={11} className="text-primary-500 shrink-0" /> {item.store_name || 'Store'}
                                                 </p>
                                             </div>
-                                            <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5">
-                                                <span className="text-[10px] font-bold text-primary-400">{formatPrice(item.price)}</span>
-                                                <span className="text-[9px] text-slate-500 font-medium px-1.5 py-0.5 bg-white/5 rounded">🔥 {item.times_ordered}x</span>
+                                            <div className="flex items-center justify-between mt-auto pt-3 border-t border-white/5">
+                                                <span className="text-sm font-bold text-primary-400">{formatPrice(item.price)}</span>
+                                                <span className="text-[10px] text-slate-400 font-bold px-2 py-0.5 bg-white/5 rounded border border-white/5">🔥 {item.times_ordered}x</span>
                                             </div>
                                         </div>
                                     </motion.div>
@@ -571,7 +571,7 @@ export default function DiscoverPage() {
                                 )}
                             </div>
                         ) : (
-                            <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-5 transition-opacity duration-200 ${storesLoading ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
+                            <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 transition-opacity duration-200 ${storesLoading ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
                                 {stores.map(store => {
                                     const isTop = stats.top_stores?.some(ts => ts.id === store.id);
                                     
@@ -580,7 +580,7 @@ export default function DiscoverPage() {
                                             key={store.id}
                                             whileHover={{ y: -4 }}
                                             onClick={() => handleSelectStore(store)}
-                                            className="cursor-pointer glass-dark rounded-2xl border border-white/5 hover:border-primary-500/30 transition-all overflow-hidden flex flex-col group relative"
+                                            className="cursor-pointer glass-dark border border-white/5 rounded-3xl overflow-hidden hover:border-primary-500/50 transition-all flex flex-col group relative"
                                         >
                                             {isTop && (
                                                 <div className="absolute top-2 right-2 z-20 bg-orange-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-lg">HOT</div>
@@ -589,8 +589,8 @@ export default function DiscoverPage() {
                                                 {store.image_url ? (
                                                     <OptimizedImage src={store.image_url} alt={store.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" wrapperClassName="w-full h-full" />
                                                 ) : (
-                                                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-dark-800 to-dark-900">
-                                                        {store.store_type === 'SHOP' ? <ShoppingBag size={24} className="text-white/10" /> : <ChefHat size={24} className="text-white/10" />}
+                                                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
+                                                        {store.store_type === 'SHOP' ? <ShoppingBag size={48} className="text-white/10" /> : <ChefHat size={48} className="text-white/10" />}
                                                     </div>
                                                 )}
                                                 
@@ -602,8 +602,8 @@ export default function DiscoverPage() {
                                                         </span>
                                                     </div>
                                                 )}
-
-                                                <div className="absolute bottom-2 left-2">
+                                                
+                                                <div className="absolute bottom-2 left-2 z-10">
                                                     <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded backdrop-blur-md border ${store.store_type === 'SHOP' ? 'bg-purple-500/80 border-purple-500/50 text-white' : 'bg-dark-950/80 border-white/10 text-primary-400'}`}>
                                                         {store.store_type}
                                                     </span>
@@ -616,15 +616,15 @@ export default function DiscoverPage() {
                                                     </div>
                                                 )}
                                             </div>
-                                            <div className="p-3 flex flex-col flex-1 justify-between bg-gradient-to-t from-dark-950 to-transparent">
-                                                <div>
-                                                    <h3 className="font-bold text-white text-sm line-clamp-1">{store.name}</h3>
-                                                    <p className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1 line-clamp-1">
-                                                        <MapPin size={10} /> 
+                                            <div className="p-5 flex flex-col flex-1 justify-between bg-gradient-to-t from-dark-950 to-transparent text-left">
+                                                <div className="mb-4">
+                                                    <h3 className="text-lg font-bold text-white group-hover:text-primary-400 transition-colors line-clamp-1">{store.name}</h3>
+                                                    <p className="text-[11px] text-slate-500 mt-1 flex items-center gap-1 line-clamp-1">
+                                                        <MapPin size={11} className="text-slate-500 shrink-0" /> 
                                                         {store.location || 'Online'}
                                                     </p>
                                                 </div>
-                                                <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5">
+                                                <div className="flex items-center justify-between mt-auto pt-3 border-t border-white/5">
                                                     <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-400 font-bold">
                                                         <Star size={10} className="text-yellow-500 fill-current" /> {parseFloat(store.avg_rating || 4.5).toFixed(1)}
                                                         <span className="text-[10px] text-slate-700 font-black">·</span>
