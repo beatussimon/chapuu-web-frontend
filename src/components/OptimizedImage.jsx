@@ -1,19 +1,21 @@
 import { useState, useEffect, useRef } from 'react';
+import { Store, ChefHat, Leaf, User, Image } from 'lucide-react';
 
 /**
  * OptimizedImage — High-performance image component with:
  * - IntersectionObserver-based lazy loading (loads when ~200px from viewport)
- * - Skeleton pulse placeholder while loading
+ * - Skeleton pulse placeholder while loading with category-aligned icons
  * - Smooth CSS fade-in on load via async decoding
  * - Eager mode for above-the-fold / modal images
  *
  * Props:
- *   src         - Image URL
- *   alt         - Alt text
- *   className   - Classes applied to the <img> element itself
+ *   src             - Image URL
+ *   alt             - Alt text
+ *   className       - Classes applied to the <img> element itself
  *   wrapperClassName - Classes applied to the outer wrapper <div>
- *   eager       - If true, skips lazy loading (for hero / above-the-fold images)
- *   ...rest     - Any other props forwarded to the <img>
+ *   eager           - If true, skips lazy loading (for hero / above-the-fold images)
+ *   placeholderType - Category of the image to show a matching pulsing icon ('store', 'product', 'ingredient', 'avatar', 'default')
+ *   ...rest         - Any other props forwarded to the <img>
  */
 export default function OptimizedImage({
   src,
@@ -21,6 +23,7 @@ export default function OptimizedImage({
   className = '',
   wrapperClassName = '',
   eager = false,
+  placeholderType = 'default',
   ...rest
 }) {
   const [isInView, setIsInView] = useState(eager);
@@ -61,9 +64,15 @@ export default function OptimizedImage({
       {/* Skeleton pulse placeholder */}
       {!isLoaded && (
         <div
-          className="absolute inset-0 bg-white/5 animate-pulse"
+          className="absolute inset-0 bg-white/5 animate-pulse flex items-center justify-center"
           style={{ borderRadius: 'inherit' }}
-        />
+        >
+          {placeholderType === 'store' && <Store size={32} className="text-white/10" />}
+          {placeholderType === 'product' && <ChefHat size={32} className="text-white/10" />}
+          {placeholderType === 'ingredient' && <Leaf size={28} className="text-white/10" />}
+          {placeholderType === 'avatar' && <User size={28} className="text-white/10" />}
+          {placeholderType === 'default' && <Image size={28} className="text-white/10" />}
+        </div>
       )}
 
       {/* Actual image — only rendered once in viewport */}
@@ -83,3 +92,4 @@ export default function OptimizedImage({
     </div>
   );
 }
+

@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import apiClient from '../api/client';
 import { useAppStore } from '../store/useStore';
 import toast from 'react-hot-toast';
+import { QrCode } from 'lucide-react';
 
 export default function ScanHandler() {
     const [searchParams] = useSearchParams();
@@ -53,13 +54,24 @@ export default function ScanHandler() {
     }, [storeId, tableId, action, navigate, setSelectedStore]);
 
     return (
-        <div className="flex justify-center flex-col items-center h-[calc(100vh-200px)]">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500 mb-4"></div>
-            <p className="text-slate-400">
-                {action === 'review' ? 'Opening review...' :
-                    action === 'reserve' ? 'Opening reservations...' :
-                        'Loading your menu...'}
-            </p>
+        <div className="flex justify-center items-center h-[calc(100vh-200px)] px-4">
+            <div className="glass-dark border border-white/10 p-8 rounded-3xl max-w-sm w-full text-center flex flex-col items-center gap-6 animate-pulse shadow-2xl">
+                <div className="w-16 h-16 rounded-2xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-primary-400">
+                    <QrCode size={32} className="animate-pulse" />
+                </div>
+                <div>
+                    <h3 className="text-lg font-bold text-white mb-2 uppercase tracking-wide">Syncing Scan Details</h3>
+                    <p className="text-slate-400 text-sm font-medium">
+                        {action === 'review' ? 'Opening review portal...' :
+                            action === 'reserve' ? 'Opening VIP reservations...' :
+                                'Loading your digital menu...'}
+                    </p>
+                </div>
+                <div className="w-24 h-1.5 bg-white/5 rounded-full overflow-hidden relative">
+                    <div className="absolute top-0 bottom-0 left-0 bg-primary-500 w-1/2 rounded-full animate-pulse"></div>
+                </div>
+            </div>
         </div>
     );
 }
+

@@ -197,14 +197,74 @@ export default function DiscoverPage() {
 
     if (initialLoading) {
         return (
-            <div className="w-full max-w-6xl mx-auto py-8 space-y-6 px-4">
-                <div className="h-32 bg-white/5 rounded-2xl animate-pulse"></div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {[1, 2, 3, 4].map(i => <div key={i} className="h-40 bg-white/5 rounded-xl animate-pulse"></div>)}
+            <div className="w-full max-w-6xl mx-auto py-4 md:py-6 px-2 md:px-4 space-y-8 animate-pulse">
+                {/* Header & Search Block Skeleton */}
+                <div className="glass-dark border border-white/5 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row gap-6 items-center justify-between shadow-2xl relative overflow-hidden">
+                    <div className="space-y-3 flex-1">
+                        <div className="h-8 w-2/3 md:w-80 bg-white/5 rounded-lg"></div>
+                        <div className="h-4 w-1/2 md:w-60 bg-white/5 rounded-md"></div>
+                    </div>
+                    <div className="h-12 w-full md:w-80 bg-white/5 rounded-2xl shrink-0"></div>
+                </div>
+
+                {/* Categories Slider Skeleton */}
+                <div className="glass-dark border border-white/5 rounded-2xl p-4">
+                    <div className="flex items-center gap-3 overflow-hidden">
+                        {[1, 2, 3, 4, 5, 6].map(i => (
+                            <div key={i} className="h-8 w-24 bg-white/5 rounded-xl shrink-0"></div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Trending Nearby Grid Skeleton */}
+                <div>
+                    <div className="h-6 w-48 bg-white/5 rounded-md mb-6 px-2"></div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 px-2">
+                        {[1, 2, 3, 4].map(i => (
+                            <div key={i} className="glass-dark border border-white/5 rounded-3xl overflow-hidden flex flex-col h-[320px]">
+                                <div className="relative w-full aspect-[4/3] bg-white/5 flex items-center justify-center border-b border-white/5">
+                                    <ChefHat size={48} className="text-white/10" />
+                                </div>
+                                <div className="p-5 flex-grow space-y-3">
+                                    <div className="h-5 w-2/3 bg-white/5 rounded"></div>
+                                    <div className="h-3.5 w-1/2 bg-white/5 rounded"></div>
+                                    <div className="pt-4 border-t border-white/5 flex justify-between">
+                                        <div className="h-4 w-12 bg-white/5 rounded"></div>
+                                        <div className="h-4 w-8 bg-white/5 rounded"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Discover Spots Grid Skeleton */}
+                <div>
+                    <div className="flex items-center justify-between mb-6 px-2">
+                        <div className="h-6 w-40 bg-white/5 rounded-md"></div>
+                        <div className="h-10 w-28 bg-white/5 rounded-xl"></div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 px-2">
+                        {[1, 2, 3, 4].map(i => (
+                            <div key={i} className="glass-dark border border-white/5 rounded-3xl overflow-hidden flex flex-col h-[320px]">
+                                <div className="relative w-full aspect-[4/3] bg-white/5 flex items-center justify-center border-b border-white/5">
+                                    <Store size={48} className="text-white/10" />
+                                </div>
+                                <div className="p-5 flex-grow space-y-3">
+                                    <div className="h-5 w-3/4 bg-white/5 rounded"></div>
+                                    <div className="h-3.5 w-1/2 bg-white/5 rounded"></div>
+                                    <div className="pt-4 border-t border-white/5 flex justify-between">
+                                        <div className="h-4 w-16 bg-white/5 rounded"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
         );
     }
+
 
     return (
         <div className="w-full max-w-6xl mx-auto py-4 md:py-6 px-2 md:px-4 space-y-8">
@@ -445,7 +505,7 @@ export default function DiscoverPage() {
                         onSelectProduct={async (item) => {
                             let s = stores.find(store => store.id === item.store_id);
                             if (!s) {
-                                const tid = toast.loading("Loading store details...");
+                                const tid = toast.loading(`Connecting to ${item.store_name || 'store'}...`);
                                 try {
                                     const res = await apiClient.get(`/stores/${item.store_id}/`);
                                     s = res.data;
@@ -484,7 +544,7 @@ export default function DiscoverPage() {
                                         onClick={async () => {
                                             let s = stores.find(store => store.id === item.store_id);
                                             if (!s) {
-                                                const tid = toast.loading("Loading store details...");
+                                                const tid = toast.loading(`Connecting to ${item.store_name || 'store'}...`);
                                                 try {
                                                     const res = await apiClient.get(`/stores/${item.store_id}/`);
                                                     s = res.data;
@@ -503,7 +563,7 @@ export default function DiscoverPage() {
                                     >
                                         <div className="relative w-full aspect-[4/3] bg-dark-900 overflow-hidden">
                                             {item.image_url ? (
-                                                <OptimizedImage src={item.image_url} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" wrapperClassName="w-full h-full" />
+                                                <OptimizedImage src={item.image_url} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" wrapperClassName="w-full h-full" placeholderType="product" />
                                             ) : (
                                                 <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
                                                     <Utensils size={48} className="text-white/10" />
@@ -587,7 +647,7 @@ export default function DiscoverPage() {
                                             )}
                                             <div className="relative w-full aspect-[4/3] bg-dark-900 overflow-hidden">
                                                 {store.image_url ? (
-                                                    <OptimizedImage src={store.image_url} alt={store.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" wrapperClassName="w-full h-full" />
+                                                    <OptimizedImage src={store.image_url} alt={store.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" wrapperClassName="w-full h-full" placeholderType="store" />
                                                 ) : (
                                                     <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
                                                         {store.store_type === 'SHOP' ? <ShoppingBag size={48} className="text-white/10" /> : <ChefHat size={48} className="text-white/10" />}

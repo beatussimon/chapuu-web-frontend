@@ -121,8 +121,21 @@ export default function StoreSelection() {
             </div>
 
             {loading ? (
-                <div className="flex justify-center py-20">
-                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-pulse">
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+                        <div key={i} className="glass-dark border border-white/5 rounded-3xl overflow-hidden flex flex-col h-[320px]">
+                            <div className="relative w-full aspect-[4/3] bg-white/5 flex items-center justify-center border-b border-white/5">
+                                <Store size={48} className="text-white/10" />
+                            </div>
+                            <div className="p-5 flex-grow space-y-3">
+                                <div className="h-5 w-3/4 bg-white/5 rounded"></div>
+                                <div className="h-3.5 w-1/2 bg-white/5 rounded"></div>
+                                <div className="pt-4 border-t border-white/5 flex justify-between">
+                                    <div className="h-4 w-16 bg-white/5 rounded"></div>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             ) : filteredStores.length === 0 ? (
                 <div className="text-center py-20 glass-dark rounded-3xl border border-white/5">
@@ -143,7 +156,7 @@ export default function StoreSelection() {
                         >
                             <div className="relative w-full aspect-[4/3] bg-dark-900 border-b border-white/5 overflow-hidden">
                                 {store.image_url ? (
-                                    <OptimizedImage src={store.image_url} alt={store.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" wrapperClassName="w-full h-full" />
+                                    <OptimizedImage src={store.image_url} alt={store.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" wrapperClassName="w-full h-full" placeholderType="store" />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
                                         <Store size={48} className="text-white/10" />

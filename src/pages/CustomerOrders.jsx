@@ -81,8 +81,34 @@ export default function CustomerOrders() {
 
     if (loading && allOrders.length === 0 && reservations.length === 0) {
         return (
-            <div className="flex justify-center items-center h-[calc(100vh-200px)]">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+            <div className="w-full max-w-4xl mx-auto py-4 md:py-8 text-white px-2 md:px-4 animate-pulse">
+                {/* Header Skeleton */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+                    <div className="flex items-center gap-3">
+                        <div className="p-5 bg-white/5 rounded-xl w-10 h-10"></div>
+                        <div className="space-y-2">
+                            <div className="h-7 w-48 bg-white/5 rounded-lg"></div>
+                            <div className="h-4 w-32 bg-white/5 rounded"></div>
+                        </div>
+                    </div>
+                    <div className="h-10 w-full md:w-64 bg-white/5 rounded-xl"></div>
+                </div>
+
+                {/* Vertical Activity Cards Skeleton */}
+                <div className="space-y-4">
+                    {[1, 2, 3].map(i => (
+                        <div key={i} className="glass-dark border border-white/10 rounded-2xl p-4 md:p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                            <div className="w-full space-y-3">
+                                <div className="flex justify-between items-center">
+                                    <div className="h-5 w-1/3 bg-white/5 rounded"></div>
+                                    <div className="h-5 w-24 bg-white/5 rounded-full"></div>
+                                </div>
+                                <div className="h-4 w-1/2 bg-white/5 rounded"></div>
+                                <div className="h-3 w-1/4 bg-white/5 rounded"></div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
             </div>
         );
     }
