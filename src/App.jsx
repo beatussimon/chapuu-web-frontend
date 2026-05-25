@@ -28,8 +28,9 @@ const InventoryDashboard = lazy(() => import('./pages/InventoryDashboard'));
 const ReservationManager = lazy(() => import('./pages/ReservationManager'));
 const TableQRCodes = lazy(() => import('./pages/TableQRCodes'));
 const PublicDisplay = lazy(() => import('./pages/PublicDisplay'));
+const CustomerProfile = lazy(() => import('./pages/CustomerProfile'));
 
-import { Utensils, LayoutDashboard, LogOut, ShoppingBag, TerminalSquare, QrCode, Calendar, Package, Shield, Store, Menu, X, Navigation, Tv, BarChart3, Compass, UtensilsCrossed, HelpCircle, ListOrdered, ShoppingCart, TrendingUp, LayoutGrid } from 'lucide-react';
+import { Utensils, LayoutDashboard, LogOut, ShoppingBag, TerminalSquare, QrCode, Calendar, Package, Shield, Store, Menu, X, Navigation, Tv, BarChart3, Compass, UtensilsCrossed, HelpCircle, ListOrdered, ShoppingCart, TrendingUp, LayoutGrid, User } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import { setStoreResetFn } from './api/client';
 
@@ -112,6 +113,7 @@ function TopNavigation() {
                 <Link to="/stores?type=SHOP" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0"><Store size={16} /><span className="text-sm font-medium">Shops</span></Link>
                 <Link to="/orders" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0"><ListOrdered size={16} /><span className="text-sm font-medium">Orders</span></Link>
                 <Link to="/reserve" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0"><Calendar size={16} /><span className="text-sm font-medium">Reserve</span></Link>
+                <Link to="/profile" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0"><User size={16} /><span className="text-sm font-medium">Profile</span></Link>
                 <Link to="/faq" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0"><HelpCircle size={16} /><span className="text-sm font-medium">FAQ</span></Link>
 
                 {/* Global Cart Button */}
@@ -148,6 +150,11 @@ function TopNavigation() {
 
             {/* Mobile Actions */}
             <div className="lg:hidden flex items-center gap-3">
+              {token && userRole === 'CUSTOMER' && (
+                <Link to="/profile" className="p-2 bg-white/5 rounded-xl text-slate-300 hover:text-white transition-colors" title="Profile">
+                  <User size={20} />
+                </Link>
+              )}
               <div className="flex items-center gap-2 text-xs text-slate-400">
                 <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
                 {userRole}
@@ -490,6 +497,7 @@ function App() {
               <Route path="/order/track/:id" element={<ProtectedRoute><OrderTracker /></ProtectedRoute>} />
               <Route path="/scan" element={<ProtectedRoute><ScanHandler /></ProtectedRoute>} />
               <Route path="/reserve" element={<ProtectedRoute><ReservationForm /></ProtectedRoute>} />
+              <Route path="/profile" element={<ProtectedRoute><CustomerProfile /></ProtectedRoute>} />
               <Route path="/seller" element={<ProtectedRoute><SellerDashboard /></ProtectedRoute>} />
               <Route path="/seller/menu" element={<ProtectedRoute role="SELLER"><MenuBuilder /></ProtectedRoute>} />
               <Route path="/seller/reservations" element={<ProtectedRoute role="SELLER"><ReservationManager /></ProtectedRoute>} />

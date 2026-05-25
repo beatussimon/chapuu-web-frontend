@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { triggerHaptic, hapticPatterns } from '../utils/haptics';
 import OptimizedImage from '../components/OptimizedImage';
+import { parseLocalPhoneNumber } from '../utils/phone';
 
 const orderSuccessChime = new Audio('/media/sounds/chapuunotification.mp3');
 orderSuccessChime.preload = 'auto';
@@ -42,6 +43,16 @@ export default function Checkout() {
 
     // AI Recommendations
     const [recommendations, setRecommendations] = useState([]);
+
+    useEffect(() => {
+        apiClient.get('/auth/users/me/')
+            .then(res => {
+                if (res.data && res.data.phone_number) {
+                    setCustomerPhone(parseLocalPhoneNumber(res.data.phone_number));
+                }
+            })
+            .catch(err => console.error("Could not load user profile phone number for checkout:", err));
+    }, []);
 
     useEffect(() => {
         if (isInstantPayment && fulfillmentMode === 'DELIVERY') {
@@ -150,8 +161,8 @@ export default function Checkout() {
         }
 
         if (fulfillmentMode === 'DELIVERY') {
-            if (!customerPhone || !deliveryLocation) {
-                toast.error("Please provide phone and delivery location.");
+            if (!customerPhone || customerPhone.length !== 9 || !deliveryLocation) {
+                toast.error("Please provide a valid 9-digit phone number and delivery location.");
                 return;
             }
         }
@@ -198,7 +209,7 @@ export default function Checkout() {
             fulfillment_mode: isReservationOrder ? 'RESERVATION' : fulfillmentMode,
             ...(fulfillmentMode === 'DINE_IN' && { table: selectedTable }),
             ...(fulfillmentMode === 'DELIVERY' && { 
-                customer_phone: customerPhone, 
+                customer_phone: `+255${customerPhone}`, 
                 delivery_location: deliveryLocation,
                 delivery_latitude: deliveryLatitude,
                 delivery_longitude: deliveryLongitude,
@@ -484,13 +495,23 @@ export default function Checkout() {
                                     >
                                         <div>
                                             <label className="text-sm font-medium text-slate-400">Phone Number</label>
-                                            <input
-                                                type="tel"
-                                                value={customerPhone}
-                                                onChange={(e) => setCustomerPhone(e.target.value)}
-                                                placeholder="e.g. +254 700 000000"
-                                                className="w-full mt-1 bg-dark-950 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-primary-500 transition-all"
-                                            />
+                                            <div className="flex gap-2 mt-1">
+                                                <div className="flex items-center px-4 bg-dark-950 border border-white/10 rounded-xl text-sm font-bold text-slate-300">
+                                                    <span>+255</span>
+                                                </div>
+                                                <input
+                                                    type="tel"
+                                                    value={customerPhone}
+                                                    onChange={(e) => {
+                                                        const val = e.target.value.replace(/\D/g, ''); // Digits only
+                                                        if (val.length <= 9) {
+                                                            setCustomerPhone(val);
+                                                        }
+                                                    }}
+                                                    placeholder="e.g. 712345678"
+                                                    className="flex-1 bg-dark-950 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-primary-500 transition-all font-mono tracking-wider font-semibold"
+                                                />
+                                            </div>
                                         </div>
                                         <div>
                                             <div className="flex justify-between items-center mb-1">
