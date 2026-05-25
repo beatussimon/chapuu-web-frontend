@@ -71,12 +71,9 @@ export default function Checkout() {
                     setDeliveryLongitude(longitude.toFixed(6));
                     
                     try {
-                        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`, {
-                            headers: { 'User-Agent': 'Chapuu-Checkout' }
-                        });
-                        const data = await res.json();
-                        if (data && data.display_name) {
-                            const shortName = data.display_name.split(',').slice(0, 3).join(',');
+                        const res = await apiClient.get(`/orders/reverse_geocode/?lat=${latitude}&lon=${longitude}`);
+                        if (res.data && res.data.display_name) {
+                            const shortName = res.data.display_name.split(',').slice(0, 3).join(',');
                             setDeliveryLocation(shortName);
                             toast.success(`Delivery address located: ${shortName}`, { id: toastId });
                         } else {
