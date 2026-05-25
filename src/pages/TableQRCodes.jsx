@@ -127,7 +127,7 @@ export default function TableQRCodes() {
         <div className="w-full max-w-6xl mx-auto py-8 space-y-10">
 
             {/* Header */}
-            <div className="flex justify-between items-end mb-8 print:hidden">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-8 print:hidden">
                 <div className="flex items-center gap-4">
                     <div className="bg-primary-500/10 p-3 rounded-xl border border-primary-500/20">
                         <QrCode className="text-primary-500" size={32} />
@@ -139,7 +139,7 @@ export default function TableQRCodes() {
                 </div>
                 <button
                     onClick={printQRs}
-                    className="flex items-center gap-2 bg-primary-600 hover:bg-primary-500 text-dark-900 font-bold px-6 py-3 rounded-xl transition-all shadow-lg print:hidden"
+                    className="flex items-center justify-center gap-2 bg-primary-600 hover:bg-primary-500 text-dark-900 font-bold px-6 py-3 rounded-xl transition-all shadow-lg print:hidden w-full sm:w-auto"
                 >
                     <Printer size={20} /> Print All
                 </button>
@@ -183,19 +183,19 @@ export default function TableQRCodes() {
 
             {/* Table Management + Add Table */}
             <div className="print:hidden">
-                <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                        🍽️ Table QR Codes
-                        <span className="text-sm font-normal text-slate-500 ml-2">— customers scan to order directly to their table</span>
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                    <h3 className="text-xl font-bold text-white flex flex-wrap items-center gap-2">
+                        Table QR Codes
+                        <span className="text-sm font-normal text-slate-500">— customers scan to order directly to their table</span>
                     </h3>
-                    <form onSubmit={handleAddTable} className="flex gap-2 items-center bg-dark-900 border border-white/10 p-2 rounded-xl">
+                    <form onSubmit={handleAddTable} className="flex w-full md:w-auto gap-2 items-center bg-dark-900 border border-white/10 p-2 rounded-xl">
                         <input
                             type="text"
                             placeholder="Tbl Num"
                             value={newTableNum}
                             onChange={e => setNewTableNum(e.target.value)}
                             required
-                            className="w-20 bg-dark-950 border border-white/10 rounded-lg px-2 py-2 text-sm text-slate-200 focus:border-primary-500 outline-none"
+                            className="flex-1 md:w-20 bg-dark-950 border border-white/10 rounded-lg px-2.5 py-2 text-sm text-slate-200 focus:border-primary-500 outline-none"
                         />
                         <input
                             type="number"
@@ -203,12 +203,12 @@ export default function TableQRCodes() {
                             min="1"
                             value={newTableCap}
                             onChange={e => setNewTableCap(e.target.value)}
-                            className="w-16 bg-dark-950 border border-white/10 rounded-lg px-2 py-2 text-sm text-slate-200 focus:border-primary-500 outline-none"
+                            className="flex-1 md:w-16 bg-dark-950 border border-white/10 rounded-lg px-2.5 py-2 text-sm text-slate-200 focus:border-primary-500 outline-none"
                         />
                         <button
                             type="submit"
                             disabled={submitting}
-                            className="bg-primary-500/10 hover:bg-primary-500/20 text-primary-400 px-3 py-2 rounded-lg font-bold text-sm transition-colors"
+                            className="bg-primary-500/10 hover:bg-primary-500/20 text-primary-400 px-4 py-2 rounded-lg font-bold text-sm transition-colors"
                         >
                             {submitting ? '...' : '+ Add'}
                         </button>
@@ -227,7 +227,7 @@ export default function TableQRCodes() {
                 `}
             </style>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 print:gap-12 print:grid-cols-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 print:gap-12 print:grid-cols-3">
                 {tables.map(t => {
                     const scanUrl = `${storeAppUrl}/scan?store=${storeId}&table=${t.id}`;
                     return (

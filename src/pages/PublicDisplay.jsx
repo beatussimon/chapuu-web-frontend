@@ -131,8 +131,8 @@ export default function PublicDisplay() {
                         <Utensils className="text-primary-500" size={32} />
                     </motion.div>
                     <div>
-                        <h1 className="text-3xl font-black tracking-tight">{storeName || 'Global Queue'}</h1>
-                        <p className="text-slate-400 font-medium tracking-widest uppercase text-sm">Live Order Status</p>
+                        <h1 className="text-xl md:text-3xl font-black tracking-tight">{storeName || 'Global Queue'}</h1>
+                        <p className="text-slate-400 font-medium tracking-widest uppercase text-xs md:text-sm">Live Order Status</p>
                     </div>
                 </div>
 
@@ -157,13 +157,13 @@ export default function PublicDisplay() {
                             initial={{ opacity: 0, x: -50 }}
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: 50 }}
-                            className="absolute inset-0 grid grid-cols-3 gap-8 p-8"
+                            className="absolute inset-0 grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 p-4 md:p-8 overflow-y-auto md:overflow-hidden"
                         >
                             {/* QUEUED COLUMN */}
-                            <div className="glass flex flex-col rounded-3xl overflow-hidden border border-white/5">
+                            <div className="glass flex flex-col rounded-3xl overflow-hidden border border-white/5 min-h-[250px] md:min-h-0">
                                 <div className="bg-slate-800/50 py-4 px-6 border-b border-white/5 flex items-center gap-3">
                                     <Clock size={28} className="text-slate-400" />
-                                    <h2 className="text-2xl font-bold uppercase tracking-widest text-slate-300">Queued</h2>
+                                    <h2 className="text-xl md:text-2xl font-bold uppercase tracking-widest text-slate-300">Queued</h2>
                                 </div>
                                 <div className="flex-1 p-6 space-y-4">
                                     {(Array.isArray(queued) ? queued : []).map(o => (
@@ -176,12 +176,12 @@ export default function PublicDisplay() {
                             </div>
 
                             {/* PREPARING COLUMN */}
-                            <div className="glass flex flex-col rounded-3xl overflow-hidden border border-white/5">
+                            <div className="glass flex flex-col rounded-3xl overflow-hidden border border-white/5 min-h-[250px] md:min-h-0">
                                 <div className="bg-orange-500/10 py-4 px-6 border-b border-orange-500/20 flex items-center gap-3">
                                     <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 4, ease: "linear" }}>
                                         <Utensils size={28} className="text-orange-400" />
                                     </motion.div>
-                                    <h2 className="text-2xl font-bold uppercase tracking-widest text-orange-400">Cooking</h2>
+                                    <h2 className="text-xl md:text-2xl font-bold uppercase tracking-widest text-orange-400">Cooking</h2>
                                 </div>
                                 <div className="flex-1 p-6 space-y-4">
                                     {(Array.isArray(preparing) ? preparing : []).map(o => (
@@ -199,10 +199,10 @@ export default function PublicDisplay() {
                             </div>
 
                             {/* READY COLUMN */}
-                            <div className="glass flex flex-col rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(34,197,94,0.1)] border-t-[6px] border-t-green-500">
+                            <div className="glass flex flex-col rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(34,197,94,0.1)] border-t-[6px] border-t-green-500 min-h-[250px] md:min-h-0">
                                 <div className="bg-green-500/10 py-6 px-6 border-b border-green-500/20 flex items-center gap-3 justify-center">
                                     <CheckCircle size={40} className="text-green-500" />
-                                    <h2 className="text-4xl font-black uppercase tracking-widest text-green-400">Please Collect</h2>
+                                    <h2 className="text-2xl md:text-4xl font-black uppercase tracking-widest text-green-400">Please Collect</h2>
                                 </div>
                                 <div className="flex-1 p-6 flex flex-wrap gap-4 align-start content-start">
                                     {(Array.isArray(ready) ? ready : []).map(o => (
@@ -226,18 +226,18 @@ export default function PublicDisplay() {
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0 }}
                             transition={{ duration: 1 }}
-                            className="absolute inset-0 flex items-center justify-center p-12"
+                            className="absolute inset-0 flex items-center justify-center p-4 md:p-12"
                         >
                             {Array.isArray(ads) && ads.length > 0 && ads[currentAdIndex].media ? (
-                                <div className="w-full h-full relative rounded-[3rem] overflow-hidden shadow-2xl border border-white/10">
+                                <div className="w-full h-full relative rounded-2xl md:rounded-[3rem] overflow-hidden shadow-2xl border border-white/10">
                                     <div className="absolute inset-0 bg-gradient-to-t from-dark-950 via-transparent to-transparent z-10"></div>
                                     {ads[currentAdIndex].media.endsWith('.mp4') ? (
                                         <video src={ads[currentAdIndex].media} autoPlay muted loop className="w-full h-full object-cover" />
                                     ) : (
                                         <OptimizedImage src={ads[currentAdIndex].media} alt="Ad" className="w-full h-full object-cover" wrapperClassName="w-full h-full" eager />
                                     )}
-                                    <div className="absolute bottom-12 left-12 z-20">
-                                        <h2 className="text-6xl font-black drop-shadow-2xl">{ads[currentAdIndex].title}</h2>
+                                    <div className="absolute bottom-6 left-6 md:bottom-12 md:left-12 z-20">
+                                        <h2 className="text-3xl md:text-6xl font-black drop-shadow-2xl">{ads[currentAdIndex].title}</h2>
                                     </div>
                                 </div>
                             ) : (

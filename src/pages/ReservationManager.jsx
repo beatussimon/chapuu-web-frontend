@@ -9,6 +9,7 @@ export default function ReservationManager() {
     const [showHistory, setShowHistory] = useState(false);
     const [now, setNow] = useState(new Date());
     const [wsConnected, setWsConnected] = useState(false);
+    const [activeMobileTab, setActiveMobileTab] = useState('pending');
 
     const fetchReservations = () => {
         apiClient.get('/reservations/')
@@ -250,37 +251,61 @@ export default function ReservationManager() {
             </div>
 
             {!showHistory ? (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Column: Pending */}
-                    <div className="flex flex-col bg-dark-900/50 border border-white/5 rounded-3xl p-4 overflow-hidden h-[500px] lg:h-[75vh]">
-                        <h2 className="text-sm font-black text-slate-400 mb-4 sticky top-0 px-2 flex items-center gap-2 uppercase tracking-tighter">
-                            Pending Requests 
-                            <span className="bg-white/10 text-[10px] px-2 py-0.5 rounded-full">{pending.length}</span>
-                        </h2>
-                        <div className="flex-1 overflow-y-auto px-1 custom-scrollbar pb-10 space-y-4">
-                            {pending.length === 0 ? <p className="text-slate-600 text-xs text-center py-10 italic">No pending requests</p> : pending.map(renderCard)}
-                        </div>
+                <div>
+                    {/* Mobile Tab Switcher */}
+                    <div className="flex lg:hidden bg-dark-900 border border-white/5 rounded-xl p-1 mb-4 gap-1">
+                        <button 
+                            onClick={() => setActiveMobileTab('pending')}
+                            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${activeMobileTab === 'pending' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                        >
+                            Pending ({pending.length})
+                        </button>
+                        <button 
+                            onClick={() => setActiveMobileTab('upcoming')}
+                            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${activeMobileTab === 'upcoming' ? 'bg-primary-500 text-dark-950 shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                        >
+                            Confirmed ({upcoming.length})
+                        </button>
+                        <button 
+                            onClick={() => setActiveMobileTab('active')}
+                            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${activeMobileTab === 'active' ? 'bg-green-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                        >
+                            Seated ({active.length})
+                        </button>
                     </div>
 
-                    {/* Column: Upcoming */}
-                    <div className="flex flex-col bg-dark-900/50 border border-white/5 rounded-3xl p-4 overflow-hidden h-[500px] lg:h-[75vh]">
-                        <h2 className="text-sm font-black text-primary-400 mb-4 sticky top-0 px-2 flex items-center gap-2 uppercase tracking-tighter">
-                            Confirmed 
-                            <span className="bg-primary-500/20 text-primary-400 text-[10px] px-2 py-0.5 rounded-full">{upcoming.length}</span>
-                        </h2>
-                        <div className="flex-1 overflow-y-auto px-1 custom-scrollbar pb-10 space-y-4">
-                            {upcoming.length === 0 ? <p className="text-slate-600 text-xs text-center py-10 italic">No upcoming arrivals</p> : upcoming.map(renderCard)}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        {/* Column: Pending */}
+                        <div className={`flex flex-col bg-dark-900/50 border border-white/5 rounded-3xl p-4 overflow-hidden h-[60vh] lg:h-[75vh] ${activeMobileTab === 'pending' ? 'flex' : 'hidden lg:flex'}`}>
+                            <h2 className="text-sm font-black text-slate-400 mb-4 sticky top-0 px-2 flex items-center gap-2 uppercase tracking-tighter">
+                                Pending Requests 
+                                <span className="bg-white/10 text-[10px] px-2 py-0.5 rounded-full">{pending.length}</span>
+                            </h2>
+                            <div className="flex-1 overflow-y-auto px-1 custom-scrollbar pb-10 space-y-4">
+                                {pending.length === 0 ? <p className="text-slate-600 text-xs text-center py-10 italic">No pending requests</p> : pending.map(renderCard)}
+                            </div>
                         </div>
-                    </div>
 
-                    {/* Column: Active (Seated) */}
-                    <div className="flex flex-col bg-dark-900/50 border border-white/5 rounded-3xl p-4 overflow-hidden h-[500px] lg:h-[75vh]">
-                        <h2 className="text-sm font-black text-green-400 mb-4 sticky top-0 px-2 flex items-center gap-2 uppercase tracking-tighter">
-                            Seated Guests
-                            <span className="bg-green-500/20 text-green-500 text-[10px] px-2 py-0.5 rounded-full">{active.length}</span>
-                        </h2>
-                        <div className="flex-1 overflow-y-auto px-1 custom-scrollbar pb-10 space-y-4">
-                            {active.length === 0 ? <p className="text-slate-600 text-xs text-center py-10 italic">Floor is empty</p> : active.map(renderCard)}
+                        {/* Column: Upcoming */}
+                        <div className={`flex flex-col bg-dark-900/50 border border-white/5 rounded-3xl p-4 overflow-hidden h-[60vh] lg:h-[75vh] ${activeMobileTab === 'upcoming' ? 'flex' : 'hidden lg:flex'}`}>
+                            <h2 className="text-sm font-black text-primary-400 mb-4 sticky top-0 px-2 flex items-center gap-2 uppercase tracking-tighter">
+                                Confirmed 
+                                <span className="bg-primary-500/20 text-primary-400 text-[10px] px-2 py-0.5 rounded-full">{upcoming.length}</span>
+                            </h2>
+                            <div className="flex-1 overflow-y-auto px-1 custom-scrollbar pb-10 space-y-4">
+                                {upcoming.length === 0 ? <p className="text-slate-600 text-xs text-center py-10 italic">No upcoming arrivals</p> : upcoming.map(renderCard)}
+                            </div>
+                        </div>
+
+                        {/* Column: Active (Seated) */}
+                        <div className={`flex flex-col bg-dark-900/50 border border-white/5 rounded-3xl p-4 overflow-hidden h-[60vh] lg:h-[75vh] ${activeMobileTab === 'active' ? 'flex' : 'hidden lg:flex'}`}>
+                            <h2 className="text-sm font-black text-green-400 mb-4 sticky top-0 px-2 flex items-center gap-2 uppercase tracking-tighter">
+                                Seated Guests
+                                <span className="bg-green-500/20 text-green-500 text-[10px] px-2 py-0.5 rounded-full">{active.length}</span>
+                            </h2>
+                            <div className="flex-1 overflow-y-auto px-1 custom-scrollbar pb-10 space-y-4">
+                                {active.length === 0 ? <p className="text-slate-600 text-xs text-center py-10 italic">Floor is empty</p> : active.map(renderCard)}
+                            </div>
                         </div>
                     </div>
                 </div>

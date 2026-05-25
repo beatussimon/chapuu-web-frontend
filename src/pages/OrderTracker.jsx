@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import apiClient, { getWebSocketURL } from '../api/client';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChefHat, CheckCircle2, Clock, CreditCard, ShoppingBag, ArrowLeft, RefreshCw, Truck, Package, Star, X, Calendar, Users, AlertCircle } from 'lucide-react';
+import { ChefHat, CheckCircle2, Clock, CreditCard, ShoppingBag, ArrowLeft, RefreshCw, Truck, Package, Star, X, Calendar, Users, AlertCircle, Navigation, Phone } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useCurrency } from '../utils/useCurrency';
 
@@ -534,6 +534,125 @@ export default function OrderTracker() {
                             </div>
                         </div>
                     )}
+                </div>
+            )}
+
+            {/* Customer Navigation Directions */}
+            {['TAKEAWAY', 'DINE_IN', 'PICKUP', 'RESERVATION'].includes(order.fulfillment_mode) && order.state === 'READY' && (
+                <div className="glass-dark border border-indigo-500/20 bg-indigo-500/5 rounded-2xl md:rounded-3xl p-6 mb-8 shadow-xl text-center">
+                    <h3 className="text-sm md:text-lg font-black text-indigo-400 mb-2 uppercase tracking-wider">Navigate to Restaurant</h3>
+                    <p className="text-xs text-slate-400 mb-4">Your order is ready. Click below to start Google Maps directions to the store.</p>
+                    <a
+                        href={
+                            order.store_latitude && order.store_longitude
+                                ? `https://www.google.com/maps/dir/?api=1&destination=${order.store_latitude},${order.store_longitude}`
+                                : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(order.store_location || order.store_name || '')}`
+                        }
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-6 py-3 rounded-xl transition-all shadow-lg text-sm w-full sm:w-auto justify-center"
+                    >
+                        <Navigation size={16} /> Start Navigation
+                    </a>
+                    {order.store_directions && (
+                        <p className="mt-3 text-xs text-slate-500 italic">
+                            Directions: {order.store_directions}
+                        </p>
+                    )}
+                </div>
+            )}
+
+            {/* Delivery Fee & Address Negotiation */}
+            {order.fulfillment_mode === 'DELIVERY' && (
+                <div className="glass-dark border border-white/10 rounded-2xl md:rounded-3xl p-6 mb-8 shadow-xl">
+                    <h3 className="text-sm md:text-lg font-bold text-white mb-4 border-b border-white/5 pb-2 uppercase tracking-wider">Delivery Details</h3>
+                    
+                    <div className="space-y-4">
+                        <div className="flex justify-between items-start text-xs md:text-sm">
+                            <div>
+                                <span className="text-slate-400 block font-semibold">Delivery Address</span>
+                                <span className="text-slate-200 mt-1 block leading-relaxed">{order.delivery_location || 'Not provided'}</span>
+                                {order.delivery_directions && (
+                                    <p className="mt-2 text-xs text-slate-500 italic">
+                                        Note: {order.delivery_directions}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="border-t border-white/5 pt-4">
+                            <h4 className="text-xs font-black uppercase text-slate-500 tracking-wider mb-2 font-mono">Fulfillment Payments Breakdown</h4>
+                            <div className="space-y-2.5">
+                                <div className="flex justify-between items-center text-xs md:text-sm">
+                                    <span className="text-slate-400">Food Subtotal (Paid Upfront)</span>
+                                    <span className="text-white font-bold">{formatPrice(Number(order.total_amount || 0) - Number(order.delivery_fee || 0))}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-xs md:text-sm">
+                                    <span className="text-slate-400">Delivery Fee (Pay to Rider)</span>
+                                    <span className="text-primary-400 font-bold">{formatPrice(order.delivery_fee)}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="border-t border-white/5 pt-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                            <div>
+                                <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Delivery Fee Status</span>
+                                <div className="mt-1 flex items-center gap-2">
+                                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider
+                                        ${order.delivery_fee_status === 'AGREED' ? 'bg-green-500/10 text-green-400 border border-green-500/20' :
+                                          order.delivery_fee_status === 'RENEGOTIATE' ? 'bg-red-500/10 text-red-400 border border-red-500/20 animate-pulse' :
+                                          'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}
+                                    >
+                                        <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
+                                        {order.delivery_fee_status === 'AGREED' ? 'Agreed' :
+                                         order.delivery_fee_status === 'RENEGOTIATE' ? 'Renegotiating' :
+                                         'Pending Assign'}
+                                    </span>
+                                    {order.delivery_fee_status === 'AGREED' && (
+                                        <span className="text-[10px] text-slate-500 font-bold">(Agreed by default)</span>
+                                    )}
+                                </div>
+                            </div>
+
+                            {order.delivery_fee_status === 'AGREED' && (
+                                <button
+                                    onClick={() => {
+                                        if (confirm("Are you sure you want to renegotiate the delivery fee? This will request renegotiation with the store staff.")) {
+                                            const tid = toast.loading("Requesting renegotiation...");
+                                            apiClient.post(`/orders/${order.id}/renegotiate_delivery_fee/`)
+                                                .then(res => {
+                                                    toast.success("Renegotiation request sent. Please call the store to finalize.", { id: tid });
+                                                    fetchOrder();
+                                                })
+                                                .catch(err => {
+                                                    toast.error("Failed to request renegotiation.", { id: tid });
+                                                });
+                                        }
+                                    }}
+                                    className="bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer w-full sm:w-auto text-center"
+                                >
+                                    Renegotiate Fee
+                                </button>
+                            )}
+                        </div>
+
+                        {order.delivery_fee_status === 'RENEGOTIATE' && (
+                            <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs">
+                                <div>
+                                    <h4 className="font-bold text-red-400 uppercase tracking-wider mb-1">Negotiation Required</h4>
+                                    <p className="text-slate-300">Please call the store to negotiate the delivery fee. The seller will update it in-app.</p>
+                                </div>
+                                {order.store_phone && (
+                                    <a
+                                        href={`tel:${order.store_phone}`}
+                                        className="bg-red-600 hover:bg-red-500 text-white font-bold px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-all text-xs shrink-0"
+                                    >
+                                        <Phone size={14} /> Call Store
+                                    </a>
+                                )}
+                            </div>
+                        )}
+                    </div>
                 </div>
             )}
 

@@ -211,6 +211,22 @@ export default function SellerDashboard() {
         );
     };
 
+    const [updateFeeModal, setUpdateFeeModal] = useState({ open: false, order: null, fee: '' });
+
+    const handleUpdateDeliveryFee = (orderId, fee) => {
+        const toastId = toast.loading("Updating delivery fee...");
+        apiClient.post(`/orders/${orderId}/update_delivery_fee/`, { delivery_fee: fee })
+            .then(() => {
+                toast.success("Delivery fee updated!", { id: toastId });
+                setUpdateFeeModal({ open: false, order: null, fee: '' });
+                fetchDashboard();
+            })
+            .catch(err => {
+                const msg = err.response?.data?.error || "Failed to update delivery fee.";
+                toast.error(msg, { id: toastId });
+            });
+    };
+
     const handleBulkAdvance = (newState) => {
         if (selectedOrders.length === 0) return;
         const toastId = toast.loading(`Updating ${selectedOrders.length} orders...`);
@@ -1059,13 +1075,13 @@ export default function SellerDashboard() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6 flex-grow">
                         <div className="glass-dark rounded-2xl md:rounded-3xl p-4 md:p-6 border border-primary-500/20 flex flex-col h-[500px] xl:h-auto">
-                            <div className="flex items-center gap-2 mb-4 md:mb-6 pb-3 border-b border-primary-500/10">
+                        <div className="flex items-center gap-2 mb-4 md:mb-6 pb-3 border-b border-primary-500/10">
                                 <Calendar className="text-primary-400" size={18} />
                                 <h3 className="font-bold text-base md:text-lg text-slate-200 uppercase tracking-wider">Reservations</h3>
                                 <span className="ml-auto bg-primary-500/20 text-primary-400 px-2 py-0.5 rounded-full text-[10px] font-bold border border-primary-500/30">{reservationOrders.length}</span>
                             </div>
                             <div className="overflow-y-auto pr-1 space-y-3 flex-grow custom-scrollbar">
-                                {loading ? <LoadingSkeleton /> : <AnimatePresence>{reservationOrders.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} onOpenHandoffPinModal={(id) => setHandoffPinModal({ open: true, orderId: id, pin: '', loading: false })} />)}</AnimatePresence>}
+                                {loading ? <LoadingSkeleton /> : <AnimatePresence>{reservationOrders.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} onOpenHandoffPinModal={(id) => setHandoffPinModal({ open: true, orderId: id, pin: '', loading: false })} onOpenUpdateFeeModal={(o) => setUpdateFeeModal({ open: true, order: o, fee: o.delivery_fee || '' })} />)}</AnimatePresence>}
                                 {!loading && reservationOrders.length === 0 && <EmptyState icon={<Calendar size={40} />} text="No reserved orders" />}
                             </div>
                         </div>
@@ -1078,7 +1094,7 @@ export default function SellerDashboard() {
                                     <span className="ml-auto bg-dark-800 text-slate-400 px-2 py-0.5 rounded-full text-[10px] font-bold border border-white/5">{queuedOrders.length}</span>
                                 </div>
                                 <div className="overflow-y-auto pr-1 space-y-3 flex-grow custom-scrollbar">
-                                    {loading ? <LoadingSkeleton /> : <AnimatePresence>{queuedOrders.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} onOpenHandoffPinModal={(id) => setHandoffPinModal({ open: true, orderId: id, pin: '', loading: false })} />)}</AnimatePresence>}
+                                    {loading ? <LoadingSkeleton /> : <AnimatePresence>{queuedOrders.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} onOpenHandoffPinModal={(id) => setHandoffPinModal({ open: true, orderId: id, pin: '', loading: false })} onOpenUpdateFeeModal={(o) => setUpdateFeeModal({ open: true, order: o, fee: o.delivery_fee || '' })} />)}</AnimatePresence>}
                                     {!loading && queuedOrders.length === 0 && <EmptyState icon={<ListOrdered size={40} />} text="Queue is empty" />}
                                 </div>
                             </div>
@@ -1090,7 +1106,7 @@ export default function SellerDashboard() {
                                 <span className="ml-auto bg-primary-500/20 text-primary-400 px-2 py-0.5 rounded-full text-[10px] font-bold border border-primary-500/30">{preparingOrders.length}</span>
                             </div>
                             <div className="overflow-y-auto pr-1 space-y-3 flex-grow z-10 custom-scrollbar">
-                                {loading ? <LoadingSkeleton /> : <AnimatePresence>{preparingOrders.map(order => <OrderCard key={order.id} order={order} markItemReadyFn={markItemReady} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} onOpenHandoffPinModal={(id) => setHandoffPinModal({ open: true, orderId: id, pin: '', loading: false })} />)}</AnimatePresence>}
+                                {loading ? <LoadingSkeleton /> : <AnimatePresence>{preparingOrders.map(order => <OrderCard key={order.id} order={order} markItemReadyFn={markItemReady} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} onOpenHandoffPinModal={(id) => setHandoffPinModal({ open: true, orderId: id, pin: '', loading: false })} onOpenUpdateFeeModal={(o) => setUpdateFeeModal({ open: true, order: o, fee: o.delivery_fee || '' })} />)}</AnimatePresence>}
                                 {!loading && preparingOrders.length === 0 && <EmptyState active icon={<Utensils size={40} />} text="Kitchen is waiting" />}
                             </div>
                         </div>
@@ -1102,7 +1118,7 @@ export default function SellerDashboard() {
                                 <span className="ml-auto bg-dark-800 text-slate-400 px-2 py-0.5 rounded-full text-[10px] font-bold border border-white/5">{readyForKitchen.length}</span>
                             </div>
                             <div className="overflow-y-auto pr-1 space-y-3 flex-grow custom-scrollbar">
-                                {loading ? <LoadingSkeleton /> : <AnimatePresence>{readyForKitchen.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} onOpenHandoffPinModal={(id) => setHandoffPinModal({ open: true, orderId: id, pin: '', loading: false })} />)}</AnimatePresence>}
+                                {loading ? <LoadingSkeleton /> : <AnimatePresence>{readyForKitchen.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} onOpenHandoffPinModal={(id) => setHandoffPinModal({ open: true, orderId: id, pin: '', loading: false })} onOpenUpdateFeeModal={(o) => setUpdateFeeModal({ open: true, order: o, fee: o.delivery_fee || '' })} />)}</AnimatePresence>}
                                 {!loading && readyForKitchen.length === 0 && <EmptyState icon={<CheckCircle2 size={40} />} text="No items to dispatch" />}
                             </div>
                         </div>
@@ -1118,7 +1134,7 @@ export default function SellerDashboard() {
                         <span className="ml-auto bg-indigo-500/20 text-indigo-400 px-3 py-1 rounded-full text-xs font-bold border border-indigo-500/30">{awaitingPaymentOrders.length}</span>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {loading ? <LoadingSkeleton /> : <AnimatePresence>{awaitingPaymentOrders.map(order => <OrderCard key={order.id} order={order} onVerifyPayment={() => setVerifyModal({ open: true, order, fee: '' })} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} onOpenHandoffPinModal={(id) => setHandoffPinModal({ open: true, orderId: id, pin: '', loading: false })} />)}</AnimatePresence>}
+                        {loading ? <LoadingSkeleton /> : <AnimatePresence>{awaitingPaymentOrders.map(order => <OrderCard key={order.id} order={order} onVerifyPayment={() => setVerifyModal({ open: true, order, fee: '' })} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} onOpenHandoffPinModal={(id) => setHandoffPinModal({ open: true, orderId: id, pin: '', loading: false })} onOpenUpdateFeeModal={(o) => setUpdateFeeModal({ open: true, order: o, fee: o.delivery_fee || '' })} />)}</AnimatePresence>}
                         {!loading && awaitingPaymentOrders.length === 0 && <div className="col-span-full"><EmptyState icon={<CreditCard size={48} />} text="No pending payments" /></div>}
                     </div>
                 </div>
@@ -1163,7 +1179,7 @@ export default function SellerDashboard() {
                                 <span className="ml-auto bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-xs font-bold border border-green-500/30">{readyForDelivery.length}</span>
                             </div>
                             <div className="overflow-y-auto pr-2 space-y-4 flex-grow">
-                                {loading ? <LoadingSkeleton /> : <AnimatePresence>{readyForDelivery.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} onOpenHandoffPinModal={(id) => setHandoffPinModal({ open: true, orderId: id, pin: '', loading: false })} />)}</AnimatePresence>}
+                                {loading ? <LoadingSkeleton /> : <AnimatePresence>{readyForDelivery.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} onOpenHandoffPinModal={(id) => setHandoffPinModal({ open: true, orderId: id, pin: '', loading: false })} onOpenUpdateFeeModal={(o) => setUpdateFeeModal({ open: true, order: o, fee: o.delivery_fee || '' })} />)}</AnimatePresence>}
                                 {!loading && readyForDelivery.length === 0 && <EmptyState icon={<CheckCircle2 size={48} />} text="No orders awaiting dispatch" />}
                             </div>
                         </div>
@@ -1174,7 +1190,7 @@ export default function SellerDashboard() {
                                 <span className="ml-auto bg-purple-500/20 text-purple-400 px-3 py-1 rounded-full text-xs font-bold border border-purple-500/30">{outForDeliveryOrders.length}</span>
                             </div>
                             <div className="overflow-y-auto pr-2 space-y-4 flex-grow">
-                                {loading ? <LoadingSkeleton /> : <AnimatePresence>{outForDeliveryOrders.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} onOpenHandoffPinModal={(id) => setHandoffPinModal({ open: true, orderId: id, pin: '', loading: false })} />)}</AnimatePresence>}
+                                {loading ? <LoadingSkeleton /> : <AnimatePresence>{outForDeliveryOrders.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} onOpenHandoffPinModal={(id) => setHandoffPinModal({ open: true, orderId: id, pin: '', loading: false })} onOpenUpdateFeeModal={(o) => setUpdateFeeModal({ open: true, order: o, fee: o.delivery_fee || '' })} />)}</AnimatePresence>}
                                 {!loading && outForDeliveryOrders.length === 0 && <EmptyState icon={<Truck size={48} />} text="No active deliveries" />}
                             </div>
                         </div>
@@ -1315,7 +1331,7 @@ export default function SellerDashboard() {
                                             </span>
                                         </div>
                                         
-                                        <div className="grid grid-cols-3 gap-4 mt-6 pt-4 border-t border-white/5">
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 pt-4 border-t border-white/5">
                                             <div>
                                                 <span className="block text-[9px] font-black text-slate-500 uppercase tracking-widest">Accrued Orders</span>
                                                 <span className="block text-base font-bold text-slate-300 mt-1 font-mono">{currentMonthPreview.order_count}</span>
@@ -1402,7 +1418,7 @@ export default function SellerDashboard() {
                                                 </div>
                                             </div>
                                             
-                                            <div className="grid grid-cols-3 gap-4 mt-6 pt-4 border-t border-white/5">
+                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 pt-4 border-t border-white/5">
                                                 <div>
                                                     <span className="block text-[9px] font-black text-slate-500 uppercase tracking-widest">Total Orders</span>
                                                     <span className="block text-base font-bold text-slate-300 mt-1 font-mono">{inv.order_count}</span>
@@ -2392,6 +2408,63 @@ export default function SellerDashboard() {
                 })()}
             </AnimatePresence>
 
+            {/* Update Delivery Fee Modal */}
+            <AnimatePresence>
+                {updateFeeModal.open && updateFeeModal.order && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-dark-950/80 backdrop-blur-sm"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.95, y: 20 }}
+                            className="bg-dark-900 border border-white/10 rounded-3xl p-6 max-w-sm w-full shadow-2xl relative text-left"
+                        >
+                            <button
+                                onClick={() => setUpdateFeeModal({ open: false, order: null, fee: '' })}
+                                className="absolute top-4 right-4 p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
+                            >
+                                <X size={18} />
+                            </button>
+
+                            <h3 className="text-xl font-bold text-white mb-2 text-center">
+                                Edit Delivery Fee
+                            </h3>
+                            <p className="text-xs text-slate-400 text-center mb-6">
+                                Update the delivery fee for Order #{updateFeeModal.order.id}. This will notify the customer.
+                            </p>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="text-xs text-slate-400 block mb-1">New Delivery Fee</label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        placeholder="Enter fee amount"
+                                        value={updateFeeModal.fee}
+                                        onChange={(e) => setUpdateFeeModal(prev => ({ ...prev, fee: e.target.value }))}
+                                        className="w-full bg-dark-950 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-500 text-sm font-semibold"
+                                        autoFocus
+                                    />
+                                </div>
+
+                                <button
+                                    onClick={() => handleUpdateDeliveryFee(updateFeeModal.order.id, updateFeeModal.fee)}
+                                    disabled={updateFeeModal.fee === ''}
+                                    className="w-full bg-primary-500 hover:bg-primary-400 disabled:opacity-50 text-dark-950 font-bold py-3 rounded-xl shadow-lg transition-all"
+                                >
+                                    Update Fee
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             {/* Invoice Payment Upload Modal */}
             <AnimatePresence>
                 {showPaymentModal.open && showPaymentModal.invoice && (
@@ -2561,7 +2634,7 @@ export default function SellerDashboard() {
     );
 }
 
-const OrderCard = ({ order, markItemReadyFn, advanceOrderStateFn, onVerifyPayment, userRole, isSelected, onSelect, onOpenHandoffPinModal }) => {
+const OrderCard = ({ order, markItemReadyFn, advanceOrderStateFn, onVerifyPayment, userRole, isSelected, onSelect, onOpenHandoffPinModal, onOpenUpdateFeeModal }) => {
     const isAwaitingPayment = order.state === 'AWAITING_PAYMENT';
     const isQueued = order.state === 'QUEUED' || order.state === 'PAID';
     const isPreparing = order.state === 'PREPARING';
@@ -2583,6 +2656,13 @@ const OrderCard = ({ order, markItemReadyFn, advanceOrderStateFn, onVerifyPaymen
                 <div className="mb-4 bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-xl flex items-center gap-2 text-red-400 text-xs font-black animate-pulse text-left uppercase tracking-wider">
                     <AlertTriangle size={14} className="shrink-0 text-red-500" />
                     <span>Security Lock Active (5/5 Failed PINs)</span>
+                </div>
+            )}
+
+            {order.delivery_fee_status === 'RENEGOTIATE' && (
+                <div className="mb-4 bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-xl flex items-center gap-2 text-red-400 text-xs font-black animate-pulse text-left uppercase tracking-wider">
+                    <AlertTriangle size={14} className="shrink-0 text-red-500" />
+                    <span>Warning: Customer requested renegotiation of delivery fee!</span>
                 </div>
             )}
             
@@ -2624,17 +2704,19 @@ const OrderCard = ({ order, markItemReadyFn, advanceOrderStateFn, onVerifyPaymen
                      {order.delivery_location && (
                         <div className="mt-1 text-right bg-dark-900 border border-white/5 p-2 rounded-lg text-xs text-slate-300 max-w-[200px] break-words">
                             <div className="flex items-center justify-end gap-1 font-bold text-slate-200">
-                                📍 Address
-                                {order.delivery_latitude && order.delivery_longitude && (
-                                    <a 
-                                        href={`https://www.google.com/maps/search/?api=1&query=${order.delivery_latitude},${order.delivery_longitude}`} 
-                                        target="_blank" 
-                                        rel="noopener noreferrer"
-                                        className="text-[10px] text-primary-400 hover:underline font-normal shrink-0"
-                                    >
-                                        [Open Map]
-                                    </a>
-                                )}
+                                Address
+                                <a 
+                                    href={
+                                        order.delivery_latitude && order.delivery_longitude
+                                            ? `https://www.google.com/maps/dir/?api=1&destination=${order.delivery_latitude},${order.delivery_longitude}`
+                                            : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(order.delivery_location || '')}`
+                                    } 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-[10px] text-primary-400 hover:underline font-normal shrink-0"
+                                >
+                                    [Directions]
+                                </a>
                             </div>
                             <span className="text-slate-400">{order.delivery_location}</span>
                             {order.delivery_directions && (
@@ -2642,7 +2724,7 @@ const OrderCard = ({ order, markItemReadyFn, advanceOrderStateFn, onVerifyPaymen
                                     Landmark/Directions: {order.delivery_directions}
                                 </div>
                             )}
-                            <div className="mt-1 text-slate-400">📞 {order.customer_phone}</div>
+                            <div className="mt-1 text-slate-400">Phone: {order.customer_phone}</div>
                         </div>
                     )}
                 </div>
@@ -2703,6 +2785,17 @@ const OrderCard = ({ order, markItemReadyFn, advanceOrderStateFn, onVerifyPaymen
                     className="w-full mt-4 bg-green-500 text-dark-900 font-bold py-2 rounded-xl"
                 >
                     Mark Delivered
+                </button>
+            )}
+
+            {order.fulfillment_mode === 'DELIVERY' && 
+             ['PAID', 'QUEUED', 'PREPARING', 'READY', 'OUT_FOR_DELIVERY'].includes(order.state) && 
+             ['SELLER', 'ADMIN', 'SUPERUSER', 'ACCOUNTANT'].includes(userRole) && onOpenUpdateFeeModal && (
+                <button
+                    onClick={() => onOpenUpdateFeeModal(order)}
+                    className="w-full mt-3 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                >
+                    Edit Delivery Fee
                 </button>
             )}
         </motion.div>

@@ -184,21 +184,23 @@ export default function DeliveryDashboard() {
                                         <div className="flex-1 min-w-0">
                                             <div className="flex justify-between items-start">
                                                 <p className="text-xs text-slate-500 uppercase font-semibold mb-1">Deliver To</p>
-                                                {order.delivery_latitude && order.delivery_longitude && (
-                                                    <a 
-                                                        href={`https://www.google.com/maps/search/?api=1&query=${order.delivery_latitude},${order.delivery_longitude}`} 
-                                                        target="_blank" 
-                                                        rel="noopener noreferrer"
-                                                        className="text-[10px] text-primary-400 hover:underline font-bold flex items-center gap-0.5 shrink-0 cursor-pointer"
-                                                    >
-                                                        <Navigation size={10} /> Open Map
-                                                    </a>
-                                                )}
+                                                <a 
+                                                    href={
+                                                        order.delivery_latitude && order.delivery_longitude
+                                                            ? `https://www.google.com/maps/dir/?api=1&destination=${order.delivery_latitude},${order.delivery_longitude}`
+                                                            : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(order.delivery_location || '')}`
+                                                    } 
+                                                    target="_blank" 
+                                                    rel="noopener noreferrer"
+                                                    className="text-[10px] text-primary-400 hover:underline font-bold flex items-center gap-0.5 shrink-0 cursor-pointer"
+                                                >
+                                                    <Navigation size={10} /> Open Directions
+                                                </a>
                                             </div>
                                             <p className="text-sm font-medium break-words">{order.delivery_location || 'No location provided'}</p>
                                             {order.delivery_directions && (
                                                 <p className="text-[11px] text-amber-400 bg-amber-500/5 border border-amber-500/10 rounded-lg p-1.5 mt-1.5 leading-normal">
-                                                    🗺️ Directions: {order.delivery_directions}
+                                                    Directions: {order.delivery_directions}
                                                 </p>
                                             )}
                                         </div>
@@ -223,6 +225,21 @@ export default function DeliveryDashboard() {
                                     </div>
                                 </div>
                             </div>
+
+                            {['READY', 'OUT_FOR_DELIVERY'].includes(order.state) && (
+                                <a
+                                    href={
+                                        order.delivery_latitude && order.delivery_longitude
+                                            ? `https://www.google.com/maps/dir/?api=1&destination=${order.delivery_latitude},${order.delivery_longitude}`
+                                            : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(order.delivery_location || '')}`
+                                    }
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="w-full py-3 mb-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all bg-indigo-600 hover:bg-indigo-500 text-white shadow-md hover:-translate-y-0.5 text-sm cursor-pointer"
+                                >
+                                    <Navigation size={16} /> Start Navigation
+                                </a>
+                            )}
 
                             {order.state === 'READY' ? (
                                 <button
