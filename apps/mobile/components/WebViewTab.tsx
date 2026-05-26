@@ -25,54 +25,52 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
     ? 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 ChapuuMobile'
     : 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36 ChapuuMobile';
 
-  // Synchronizes the native authentication tokens to the web localStorage BEFORE content loads
-  const syncStorageJS = `
+  // JavaScript injected to sync state (Native -> Web) and report changes back (Web -> Native)
+  const injectBridgeJS = `
     (function() {
+      // 1. Sync State: Native -> Web
       try {
-        const token = ${token ? `'${token}'` : 'null'};
-        const role = ${userRole ? `'${userRole}'` : 'null'};
+        const nativeToken = ${token ? `'${token}'` : 'null'};
+        const nativeRole = ${userRole ? `'${userRole}'` : 'null'};
+        const webStorage = localStorage.getItem('chapuu-storage');
+        let webToken = null;
+        if (webStorage) {
+          try {
+            webToken = JSON.parse(webStorage).state.token;
+          } catch(e) {}
+        }
         
-        if (token && role) {
-          const currentStorage = localStorage.getItem('chapuu-storage');
-          let shouldUpdate = true;
-          if (currentStorage) {
-            const parsed = JSON.parse(currentStorage);
-            if (parsed.state && parsed.state.token === token && parsed.state.userRole === role) {
-              shouldUpdate = false;
-            }
-          }
-          if (shouldUpdate) {
-            const storageObj = {
-              state: {
-                token: token,
-                userRole: role,
-                cart: [],
-                selectedStore: null,
-                activeReservation: null,
-                userLocation: { lat: null, lng: null, name: null, granted: false },
-                savedStores: []
-              },
-              version: 0
-            };
-            localStorage.setItem('chapuu-storage', JSON.stringify(storageObj));
-            localStorage.setItem('access_token', token);
-          }
-        } else {
-          // Sync logout if native token is null
+        if (nativeToken && webToken !== nativeToken) {
+          const storageObj = {
+            state: {
+              token: nativeToken,
+              userRole: nativeRole,
+              cart: [],
+              selectedStore: null,
+              activeReservation: null,
+              userLocation: { lat: null, lng: null, name: null, granted: false },
+              savedStores: []
+            },
+            version: 0
+          };
+          localStorage.setItem('chapuu-storage', JSON.stringify(storageObj));
+          localStorage.setItem('access_token', nativeToken);
+          // Force reload to apply Zustand store initialization from storage
+          window.location.reload();
+          return;
+        } else if (!nativeToken && webToken) {
+          // Sync logout
           localStorage.removeItem('chapuu-storage');
           localStorage.removeItem('access_token');
           localStorage.removeItem('refresh_token');
+          window.location.reload();
+          return;
         }
       } catch (e) {
         // Silent catch
       }
-    })();
-    true;
-  `;
 
-  // JavaScript injected to bridge Zustand store updates from localStorage to native
-  const injectBridgeJS = `
-    (function() {
+      // 2. State Bridge: Web -> Native
       let lastStateStr = "";
       function checkStorage() {
         try {
@@ -94,7 +92,6 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
           // Silent catch
         }
       }
-      // Poll storage every second to catch any state mutation
       setInterval(checkStorage, 1000);
       checkStorage();
     })();
@@ -126,7 +123,6 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
         showsHorizontalScrollIndicator={false}
         showsVerticalScrollIndicator={false}
         bounces={false}
-        injectedJavaScriptBeforeContentLoaded={syncStorageJS}
         injectedJavaScript={injectBridgeJS}
         onMessage={handleMessage}
         onLoadStart={() => setIsLoading(true)}

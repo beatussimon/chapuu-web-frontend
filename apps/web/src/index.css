@@ -129,9 +129,21 @@ input[type="time"]::-webkit-calendar-picker-indicator {
     display: block !important;
     min-height: 0 !important;
   }
-  
+
   @page {
     margin: 0;
     size: auto;
   }
+}
+
+/* Hide Web navigation interfaces inside the native mobile webview */
+.is-webview nav,
+.is-webview .bottom-nav,
+.is-webview [class*="BottomNav"],
+.is-webview [class*="BottomDrawer"] {
+  display: none !important;
+}
+
+.is-webview main {
+  padding-bottom: 0 !important;
 }

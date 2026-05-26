@@ -543,10 +543,14 @@ function AppLayout() {
     }
   }, [token, userRole, clearAuth]);
 
-  const [isWebView, setIsWebView] = useState(false);
+  const isWebView = typeof window !== 'undefined' && (window.navigator.userAgent.includes('ChapuuMobile') || !!window.ReactNativeWebView);
   useEffect(() => {
-    setIsWebView(window.navigator.userAgent.includes('ChapuuMobile') || !!window.ReactNativeWebView);
-  }, []);
+    if (isWebView) {
+      document.body.classList.add('is-webview');
+    } else {
+      document.body.classList.remove('is-webview');
+    }
+  }, [isWebView]);
 
   const isPrintBrandingPage = location.pathname.startsWith('/admin/print-branding/');
   const hideNavigation = isPrintBrandingPage || isWebView;
