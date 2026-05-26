@@ -127,7 +127,7 @@ export default function TableQRCodes() {
         <div className="w-full max-w-6xl mx-auto py-8 space-y-10">
 
             {/* Header */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-8 print:hidden">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-8 print:hidden webview-hide-header">
                 <div className="flex items-center gap-4">
                     <div className="bg-primary-500/10 p-3 rounded-xl border border-primary-500/20">
                         <QrCode className="text-primary-500" size={32} />

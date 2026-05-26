@@ -140,7 +140,8 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 .is-webview nav,
 .is-webview .bottom-nav,
 .is-webview [class*="BottomNav"],
-.is-webview [class*="BottomDrawer"] {
+.is-webview [class*="BottomDrawer"],
+.is-webview .webview-hide-header {
   display: none !important;
 }
 

@@ -20,9 +20,16 @@ The frontend is organized as a monorepo using **TurboRepo**:
 ## 2. Architectural Pillars
 
 ### A. Mobile App (Pasifiq Store)
-The mobile app is an Expo WebView wrapper. It points to the web app URL (configured via `EXPO_PUBLIC_WEB_URL`).
+The mobile app is an Expo native app with a comprehensive bidirectional WebView bridge.
+- **Safe-Area**: Uses `SafeAreaView` with `edges=['top']` to protect content from overlapping with system UI.
+- **State Bridge**:
+    - **Native → Web**: Pre-seeds `localStorage` before load; sends `STATE_SYNC` for live updates (token, role, cart, location).
+    - **Web → Native**: Posts `STORAGE_UPDATE` on store changes; reports `ACTIVE_ORDERS_COUNT` for tab badges.
+- **Navigation Sync**: The web app detects `ChapuuMobile` User-Agent and hides all navigation bars and specific headers (via `.webview-hide-header`) synchronously.
+- **Geolocation**: Native Modal permission flow; results synced to web Zustand store.
+- **Notifications**: Native system notifications triggered by `ORDER_STATUS_NOTIFICATION` bridge messages.
+- **Resource Management**: Suspends Web-side polling/WebSockets when native tab loses focus (`FOCUS_CHANGE`).
 - **Haptics**: Leverages `triggerHaptic` which maps to native device vibration.
-- **Branding**: Sourced from `app.json` (Pasifiq Store).
 
 ### B. Real-Time Infrastructure (WebSockets)
 - **WebSocket Auth**: Authentication for WebSockets is handled manually via `JWTAuthMiddleware` in `config/middleware.py`. It extracts the `token` from query parameters. **Do not modify this handshake logic.**
@@ -32,7 +39,7 @@ The mobile app is an Expo WebView wrapper. It points to the web app URL (configu
 ### C. Business Logic & Ordering
 - **Multi-Vendor Logic**: Always scope store-specific logic using `selectedStore.id`. The cart stores a `store` object with each item; **do not remove it.**
 - **Inventory Validation**: Stock checks must be enforced in **both** the frontend (`useStore.js`) and backend (`OrderSerializer.create`). Never allow ordering more than available `stock_quantity`.
-- **Handoff Verification**: Customers must provide the 6-digit handoff code (found in Order Tracker) to the seller for delivery/pickup orders to be completed.
+- **Handoff Verification**: Customers must provide the 6-digit handoff code to the seller. 5 failed attempts will lock the order for manual support verification.
 
 ### D. State & Auth Layer
 - **Nuclear Auth**: The `login` function in `useStore.js` uses native browser `fetch` to bypass Axios interceptors for a clean state. Do not "simplify" this back to the `apiClient`.

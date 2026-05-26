@@ -552,6 +552,46 @@ function AppLayout() {
     }
   }, [isWebView]);
 
+  // Bidirectional state synchronization with native container
+  useEffect(() => {
+    if (isWebView && window.ReactNativeWebView) {
+      // 1. Subscribe to local Zustand changes and post to native container
+      const unsubscribe = useAppStore.subscribe((state) => {
+        window.ReactNativeWebView.postMessage(JSON.stringify({
+          type: 'STORAGE_UPDATE',
+          payload: { state }
+        }));
+      });
+
+      // 2. Listen to native container updates and update local Zustand store
+      const handleNativeMessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          if (message.type === 'STATE_SYNC') {
+            const { state } = message.payload;
+            if (state) {
+              useAppStore.setState({
+                token: state.token,
+                userRole: state.userRole,
+                cart: state.cart || [],
+                userLocation: state.userLocation || { lat: null, lng: null, name: null, granted: false }
+              });
+            }
+          }
+        } catch (e) {}
+      };
+
+      window.addEventListener('message', handleNativeMessage);
+      document.addEventListener('message', handleNativeMessage);
+
+      return () => {
+        unsubscribe();
+        window.removeEventListener('message', handleNativeMessage);
+        document.removeEventListener('message', handleNativeMessage);
+      };
+    }
+  }, [isWebView]);
+
   const isPrintBrandingPage = location.pathname.startsWith('/admin/print-branding/');
   const hideNavigation = isPrintBrandingPage || isWebView;
 

@@ -94,6 +94,11 @@ apiClient.interceptors.response.use((response) => {
 
         // 2. If we aren't already on the login page, do a full logout redirect
         const isAlreadyOnLoginPage = window.location.pathname.includes('/login');
+        if (window.ReactNativeWebView) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'UNAUTHORIZED' }));
+            return Promise.reject(error);
+        }
+
         if (!isHandling401 && !isAlreadyOnLoginPage) {
             isHandling401 = true;
             

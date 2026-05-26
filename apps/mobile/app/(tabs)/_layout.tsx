@@ -15,7 +15,10 @@ import {
 } from 'lucide-react-native';
 
 export default function TabLayout() {
-  const { userRole } = useUser();
+  const { userRole, cart, activeOrderCount } = useUser();
+
+  // Calculate cart items count
+  const cartCount = cart.reduce((sum: number, item: any) => sum + (item.quantity || 1), 0);
 
   // Helper to determine tab options based on role
   const getTabConfig = (tabId: string) => {
@@ -67,11 +70,23 @@ export default function TabLayout() {
       };
     }
     const IconComponent = config.icon;
+    let badge: number | undefined = undefined;
+
+    if (tabId === 'tab3' && userRole === 'CUSTOMER') {
+      badge = cartCount > 0 ? cartCount : undefined;
+    } else if (tabId === 'tab4' && userRole === 'CUSTOMER') {
+      badge = activeOrderCount > 0 ? activeOrderCount : undefined;
+    } else if (tabId === 'index' && ['SELLER', 'ADMIN', 'SUPERUSER', 'CHEF', 'DELIVERY', 'ACCOUNTANT'].includes(userRole || '')) {
+      badge = activeOrderCount > 0 ? activeOrderCount : undefined;
+    }
+
     return {
       title: config.label,
       tabBarIcon: ({ color, size }: any) => (
         <IconComponent color={color} size={size} />
       ),
+      tabBarBadge: badge,
+      tabBarBadgeStyle: { backgroundColor: '#ef4444', color: '#fff', fontSize: 10 },
     };
   };
 

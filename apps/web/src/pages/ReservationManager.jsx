@@ -268,7 +268,7 @@ export default function ReservationManager() {
 
     return (
         <div className="w-full min-h-screen py-4 md:py-6 px-2 md:px-4 text-white overflow-x-hidden">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8 webview-hide-header">
                 <div>
                     <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-3">
                         <CalendarIcon className="text-indigo-500" size={28} /> Host Stand

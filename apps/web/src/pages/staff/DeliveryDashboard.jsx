@@ -44,6 +44,16 @@ export default function DeliveryDashboard() {
         return () => clearInterval(interval);
     }, [userRole, navigate]);
 
+    // Sync active deliveries count to native shell
+    useEffect(() => {
+        if (window.ReactNativeWebView && Array.isArray(orders)) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+                type: 'ACTIVE_ORDERS_COUNT',
+                payload: { count: orders.length }
+            }));
+        }
+    }, [orders]);
+
     const handleStartDelivery = (orderId) => {
         apiClient.post(`/orders/${orderId}/advance_state/`, { state: 'OUT_FOR_DELIVERY' })
             .then(() => {
@@ -124,7 +134,7 @@ export default function DeliveryDashboard() {
 
     return (
         <div className="w-full max-w-6xl mx-auto py-8 text-white px-4">
-            <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center justify-between mb-8 webview-hide-header">
                 <div>
                     <h1 className="text-3xl font-bold flex items-center gap-3">
                         <Navigation size={32} className="text-primary-500" />

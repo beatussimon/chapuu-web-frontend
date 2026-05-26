@@ -13,14 +13,21 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.pasifiq.store"
+      "bundleIdentifier": "com.pasifiq.store",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Chapuu needs your location to display nearby restaurants and ensure accurate delivery mapping to your doorstep."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#09090b"
       },
-      "package": "com.pasifiq.store"
+      "package": "com.pasifiq.store",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"

@@ -659,7 +659,7 @@ export default function AdminDashboard() {
     return (
         <div className="w-full min-h-screen py-4 md:py-6 px-2 md:px-6 text-white bg-dark-950 overflow-x-hidden">
             {/* Header section */}
-            <div className="flex flex-col lg:flex-row items-center justify-between mb-8 gap-4 border-b border-white/5 pb-6">
+            <div className="flex flex-col lg:flex-row items-center justify-between mb-8 gap-4 border-b border-white/5 pb-6 webview-hide-header">
                 <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-2xl bg-primary-500/20 border border-primary-500/30 flex items-center justify-center text-primary-400">
                         <Shield size={28} />

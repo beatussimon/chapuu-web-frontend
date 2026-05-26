@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import apiClient, { getWebSocketURL } from '../api/client';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -89,7 +89,51 @@ export default function OrderTracker() {
         });
     }
 
+    const [isTabFocused, setIsTabFocused] = useState(true);
+
+    // Track tab focus updates from native app
     useEffect(() => {
+        const handleFocusMessage = (e) => {
+            try {
+                const data = JSON.parse(e.data);
+                if (data.type === 'FOCUS_CHANGE') {
+                    setIsTabFocused(data.payload.isFocused);
+                }
+            } catch (err) {}
+        };
+        window.addEventListener('message', handleFocusMessage);
+        document.addEventListener('message', handleFocusMessage);
+        return () => {
+            window.removeEventListener('message', handleFocusMessage);
+            document.removeEventListener('message', handleFocusMessage);
+        };
+    }, []);
+
+    // Push local notifications on order status updates
+    const prevOrderStateRef = useRef(null);
+    useEffect(() => {
+        if (order && order.state) {
+            const prevState = prevOrderStateRef.current;
+            if (prevState && prevState !== order.state) {
+                if (window.ReactNativeWebView) {
+                    window.ReactNativeWebView.postMessage(JSON.stringify({
+                        type: 'ORDER_STATUS_NOTIFICATION',
+                        payload: {
+                            orderId: order.id,
+                            state: order.state,
+                            storeName: order.store_name || `Store #${order.store}`,
+                            fulfillmentMode: order.fulfillment_mode
+                        }
+                    }));
+                }
+            }
+            prevOrderStateRef.current = order.state;
+        }
+    }, [order]);
+
+    useEffect(() => {
+        if (!isTabFocused) return; // Suspend polling/WS in background
+
         fetchOrder();
         const interval = setInterval(fetchOrder, 30000); // Polling fallback
 
@@ -130,7 +174,7 @@ export default function OrderTracker() {
             }
             if (reconnectTimeout) clearTimeout(reconnectTimeout);
         };
-    }, [id]);
+    }, [id, isTabFocused]);
 
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     useEffect(() => {
