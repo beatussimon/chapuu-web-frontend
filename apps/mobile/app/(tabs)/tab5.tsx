@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import WebViewTab from '../../components/WebViewTab';
 import { useUser } from '../_layout';
@@ -122,47 +123,53 @@ export default function Tab5Screen() {
   const menuItems = getMenuItems();
 
   return (
-    <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.contentContainer}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Control Directory</Text>
-        <Text style={styles.headerSubtitle}>All authorized tools for your account</Text>
-      </View>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.contentContainer}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Control Directory</Text>
+          <Text style={styles.headerSubtitle}>All authorized tools for your account</Text>
+        </View>
 
-      <View style={styles.grid}>
-        {menuItems.map((item, idx) => {
-          const IconComp = item.icon;
-          return (
-            <TouchableOpacity 
-              key={idx} 
-              style={styles.card}
-              onPress={() => handlePress(item)}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.iconWrapper, { backgroundColor: `${item.color}15` }]}>
-                <IconComp size={24} color={item.color} />
-              </View>
-              <View style={styles.cardText}>
-                <Text style={styles.cardTitle}>{item.title}</Text>
-                <Text style={styles.cardDescription}>{item.description}</Text>
-              </View>
-              <ChevronRight size={18} color="#475569" />
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+        <View style={styles.grid}>
+          {menuItems.map((item, idx) => {
+            const IconComp = item.icon;
+            return (
+              <TouchableOpacity 
+                key={idx} 
+                style={styles.card}
+                onPress={() => handlePress(item)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.iconWrapper, { backgroundColor: `${item.color}15` }]}>
+                  <IconComp size={24} color={item.color} />
+                </View>
+                <View style={styles.cardText}>
+                  <Text style={styles.cardTitle}>{item.title}</Text>
+                  <Text style={styles.cardDescription}>{item.description}</Text>
+                </View>
+                <ChevronRight size={18} color="#475569" />
+              </TouchableOpacity>
+            );
+          })}
+        </View>
 
-      <TouchableOpacity 
-        style={styles.logoutButton} 
-        onPress={handleLogout}
-        activeOpacity={0.7}
-      >
-        <Text style={styles.logoutText}>LOG OUT OF SELLER MODE</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        <TouchableOpacity 
+          style={styles.logoutButton} 
+          onPress={handleLogout}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.logoutText}>LOG OUT OF SELLER MODE</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#020617',
+  },
   container: {
     flex: 1,
     backgroundColor: '#020617',
@@ -173,7 +180,7 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     padding: 24,
-    paddingTop: 60,
+    paddingTop: 16,
     paddingBottom: 40,
   },
   header: {

@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { StyleSheet, View, ActivityIndicator, Platform } from 'react-native';
 import { WebView } from 'react-native-webview';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUser } from '../app/_layout';
 
 const DEFAULT_URL = 'https://pasifiq.store';
@@ -111,7 +112,7 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
       <WebView
         ref={webViewRef}
         source={{ uri: targetUrl }}
@@ -133,14 +134,18 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
           </View>
         )}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: '#020617', // Matching dark-950 color
+  },
+  container: {
+    flex: 1,
+    backgroundColor: '#020617',
   },
   webview: {
     flex: 1,
