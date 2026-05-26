@@ -26,8 +26,22 @@ export default function Signup() {
 
     const scrollContainerRef = useRef(null);
     const login = useAppStore(state => state.login);
+    const token = useAppStore(state => state.token);
+    const userRole = useAppStore(state => state.userRole);
     const navigate = useNavigate();
     const location = useLocation();
+
+    // Redirect if already logged in
+    useEffect(() => {
+        if (token) {
+            if (userRole === 'CUSTOMER') {
+                const destination = location.state?.from || '/menu';
+                navigate(destination, { replace: true });
+            } else {
+                navigate('/seller', { replace: true });
+            }
+        }
+    }, [token, userRole, navigate, location]);
 
     // Scroll tracker inside the T&C modal
     const handleTermsScroll = (e) => {

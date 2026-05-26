@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAppStore } from '../store/useStore';
 import { Lock, User, Loader2, Utensils } from 'lucide-react';
@@ -11,8 +11,21 @@ export default function Login() {
     const [loading, setLoading] = useState(false);
 
     const login = useAppStore(state => state.login);
+    const token = useAppStore(state => state.token);
+    const userRole = useAppStore(state => state.userRole);
     const navigate = useNavigate();
     const location = useLocation();
+
+    useEffect(() => {
+        if (token) {
+            if (userRole === 'CUSTOMER') {
+                const destination = location.state?.from || '/';
+                navigate(destination, { replace: true });
+            } else {
+                navigate('/seller', { replace: true });
+            }
+        }
+    }, [token, userRole, navigate, location]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
