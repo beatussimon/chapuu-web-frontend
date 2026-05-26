@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
-import { StyleSheet, View, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, ActivityIndicator, Platform } from 'react-native';
 import { WebView } from 'react-native-webview';
+import { useUser } from '../app/_layout';
 
 const DEFAULT_URL = 'https://pasifiq.store';
 const BASE_URL = process.env.EXPO_PUBLIC_WEB_URL || DEFAULT_URL;
@@ -13,10 +14,61 @@ interface WebViewTabProps {
 export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
   const [isLoading, setIsLoading] = useState(true);
   const webViewRef = useRef<WebView>(null);
+  const { token, userRole } = useUser();
 
   // Normalize path
   const targetPath = path.startsWith('/') ? path : `/${path}`;
   const targetUrl = `${BASE_URL}${targetPath}`;
+
+  // Custom User-Agent to let the web frontend synchronously hide its web navigation bar
+  const customUserAgent = Platform.OS === 'ios'
+    ? 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 ChapuuMobile'
+    : 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36 ChapuuMobile';
+
+  // Synchronizes the native authentication tokens to the web localStorage BEFORE content loads
+  const syncStorageJS = `
+    (function() {
+      try {
+        const token = ${token ? `'${token}'` : 'null'};
+        const role = ${userRole ? `'${userRole}'` : 'null'};
+        
+        if (token && role) {
+          const currentStorage = localStorage.getItem('chapuu-storage');
+          let shouldUpdate = true;
+          if (currentStorage) {
+            const parsed = JSON.parse(currentStorage);
+            if (parsed.state && parsed.state.token === token && parsed.state.userRole === role) {
+              shouldUpdate = false;
+            }
+          }
+          if (shouldUpdate) {
+            const storageObj = {
+              state: {
+                token: token,
+                userRole: role,
+                cart: [],
+                selectedStore: null,
+                activeReservation: null,
+                userLocation: { lat: null, lng: null, name: null, granted: false },
+                savedStores: []
+              },
+              version: 0
+            };
+            localStorage.setItem('chapuu-storage', JSON.stringify(storageObj));
+            localStorage.setItem('access_token', token);
+          }
+        } else {
+          // Sync logout if native token is null
+          localStorage.removeItem('chapuu-storage');
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+        }
+      } catch (e) {
+        // Silent catch
+      }
+    })();
+    true;
+  `;
 
   // JavaScript injected to bridge Zustand store updates from localStorage to native
   const injectBridgeJS = `
@@ -67,12 +119,14 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
         ref={webViewRef}
         source={{ uri: targetUrl }}
         style={styles.webview}
+        userAgent={customUserAgent}
         javaScriptEnabled={true}
         domStorageEnabled={true}
         startInLoadingState={true}
         showsHorizontalScrollIndicator={false}
         showsVerticalScrollIndicator={false}
         bounces={false}
+        injectedJavaScriptBeforeContentLoaded={syncStorageJS}
         injectedJavaScript={injectBridgeJS}
         onMessage={handleMessage}
         onLoadStart={() => setIsLoading(true)}
