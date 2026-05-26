@@ -3,7 +3,7 @@ import { StyleSheet, View, ActivityIndicator, Platform } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUser } from '../app/_layout';
-import { useIsFocused, useRouter } from 'expo-router';
+import { useRouter, useNavigation } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 
 const DEFAULT_URL = 'https://pasifiq.store';
@@ -26,7 +26,26 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
     updateUser, 
     updateActiveOrderCount 
   } = useUser();
-  const isFocused = useIsFocused();
+
+  const navigation = useNavigation();
+  const [isFocused, setIsFocused] = useState(navigation.isFocused());
+
+  useEffect(() => {
+    const unsubscribeFocus = navigation.addListener('focus', () => {
+      setIsFocused(true);
+    });
+    const unsubscribeBlur = navigation.addListener('blur', () => {
+      setIsFocused(false);
+    });
+
+    setIsFocused(navigation.isFocused());
+
+    return () => {
+      unsubscribeFocus();
+      unsubscribeBlur();
+    };
+  }, [navigation]);
+
   const router = useRouter();
 
   // Normalize path
@@ -164,6 +183,8 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
             data: { orderId },
           },
           trigger: null,
+        }).catch(err => {
+          console.warn('Failed to schedule local notification:', err);
         });
       }
     } catch (e) {
