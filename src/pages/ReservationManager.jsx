@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Clock, Check, X, Calendar as CalendarIcon, LogIn, LogOut, AlertTriangle, Wifi, WifiOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import apiClient, { getWebSocketURL } from '../api/client';
