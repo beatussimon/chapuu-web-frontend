@@ -32,7 +32,7 @@ const CustomerProfile = lazy(() => import('./pages/CustomerProfile'));
 const OrderVerification = lazy(() => import('./pages/OrderVerification'));
 const StoreBrandingPrint = lazy(() => import('./pages/admin/StoreBrandingPrint'));
 
-import { Utensils, LayoutDashboard, LogOut, ShoppingBag, TerminalSquare, QrCode, Calendar, Package, Shield, Store, Menu, X, Navigation, Tv, BarChart3, Compass, UtensilsCrossed, HelpCircle, ListOrdered, ShoppingCart, TrendingUp, LayoutGrid, User } from 'lucide-react';
+import { Utensils, LayoutDashboard, LogOut, ShoppingBag, TerminalSquare, QrCode, Calendar, Package, Shield, Store, Menu, X, Navigation, Tv, BarChart3, Compass, UtensilsCrossed, HelpCircle, ListOrdered, ShoppingCart, TrendingUp, LayoutGrid, User, ChevronDown } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import apiClient, { setStoreResetFn } from './api/client';
 
@@ -91,32 +91,93 @@ function TopNavigation({ storeId }) {
 
             {['SELLER', 'ADMIN', 'SUPERUSER', 'CHEF', 'ACCOUNTANT', 'DELIVERY'].includes(userRole) ? (
               <>
-                <Link to="/seller" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0"><TerminalSquare size={16} /><span className="text-sm font-medium">Dashboard</span></Link>
+                <Link to="/seller" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0">
+                  <TerminalSquare size={16} />
+                  <span className="text-sm font-medium">Dashboard</span>
+                </Link>
+
                 {['SELLER', 'ADMIN', 'SUPERUSER'].includes(userRole) && (
                   <>
-                    <Link to="/seller/reservations" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0"><Calendar size={16} /><span className="text-sm font-medium">Host</span></Link>
-                    <Link to="/seller/menu" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0"><Utensils size={16} /><span className="text-sm font-medium">Menu</span></Link>
-                    <Link to="/seller/analytics" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0"><BarChart3 size={16} /><span className="text-sm font-medium">Analytics</span></Link>
-                    <Link to="/seller/inventory" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0"><Package size={16} /><span className="text-sm font-medium">Stock</span></Link>
-                    <Link to="/seller/qrcodes" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0"><QrCode size={16} /><span className="text-sm font-medium">QRs</span></Link>
+                    <Link to="/seller/menu" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0">
+                      <Utensils size={16} />
+                      <span className="text-sm font-medium">Menu</span>
+                    </Link>
+
+                    {/* Tools Hover Dropdown Menu */}
+                    <div className="relative group flex-shrink-0">
+                      <button className="flex items-center gap-1.5 px-3 py-2 text-slate-300 hover:text-white transition-colors text-sm font-medium cursor-pointer">
+                        <span>Tools</span>
+                        <ChevronDown size={14} className="transition-transform duration-300 group-hover:rotate-180 text-slate-400" />
+                      </button>
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 w-48 bg-dark-900/98 border border-white/10 rounded-2xl p-2 hidden group-hover:block hover:block shadow-2xl z-50 backdrop-blur-xl">
+                        <Link to="/seller/reservations" className="flex items-center gap-2 px-3 py-2.5 text-slate-300 hover:text-white hover:bg-white/5 rounded-xl transition-all text-xs font-medium">
+                          <Calendar size={14} /> Host / Reservations
+                        </Link>
+                        <Link to="/seller/analytics" className="flex items-center gap-2 px-3 py-2.5 text-slate-300 hover:text-white hover:bg-white/5 rounded-xl transition-all text-xs font-medium">
+                          <BarChart3 size={14} /> Analytics
+                        </Link>
+                        <Link to="/seller/inventory" className="flex items-center gap-2 px-3 py-2.5 text-slate-300 hover:text-white hover:bg-white/5 rounded-xl transition-all text-xs font-medium">
+                          <Package size={14} /> Stock / Inventory
+                        </Link>
+                        <Link to="/seller/qrcodes" className="flex items-center gap-2 px-3 py-2.5 text-slate-300 hover:text-white hover:bg-white/5 rounded-xl transition-all text-xs font-medium">
+                          <QrCode size={14} /> Table QR Codes
+                        </Link>
+                        <Link to={`/tv/${storeId || 1}`} target="_blank" className="flex items-center gap-2 px-3 py-2.5 text-slate-300 hover:text-white hover:bg-white/5 rounded-xl transition-all text-xs font-medium">
+                          <Tv size={14} /> TV Display
+                        </Link>
+                      </div>
+                    </div>
                   </>
                 )}
-                <Link to={`/tv/${storeId || 1}`} target="_blank" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0"><Tv size={16} /><span className="text-sm font-medium">TV</span></Link>
+
+                {userRole === 'CHEF' && (
+                  <Link to={`/tv/${storeId || 1}`} target="_blank" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0">
+                    <Tv size={16} />
+                    <span className="text-sm font-medium">TV</span>
+                  </Link>
+                )}
+
                 {['ADMIN', 'SUPERUSER'].includes(userRole) && (
-                  <Link to="/admin" className="flex items-center gap-2 px-3 py-2 text-purple-400 hover:text-purple-300 transition-colors ml-2 flex-shrink-0"><Shield size={16} /><span className="text-sm font-medium">Admin</span></Link>
+                  <Link to="/admin" className="flex items-center gap-2 px-3 py-2 text-purple-400 hover:text-purple-300 transition-colors ml-2 flex-shrink-0">
+                    <Shield size={16} />
+                    <span className="text-sm font-medium">Admin</span>
+                  </Link>
                 )}
               </>
             ) : null}
 
             {userRole === 'CUSTOMER' ? (
               <>
-                <Link to="/" className="md:hidden flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0"><TrendingUp size={16} /><span className="text-sm font-medium">Trending</span></Link>
-                <Link to="/stores?type=RESTAURANT" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0"><UtensilsCrossed size={16} /><span className="text-sm font-medium">Restaurants</span></Link>
-                <Link to="/stores?type=SHOP" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0"><Store size={16} /><span className="text-sm font-medium">Shops</span></Link>
-                <Link to="/orders" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0"><ListOrdered size={16} /><span className="text-sm font-medium">Orders</span></Link>
-                <Link to="/reserve" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0"><Calendar size={16} /><span className="text-sm font-medium">Reserve</span></Link>
-                <Link to="/profile" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0"><User size={16} /><span className="text-sm font-medium">Profile</span></Link>
-                <Link to="/faq" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0"><HelpCircle size={16} /><span className="text-sm font-medium">FAQ</span></Link>
+                <Link to="/stores?type=RESTAURANT" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0">
+                  <UtensilsCrossed size={16} />
+                  <span className="text-sm font-medium">Restaurants</span>
+                </Link>
+                <Link to="/stores?type=SHOP" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0">
+                  <Store size={16} />
+                  <span className="text-sm font-medium">Shops</span>
+                </Link>
+
+                {/* Customer More Dropdown */}
+                <div className="relative group flex-shrink-0">
+                  <button className="flex items-center gap-1.5 px-3 py-2 text-slate-300 hover:text-white transition-colors text-sm font-medium cursor-pointer">
+                    <span>More</span>
+                    <ChevronDown size={14} className="transition-transform duration-300 group-hover:rotate-180 text-slate-400" />
+                  </button>
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 w-44 bg-dark-900/98 border border-white/10 rounded-2xl p-2 hidden group-hover:block hover:block shadow-2xl z-50 backdrop-blur-xl">
+                    <Link to="/orders" className="flex items-center gap-2 px-3 py-2.5 text-slate-300 hover:text-white hover:bg-white/5 rounded-xl transition-all text-xs font-medium">
+                      <ShoppingBag size={14} /> Orders
+                    </Link>
+                    <Link to="/reserve" className="flex items-center gap-2 px-3 py-2.5 text-slate-300 hover:text-white hover:bg-white/5 rounded-xl transition-all text-xs font-medium">
+                      <Calendar size={14} /> Reserve
+                    </Link>
+                    <Link to="/profile" className="flex items-center gap-2 px-3 py-2.5 text-slate-300 hover:text-white hover:bg-white/5 rounded-xl transition-all text-xs font-medium">
+                      <User size={14} /> Profile
+                    </Link>
+                    <Link to="/faq" className="flex items-center gap-2 px-3 py-2.5 text-slate-300 hover:text-white hover:bg-white/5 rounded-xl transition-all text-xs font-medium">
+                      <HelpCircle size={14} /> FAQ
+                    </Link>
+                  </div>
+                </div>
 
                 {/* Global Cart Button */}
                 <Link to="/cart" className="flex items-center gap-2 ml-4 px-4 py-2 rounded-full bg-primary-500 text-dark-950 font-bold hover:bg-primary-400 transition-colors shadow-lg shadow-primary-500/20 relative flex-shrink-0">
