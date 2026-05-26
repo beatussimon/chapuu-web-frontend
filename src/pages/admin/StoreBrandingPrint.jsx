@@ -369,7 +369,12 @@ export default function StoreBrandingPrint() {
                                     { id: '#06b6d4', name: 'Teal' },
                                     { id: '#4a5759', name: 'Sage' },
                                     { id: '#3f3f46', name: 'Dark Slate' },
-                                    { id: '#18181b', name: 'Pitch Black' }
+                                    { id: '#18181b', name: 'Pitch Black' },
+                                    { id: '#ff6b6b', name: 'Coral' },
+                                    { id: '#c77dff', name: 'Lavender' },
+                                    { id: '#70e000', name: 'Lime' },
+                                    { id: '#dda15e', name: 'Clay Amber' },
+                                    { id: '#1d3557', name: 'Navy Blue' }
                                 ].map(c => (
                                     <button
                                         key={c.id}

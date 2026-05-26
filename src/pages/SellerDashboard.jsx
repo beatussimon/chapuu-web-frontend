@@ -315,6 +315,7 @@ export default function SellerDashboard() {
 
     // Modals
     const [showPOSModal, setShowPOSModal] = useState(false);
+    const [posActiveTab, setPosActiveTab] = useState('products'); // 'products', 'cart'
     const [posProducts, setPosProducts] = useState([]);
     const [posCart, setPosCart] = useState([]);
     const [posCustomerName, setPosCustomerName] = useState('');
@@ -331,6 +332,7 @@ export default function SellerDashboard() {
             }
             return [...prev, { ...product, quantity: 1 }];
         });
+        toast.success(`Added ${product.name} to POS cart`, { duration: 1000, id: `pos-add-${product.id}` });
     };
 
     const updatePosQty = (productId, delta) => {
@@ -1010,7 +1012,7 @@ export default function SellerDashboard() {
 
                     <div className="flex gap-2 shrink-0">
                         {canSeeAdminStuff && (
-                            <button onClick={() => setShowPOSModal(true)} className="flex-1 sm:flex-none bg-primary-500 hover:bg-primary-400 text-dark-950 font-bold px-4 h-10 rounded-xl flex items-center justify-center gap-2 text-sm shrink-0">
+                            <button onClick={() => { setShowPOSModal(true); setPosActiveTab('products'); }} className="flex-1 sm:flex-none bg-primary-500 hover:bg-primary-400 text-dark-950 font-bold px-4 h-10 rounded-xl flex items-center justify-center gap-2 text-sm shrink-0">
                                 <ListOrdered size={18} /> POS
                             </button>
                         )}
@@ -2197,116 +2199,153 @@ export default function SellerDashboard() {
                 <div className="fixed inset-0 bg-dark-950/90 backdrop-blur-md z-[100] flex items-center justify-center p-0 sm:p-4">
                     <motion.div 
                         initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-                        className="bg-dark-900 w-full h-full sm:h-auto sm:max-w-5xl sm:rounded-3xl shadow-2xl flex flex-col sm:flex-row overflow-hidden border border-white/10"
+                        className="bg-dark-900 w-full h-full sm:h-[85vh] sm:max-w-5xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-white/10"
                     >
-                        {/* Product Picker */}
-                        <div className="flex-1 flex flex-col h-full overflow-hidden border-r border-white/5 bg-dark-950/30">
-                            <div className="p-6 border-b border-white/5 flex justify-between items-center bg-dark-900/50">
-                                <div>
-                                    <h3 className="text-xl font-black text-white uppercase tracking-tight">Point of Sale</h3>
-                                    <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">Select products to add to cart</p>
-                                </div>
-                                <button onClick={() => setShowPOSModal(false)} className="sm:hidden p-2 text-slate-400 hover:text-white"><X size={24} /></button>
+                        {/* Unified Top Header Bar */}
+                        <div className="p-5 border-b border-white/10 flex justify-between items-center bg-dark-900 shrink-0">
+                            <div>
+                                <h3 className="text-lg md:text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
+                                    <ListOrdered size={20} className="text-primary-500" /> Point of Sale
+                                </h3>
+                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Terminal Checkout Operator</p>
                             </div>
-                            
-                            <div className="flex-1 overflow-y-auto p-4 md:p-6 grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 custom-scrollbar">
-                                {posProducts.map(product => (
-                                    <button 
-                                        key={product.id} 
-                                        onClick={() => addToPosCart(product)}
-                                        className="bg-dark-900 border border-white/5 rounded-2xl p-3 md:p-4 text-left hover:border-primary-500/50 transition-all group flex flex-col h-full shadow-lg"
-                                    >
-                                        <div className="w-full aspect-square rounded-xl bg-dark-950 mb-3 overflow-hidden border border-white/5">
-                                            {product.image ? (
-                                                <OptimizedImage src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" wrapperClassName="w-full h-full" />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center text-slate-800"><ShoppingBag size={32} /></div>
-                                            )}
-                                        </div>
-                                        <h4 className="font-bold text-white text-sm md:text-base line-clamp-1 group-hover:text-primary-400 transition-colors">{product.name}</h4>
-                                        <div className="mt-auto pt-2 flex justify-between items-center">
-                                            <span className="text-primary-500 font-black text-sm md:text-base">{formatPrice(product.price)}</span>
-                                            <div className="w-8 h-8 rounded-full bg-primary-500/10 text-primary-500 flex items-center justify-center group-hover:bg-primary-500 group-hover:text-dark-900 transition-all">
-                                                <Plus size={16} />
-                                            </div>
-                                        </div>
-                                    </button>
-                                ))}
-                            </div>
+                            <button onClick={() => setShowPOSModal(false)} className="p-2 text-slate-400 hover:text-white rounded-xl bg-white/5 hover:bg-white/10 transition-all cursor-pointer"><X size={20} /></button>
                         </div>
 
-                        {/* Cart Summary */}
-                        <div className="w-full sm:w-80 md:w-96 bg-dark-900 flex flex-col h-full border-t sm:border-t-0 sm:border-l border-white/10 shadow-[-10px_0_30px_rgba(0,0,0,0.5)]">
-                            <div className="p-6 border-b border-white/5 flex items-center justify-between">
-                                <h4 className="font-black text-slate-400 uppercase tracking-widest text-xs">Current Order</h4>
-                                <button onClick={() => setPosCart([])} className="text-[10px] font-black text-red-500 hover:text-red-400 uppercase tracking-widest">Clear All</button>
-                            </div>
-
-                            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 custom-scrollbar">
-                                {posCart.length === 0 ? (
-                                    <div className="flex flex-col items-center justify-center h-full opacity-20 py-10">
-                                        <ShoppingCart size={48} className="mb-4" />
-                                        <p className="font-bold uppercase tracking-widest text-xs">Cart is empty</p>
-                                    </div>
-                                ) : (
-                                    posCart.map(item => (
-                                        <div key={item.id} className="flex gap-4 items-center bg-dark-950/50 p-3 rounded-2xl border border-white/5">
-                                            <div className="flex-1">
-                                                <h5 className="text-sm font-bold text-white line-clamp-1">{item.name}</h5>
-                                                <p className="text-xs text-primary-500 font-black mt-1">{formatPrice(item.price * item.quantity)}</p>
-                                            </div>
-                                            <div className="flex items-center gap-2 bg-dark-900 rounded-xl p-1 border border-white/10">
-                                                <button onClick={() => updatePosQty(item.id, -1)} className="p-1 hover:text-primary-400 text-slate-500 transition-colors"><X size={14} /></button>
-                                                <span className="w-6 text-center text-sm font-black text-white">{item.quantity}</span>
-                                                <button onClick={() => updatePosQty(item.id, 1)} className="p-1 hover:text-primary-400 text-slate-500 transition-colors"><Plus size={14} /></button>
-                                            </div>
-                                            <button onClick={() => removeFromPosCart(item.id)} className="text-red-500/50 hover:text-red-500 p-1"><Trash2 size={16} /></button>
-                                        </div>
-                                    ))
+                        {/* Mobile Tab Switcher */}
+                        <div className="flex sm:hidden border-b border-white/10 bg-dark-950/30 p-2 gap-2 shrink-0">
+                            <button 
+                                onClick={() => setPosActiveTab('products')}
+                                className={`flex-1 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                                    posActiveTab === 'products' 
+                                        ? 'bg-primary-500 text-dark-950' 
+                                        : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                                }`}
+                            >
+                                <ShoppingBag size={14} /> Products
+                            </button>
+                            <button 
+                                onClick={() => setPosActiveTab('cart')}
+                                className={`flex-1 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 relative cursor-pointer ${
+                                    posActiveTab === 'cart' 
+                                        ? 'bg-primary-500 text-dark-950' 
+                                        : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                                }`}
+                            >
+                                <ShoppingCart size={14} /> Cart
+                                {posCart.length > 0 && (
+                                    <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-black ${
+                                        posActiveTab === 'cart' ? 'bg-dark-950 text-primary-500' : 'bg-primary-500 text-dark-900'
+                                    }`}>
+                                        {posCart.reduce((sum, item) => sum + item.quantity, 0)}
+                                    </span>
                                 )}
+                            </button>
+                        </div>
+
+                        {/* Columns Container */}
+                        <div className="flex-1 flex flex-col sm:flex-row overflow-hidden min-h-0">
+                            {/* Product Picker Column */}
+                            <div className={`flex-1 flex flex-col h-full overflow-hidden border-r border-white/5 bg-dark-950/30 ${posActiveTab === 'products' ? 'flex' : 'hidden sm:flex'}`}>
+                                <div className="flex-1 overflow-y-auto p-4 md:p-6 grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 custom-scrollbar">
+                                    {posProducts.map(product => (
+                                        <button 
+                                            key={product.id} 
+                                            onClick={() => addToPosCart(product)}
+                                            className="bg-dark-900 border border-white/5 rounded-2xl p-3 md:p-4 text-left hover:border-primary-500/50 transition-all group flex flex-col h-full shadow-lg cursor-pointer"
+                                        >
+                                            <div className="w-full aspect-square rounded-xl bg-dark-950 mb-3 overflow-hidden border border-white/5">
+                                                {product.image ? (
+                                                    <OptimizedImage src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" wrapperClassName="w-full h-full" />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-slate-800"><ShoppingBag size={32} /></div>
+                                                )}
+                                            </div>
+                                            <h4 className="font-bold text-white text-sm md:text-base line-clamp-1 group-hover:text-primary-400 transition-colors">{product.name}</h4>
+                                            <div className="mt-auto pt-2 flex justify-between items-center">
+                                                <span className="text-primary-500 font-black text-sm md:text-base">{formatPrice(product.price)}</span>
+                                                <div className="w-8 h-8 rounded-full bg-primary-500/10 text-primary-500 flex items-center justify-center group-hover:bg-primary-500 group-hover:text-dark-900 transition-all">
+                                                    <Plus size={16} />
+                                                </div>
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
 
-                            <div className="p-6 bg-dark-950/50 border-t border-white/10 space-y-4">
-                                <div>
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 block">Customer Name</label>
-                                    <input 
-                                        type="text" 
-                                        placeholder="e.g. John Doe"
-                                        value={posCustomerName}
-                                        onChange={e => setPosCustomerName(e.target.value)}
-                                        className="w-full bg-dark-900 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-primary-500 outline-none transition-all font-medium"
-                                    />
+                            {/* Cart Summary Column */}
+                            <div className={`w-full sm:w-80 md:w-96 bg-dark-900 flex flex-col h-full border-t sm:border-t-0 sm:border-l border-white/10 shadow-[-10px_0_30px_rgba(0,0,0,0.5)] ${posActiveTab === 'cart' ? 'flex' : 'hidden sm:flex'}`}>
+                                <div className="p-4 border-b border-white/5 flex items-center justify-between bg-dark-950/20 shrink-0">
+                                    <h4 className="font-black text-slate-400 uppercase tracking-widest text-[10px]">Current Order</h4>
+                                    <button onClick={() => setPosCart([])} className="text-[9px] font-black text-red-500 hover:text-red-400 uppercase tracking-widest cursor-pointer">Clear All</button>
                                 </div>
-                                
-                                <label className="flex items-center gap-3 cursor-pointer group">
-                                    <div className={`w-10 h-6 rounded-full transition-colors relative ${posSkipKitchen ? 'bg-primary-500' : 'bg-dark-800'}`}>
-                                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${posSkipKitchen ? 'left-5' : 'left-1'}`}></div>
-                                    </div>
-                                    <input type="checkbox" className="hidden" checked={posSkipKitchen} onChange={e => setPosSkipKitchen(e.target.checked)} />
-                                    <span className="text-xs font-bold text-slate-400 group-hover:text-white transition-colors">Skip Kitchen Queue</span>
-                                </label>
 
-                                <div className="pt-4 space-y-3">
-                                    <div className="flex justify-between items-end mb-2">
-                                        <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Total Amount</span>
-                                        <span className="text-2xl font-black text-white tracking-tight">
-                                            {formatPrice(posCart.reduce((sum, i) => sum + (i.price * i.quantity), 0))}
-                                        </span>
+                                <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 custom-scrollbar">
+                                    {posCart.length === 0 ? (
+                                        <div className="flex flex-col items-center justify-center h-full opacity-20 py-10">
+                                            <ShoppingCart size={48} className="mb-4" />
+                                            <p className="font-bold uppercase tracking-widest text-xs">Cart is empty</p>
+                                        </div>
+                                    ) : (
+                                        posCart.map(item => (
+                                            <div key={item.id} className="flex gap-4 items-center bg-dark-950/50 p-3 rounded-2xl border border-white/5">
+                                                <div className="flex-1">
+                                                    <h5 className="text-sm font-bold text-white line-clamp-1">{item.name}</h5>
+                                                    <p className="text-xs text-primary-500 font-black mt-1">{formatPrice(item.price * item.quantity)}</p>
+                                                </div>
+                                                <div className="flex items-center gap-2 bg-dark-900 rounded-xl p-1 border border-white/10">
+                                                    <button onClick={() => updatePosQty(item.id, -1)} className="p-1 hover:text-primary-400 text-slate-500 transition-colors cursor-pointer"><X size={14} /></button>
+                                                    <span className="w-6 text-center text-sm font-black text-white">{item.quantity}</span>
+                                                    <button onClick={() => updatePosQty(item.id, 1)} className="p-1 hover:text-primary-400 text-slate-500 transition-colors cursor-pointer"><Plus size={14} /></button>
+                                                </div>
+                                                <button onClick={() => removeFromPosCart(item.id)} className="text-red-500/50 hover:text-red-500 p-1 cursor-pointer"><Trash2 size={16} /></button>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+
+                                <div className="p-5 bg-dark-950/50 border-t border-white/10 space-y-4 shrink-0">
+                                    <div>
+                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 block">Customer Name</label>
+                                        <input 
+                                            type="text" 
+                                            placeholder="e.g. John Doe"
+                                            value={posCustomerName}
+                                            onChange={e => setPosCustomerName(e.target.value)}
+                                            className="w-full bg-dark-900 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-primary-500 outline-none transition-all font-medium"
+                                        />
                                     </div>
-                                    <div className="flex gap-3">
-                                        <button 
-                                            onClick={() => setShowPOSModal(false)}
-                                            className="flex-1 py-4 rounded-2xl bg-white/5 text-white font-bold text-sm hover:bg-white/10 transition-all border border-white/5"
-                                        >
-                                            Cancel
-                                        </button>
-                                        <button 
-                                            disabled={posCart.length === 0}
-                                            onClick={handlePOSCheckout}
-                                            className="flex-[2] py-4 rounded-2xl bg-primary-500 text-dark-900 font-black text-sm hover:bg-primary-400 transition-all shadow-[0_10px_30px_rgba(249,115,22,0.3)] disabled:opacity-50 disabled:shadow-none"
-                                        >
-                                            PLACE ORDER
-                                        </button>
+                                    
+                                    <label className="flex items-center gap-3 cursor-pointer group">
+                                        <div className={`w-10 h-6 rounded-full transition-colors relative ${posSkipKitchen ? 'bg-primary-500' : 'bg-dark-800'}`}>
+                                            <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${posSkipKitchen ? 'left-5' : 'left-1'}`}></div>
+                                        </div>
+                                        <input type="checkbox" className="hidden" checked={posSkipKitchen} onChange={e => setPosSkipKitchen(e.target.checked)} />
+                                        <span className="text-xs font-bold text-slate-400 group-hover:text-white transition-colors">Skip Kitchen Queue</span>
+                                    </label>
+
+                                    <div className="pt-2 space-y-3">
+                                        <div className="flex justify-between items-end mb-2">
+                                            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Total Amount</span>
+                                            <span className="text-xl md:text-2xl font-black text-white tracking-tight">
+                                                {formatPrice(posCart.reduce((sum, i) => sum + (i.price * i.quantity), 0))}
+                                            </span>
+                                        </div>
+                                        <div className="flex gap-3">
+                                            <button 
+                                                onClick={() => setShowPOSModal(false)}
+                                                className="flex-1 py-3.5 rounded-2xl bg-white/5 text-white font-bold text-sm hover:bg-white/10 transition-all border border-white/5 cursor-pointer"
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button 
+                                                disabled={posCart.length === 0}
+                                                onClick={handlePOSCheckout}
+                                                className="flex-[2] py-3.5 rounded-2xl bg-primary-500 text-dark-900 font-black text-sm hover:bg-primary-400 transition-all shadow-[0_10px_30px_rgba(249,115,22,0.3)] disabled:opacity-50 disabled:shadow-none cursor-pointer"
+                                            >
+                                                PLACE ORDER
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
