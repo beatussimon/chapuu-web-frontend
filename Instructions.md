@@ -4,6 +4,12 @@ This document defines the foundational architecture, safety protocols, and codin
 
 ---
 
+## 0. Monorepo Structure (Turbo)
+The frontend is organized as a monorepo using **TurboRepo**:
+- `apps/web`: The core React 19 + Vite 7 web application.
+- `apps/mobile`: Expo-based React Native WebView wrapper ("Pasifiq Store").
+- `packages/shared`: Shared logic, types, and constants.
+
 ## 1. System Integrity & Data Safety (CRITICAL)
 - **ZERO DATA WIPING**: Never execute `flush`, `reset_db`, or `rm -rf` on the database or media volumes. Protect `db.sqlite3` and production PostgreSQL at all costs.
 - **NO DESTRUCTIVE SEEDING**: Never write or run database seeding, cleanup, or initialization commands/scripts that execute `DELETE`, `TRUNCATE`, or `DROP` commands on user-created data tables (such as `stores`, `products`, `orders`, `users`, `reviews`, etc.). All seeding operations must strictly be additive (using `get_or_create` or safe updates) to protect existing database records.
@@ -13,18 +19,22 @@ This document defines the foundational architecture, safety protocols, and codin
 
 ## 2. Architectural Pillars
 
-### A. Real-Time Infrastructure (WebSockets)
+### A. Mobile App (Pasifiq Store)
+The mobile app is an Expo WebView wrapper. It points to the web app URL (configured via `EXPO_PUBLIC_WEB_URL`).
+- **Haptics**: Leverages `triggerHaptic` which maps to native device vibration.
+- **Branding**: Sourced from `app.json` (Pasifiq Store).
+
+### B. Real-Time Infrastructure (WebSockets)
 - **WebSocket Auth**: Authentication for WebSockets is handled manually via `JWTAuthMiddleware` in `config/middleware.py`. It extracts the `token` from query parameters. **Do not modify this handshake logic.**
 - **Order Broadcasts**: State transitions in `OrderStateMachine` (backend) automatically trigger WebSocket broadcasts to store and customer groups via `emit_update()`. **Never decouple state changes from broadcasts.**
 - **Daphne/ASGI**: Real-time features rely on `daphne` and `channels`. Ensure the `ASGI_APPLICATION` setting remains pointed to `config.asgi.application`.
 
-### B. Business Logic & Ordering
+### C. Business Logic & Ordering
 - **Multi-Vendor Logic**: Always scope store-specific logic using `selectedStore.id`. The cart stores a `store` object with each item; **do not remove it.**
 - **Inventory Validation**: Stock checks must be enforced in **both** the frontend (`useStore.js`) and backend (`OrderSerializer.create`). Never allow ordering more than available `stock_quantity`.
-- **Kitchen Engine**: The `KitchenEngine` uses Redis-backed caching with a spin-lock pattern to manage FIFO queues. Do not bypass this for order fulfillment.
-- **Shop vs. Restaurant**: `SHOP` stores skip the kitchen (`PAID` → `READY`). `RESTAURANT` stores must use the `KitchenEngine` queue.
+- **Handoff Verification**: Customers must provide the 6-digit handoff code (found in Order Tracker) to the seller for delivery/pickup orders to be completed.
 
-### C. State & Auth Layer
+### D. State & Auth Layer
 - **Nuclear Auth**: The `login` function in `useStore.js` uses native browser `fetch` to bypass Axios interceptors for a clean state. Do not "simplify" this back to the `apiClient`.
 - **Zustand Persistence**: Core state (tokens, role, cart) is persisted in `chapuu-storage`.
 - **Axios Client**: `apiClient.js` handles token injection and 401 redirection. The auth header logic is designed to prevent "Bearer null" errors; maintain the JWT dot-count validation.
@@ -32,6 +42,7 @@ This document defines the foundational architecture, safety protocols, and codin
 ## 3. Coding Standards
 
 ### Frontend (React 19 + Vite 7)
+- **Monorepo Workflow**: Run commands from the root using `npm run dev` (Turbo) or target specific apps.
 - **Defensive Guards**: Always use `Array.isArray()` and optional chaining (`?.`) when consuming API data.
 - **Fulfillment Constraints**: `DINE_IN` requires a `table`. `DELIVERY` requires `customer_phone` and `delivery_location`. Ensure these are validated in `Checkout.jsx`.
 - **Optimized Images**: Use the `<OptimizedImage />` component for all assets.

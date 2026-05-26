@@ -24,6 +24,11 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "scheme": "pasifiq-store",
+    "plugins": [
+      "expo-router",
+      "expo-status-bar"
+    ]
   }
 }

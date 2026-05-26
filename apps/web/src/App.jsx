@@ -543,17 +543,23 @@ function AppLayout() {
     }
   }, [token, userRole, clearAuth]);
 
+  const [isWebView, setIsWebView] = useState(false);
+  useEffect(() => {
+    setIsWebView(window.navigator.userAgent.includes('ChapuuMobile') || !!window.ReactNativeWebView);
+  }, []);
+
   const isPrintBrandingPage = location.pathname.startsWith('/admin/print-branding/');
+  const hideNavigation = isPrintBrandingPage || isWebView;
 
   return (
     <div className="flex flex-col min-h-screen">
-      {!isPrintBrandingPage && <TopNavigation storeId={storeId} />}
+      {!hideNavigation && <TopNavigation storeId={storeId} />}
       <Toaster position="bottom-right" toastOptions={{
         style: { background: '#1e293b', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' },
         success: { iconTheme: { primary: '#22c55e', secondary: '#fff' } }
       }} />
 
-      <main className={isPrintBrandingPage ? "flex-1 w-full" : "flex-1 w-full max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8 pb-20 lg:pb-8"}>
+      <main className={isPrintBrandingPage ? "flex-1 w-full" : `flex-1 w-full max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8 ${isWebView ? '' : 'pb-20 lg:pb-8'}`}>
         <Suspense fallback={
           <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
             <div className="w-10 h-10 border-3 border-primary-500/30 border-t-primary-500 rounded-full animate-spin" />
@@ -595,8 +601,8 @@ function AppLayout() {
           </Routes>
         </Suspense>
       </main>
-      {!isPrintBrandingPage && <BottomNav moreMenuOpen={moreMenuOpen} onToggleMore={() => setMoreMenuOpen(!moreMenuOpen)} />}
-      {!isPrintBrandingPage && <BottomDrawer isOpen={moreMenuOpen} onClose={() => setMoreMenuOpen(false)} storeId={storeId} />}
+      {!hideNavigation && <BottomNav moreMenuOpen={moreMenuOpen} onToggleMore={() => setMoreMenuOpen(!moreMenuOpen)} />}
+      {!hideNavigation && <BottomDrawer isOpen={moreMenuOpen} onClose={() => setMoreMenuOpen(false)} storeId={storeId} />}
     </div>
   );
 }
