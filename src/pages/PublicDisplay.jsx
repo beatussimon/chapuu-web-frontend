@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Utensils, CheckCircle, Clock, Wifi, WifiOff } from 'lucide-react';
@@ -15,10 +15,31 @@ export default function PublicDisplay() {
     const [ads, setAds] = useState([]);
     const [featuredProducts, setFeaturedProducts] = useState([]);
     const [wsConnected, setWsConnected] = useState(false);
+    const [currentTime, setCurrentTime] = useState(new Date());
 
     // Cycle state: 0 = Queue Board, 1 = Ad/Featured Board
     const [viewMode, setViewMode] = useState(0);
     const [currentAdIndex, setCurrentAdIndex] = useState(0);
+
+    const prevReadyIdsRef = useRef(new Set());
+    const adsRef = useRef([]);
+
+    useEffect(() => {
+        adsRef.current = ads;
+    }, [ads]);
+
+    const playReadyChime = () => {
+        try {
+            const chime = new Audio('/media/sounds/chapuunotification.mp3');
+            chime.volume = 0.4;
+            chime.play().catch(err => {
+                // Fallback to public web sfx if local file fails/is blocked
+                const fallbackChime = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+                fallbackChime.volume = 0.4;
+                fallbackChime.play().catch(() => {});
+            });
+        } catch (e) {}
+    };
 
     const fetchData = async () => {
         try {
@@ -29,21 +50,37 @@ export default function PublicDisplay() {
 
             // Fetch live KDS orders for the store
             const orderRes = await apiClient.get(storeId ? `/orders/?store=${storeId}` : '/orders/');
-            // Only show active kitchen orders (exclude delivery/cart states)
-            const orderData = Array.isArray(orderRes.data) ? orderRes.data : [];
-            const activeOrders = orderData.filter(o => ['PAID', 'QUEUED', 'PREPARING', 'READY'].includes(o.state));
+            
+            // Support paginated responses or direct array responses
+            const orderData = Array.isArray(orderRes.data.results) ? orderRes.data.results 
+                             : (Array.isArray(orderRes.data) ? orderRes.data : []);
+                             
+            // Exclude paid/completed orders (only QUEUED, PREPARING, READY are active on TV board)
+            const activeOrders = orderData.filter(o => ['QUEUED', 'PREPARING', 'READY'].includes(o.state));
             setOrders(activeOrders);
+
+            // Audio Chime Logic: Play sound when a new READY order appears
+            const currentReadyOrders = activeOrders.filter(o => o.state === 'READY');
+            const currentReadyIds = new Set(currentReadyOrders.map(o => o.id));
+            if (prevReadyIdsRef.current.size > 0) {
+                const newReadyFound = [...currentReadyIds].some(id => !prevReadyIdsRef.current.has(id));
+                if (newReadyFound) {
+                    playReadyChime();
+                }
+            }
+            prevReadyIdsRef.current = currentReadyIds;
 
             // Fetch ads 
             const adsRes = await apiClient.get(storeId ? `/ads/?store=${storeId}` : '/ads/');
-            const adsData = Array.isArray(adsRes.data) ? adsRes.data : [];
+            const adsData = Array.isArray(adsRes.data.results) ? adsRes.data.results 
+                          : (Array.isArray(adsRes.data) ? adsRes.data : []);
             setAds(adsData);
 
             // Fetch featured products (just taking top 4 for now)
             const prodRes = await apiClient.get(storeId ? `/products/?store=${storeId}` : '/products/');
-            const prodData = Array.isArray(prodRes.data) ? prodRes.data : [];
+            const prodData = Array.isArray(prodRes.data.results) ? prodRes.data.results 
+                           : (Array.isArray(prodRes.data) ? prodRes.data : []);
             if (prodData.length > 0) {
-                // simple deterministic shuffle / slice
                 setFeaturedProducts(prodData.slice(0, 4));
             }
 
@@ -52,6 +89,13 @@ export default function PublicDisplay() {
         }
     };
 
+    // Live clock update
+    useEffect(() => {
+        const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    // Websocket Connection
     useEffect(() => {
         fetchData();
         
@@ -72,7 +116,6 @@ export default function PublicDisplay() {
                 try {
                     const data = JSON.parse(event.data);
                     if (data.type === 'order_update') {
-                        // Real-time trigger for re-fetch
                         fetchData();
                     }
                 } catch (e) { console.error("[TV WS] Parse error", e); }
@@ -91,18 +134,6 @@ export default function PublicDisplay() {
 
         connectWS();
 
-        // Cycle View Logic (10 seconds order board, 10 seconds ad board)
-        const viewInterval = setInterval(() => {
-            setViewMode(prev => {
-                if (prev === 0 && ads.length > 0) {
-                    // Switch to ad mode, increment ad
-                    setCurrentAdIndex(idx => (idx + 1) % ads.length);
-                    return 1;
-                }
-                return 0;
-            });
-        }, 12000);
-
         return () => {
             if (socket) {
                 socket.onclose = null;
@@ -110,9 +141,37 @@ export default function PublicDisplay() {
                 socket.close();
             }
             if (reconnectTimeout) clearTimeout(reconnectTimeout);
-            clearInterval(viewInterval);
         };
-    }, [storeId, ads.length]);
+    }, [storeId]);
+
+    // Active polling fallback only if WS is disconnected
+    useEffect(() => {
+        let poll = null;
+        if (!wsConnected) {
+            console.log("[TV] WS Offline. Falling back to 30s polling.");
+            poll = setInterval(fetchData, 30000);
+        }
+        return () => {
+            if (poll) clearInterval(poll);
+        };
+    }, [wsConnected, storeId]);
+
+    // Cycle View Logic (12 seconds order board, 12 seconds ad board)
+    useEffect(() => {
+        const viewInterval = setInterval(() => {
+            const currentAds = adsRef.current;
+            setViewMode(prev => {
+                if (prev === 0 && currentAds.length > 0) {
+                    // Switch to ad mode, increment ad
+                    setCurrentAdIndex(idx => (idx + 1) % currentAds.length);
+                    return 1;
+                }
+                return 0; // If prev is 1 or no ads, stay/switch to queue board (0)
+            });
+        }, 12000);
+
+        return () => clearInterval(viewInterval);
+    }, []);
 
     const queued = orders.filter(o => o.state === 'QUEUED').slice(0, 6);
     const preparing = orders.filter(o => o.state === 'PREPARING').slice(0, 6);
@@ -136,15 +195,22 @@ export default function PublicDisplay() {
                     </div>
                 </div>
 
-                <div className="text-right">
-                    <motion.div
-                        animate={{ opacity: [0.5, 1, 0.5] }}
-                        transition={{ repeat: Infinity, duration: 2 }}
-                        className="flex items-center gap-2 text-green-400 font-bold text-xl"
-                    >
-                        <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                        LIVE UPDATE
-                    </motion.div>
+                <div className="flex items-center gap-6">
+                    {/* Live Clock */}
+                    <span className="text-2xl font-mono text-slate-300 font-bold bg-dark-950 px-4 py-1.5 rounded-xl border border-white/5 shadow-inner">
+                        {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                    </span>
+
+                    {/* WebSocket Connection Status */}
+                    {wsConnected ? (
+                        <div className="flex items-center gap-1.5 px-3 py-1 bg-green-500/10 border border-green-500/20 text-green-400 rounded-full text-xs font-bold">
+                            <Wifi size={14} className="animate-pulse" /> Live
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-1.5 px-3 py-1 bg-red-500/10 border border-red-500/20 text-red-400 rounded-full text-xs font-bold animate-pulse">
+                            <WifiOff size={14} /> Offline (Polling)
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -165,10 +231,14 @@ export default function PublicDisplay() {
                                     <Clock size={28} className="text-slate-400" />
                                     <h2 className="text-xl md:text-2xl font-bold uppercase tracking-widest text-slate-300">Queued</h2>
                                 </div>
-                                <div className="flex-1 p-6 space-y-4">
+                                <div className="flex-1 p-6 space-y-4 overflow-y-auto custom-scrollbar">
                                     {(Array.isArray(queued) ? queued : []).map(o => (
-                                        <div key={o.id} className="bg-dark-900/50 p-6 rounded-2xl border border-white/5 shadow-lg flex justify-between items-center">
+                                        <div key={o.id} className="bg-dark-900/50 p-6 rounded-2xl border border-white/5 shadow-lg flex justify-between items-center text-left">
                                             <span className="text-4xl font-black font-mono tracking-tighter text-slate-400">#{o.id}</span>
+                                            <div className="text-right">
+                                                <span className="text-lg font-bold text-slate-300 block">{o.customer_initial || 'A.'}</span>
+                                                {o.table_number && <span className="text-xs text-slate-500 font-bold uppercase tracking-wider block mt-0.5">Table {o.table_number}</span>}
+                                            </div>
                                         </div>
                                     ))}
                                     {queued.length === 0 && <p className="text-slate-600 text-center mt-10 text-xl font-bold">No orders queued</p>}
@@ -183,15 +253,18 @@ export default function PublicDisplay() {
                                     </motion.div>
                                     <h2 className="text-xl md:text-2xl font-bold uppercase tracking-widest text-orange-400">Cooking</h2>
                                 </div>
-                                <div className="flex-1 p-6 space-y-4">
+                                <div className="flex-1 p-6 space-y-4 overflow-y-auto custom-scrollbar">
                                     {(Array.isArray(preparing) ? preparing : []).map(o => (
                                         <motion.div
                                             key={o.id}
                                             initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-                                            className="bg-orange-500/5 p-6 rounded-2xl border border-orange-500/20 shadow-lg flex justify-between items-center"
+                                            className="bg-orange-500/5 p-6 rounded-2xl border border-orange-500/20 shadow-lg flex justify-between items-center text-left"
                                         >
                                             <span className="text-4xl font-black font-mono tracking-tighter text-orange-300">#{o.id}</span>
-                                            <span className="text-sm font-bold text-orange-500/60 uppercase tracking-widest animate-pulse">Prep</span>
+                                            <div className="text-right">
+                                                <span className="text-lg font-bold text-orange-400 block">{o.customer_initial || 'A.'}</span>
+                                                {o.table_number && <span className="text-xs text-orange-500/65 font-bold uppercase tracking-wider block mt-0.5">Table {o.table_number}</span>}
+                                            </div>
                                         </motion.div>
                                     ))}
                                     {preparing.length === 0 && <p className="text-slate-600 text-center mt-10 text-xl font-bold">Kitchen is clear</p>}
@@ -204,14 +277,18 @@ export default function PublicDisplay() {
                                     <CheckCircle size={40} className="text-green-500" />
                                     <h2 className="text-2xl md:text-4xl font-black uppercase tracking-widest text-green-400">Please Collect</h2>
                                 </div>
-                                <div className="flex-1 p-6 flex flex-wrap gap-4 align-start content-start">
+                                <div className="flex-1 p-6 flex flex-wrap gap-4 align-start content-start overflow-y-auto custom-scrollbar">
                                     {(Array.isArray(ready) ? ready : []).map(o => (
                                         <motion.div
                                             key={o.id}
                                             initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-                                            className="bg-green-500 w-[47%] py-8 rounded-2xl shadow-[0_10px_30px_rgba(34,197,94,0.3)] flex justify-center items-center"
+                                            className="bg-green-500 w-[47%] py-6 px-4 rounded-2xl shadow-[0_10px_30px_rgba(34,197,94,0.3)] flex justify-between items-center text-left"
                                         >
                                             <span className="text-5xl font-black font-mono tracking-tighter text-dark-900 drop-shadow-md">#{o.id}</span>
+                                            <div className="text-right">
+                                                <span className="text-xl font-black text-dark-950 block">{o.customer_initial || 'A.'}</span>
+                                                {o.table_number && <span className="text-xs text-dark-900/65 font-bold uppercase tracking-wider block mt-0.5">Table {o.table_number}</span>}
+                                            </div>
                                         </motion.div>
                                     ))}
                                     {ready.length === 0 && <p className="text-slate-600 text-center w-full mt-10 text-2xl font-bold">No completed orders</p>}

@@ -17,17 +17,17 @@ export default function TableQRCodes() {
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
-        apiClient.get('/stores/')
+        apiClient.get('/stores/my_store/')
             .then(res => {
-                const stores = Array.isArray(res.data) ? res.data : [];
-                if (stores.length > 0) {
-                    const sid = stores[0].id;
+                const store = res.data;
+                if (store && store.id) {
+                    const sid = store.id;
                     setStoreId(sid);
-                    setStoreName(stores[0].name);
+                    setStoreName(store.name);
                     return apiClient.get(`/stores/${sid}/tables/`);
                 } else {
                     setLoading(false);
-                    return Promise.reject("No stores found.");
+                    return Promise.reject("No store found.");
                 }
             })
             .then(res => {
@@ -147,18 +147,19 @@ export default function TableQRCodes() {
 
             {/* Store-Level QR Codes */}
             {storeQRTypes.length > 0 && (
-                <div className="print:hidden">
-                    <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <div className="print:page-break-after">
+                    <h3 className="text-xl font-bold text-white print:text-black mb-4 flex items-center gap-2 print:hidden">
                         <Store size={20} className="text-slate-400" /> Store QR Codes
                         <span className="text-sm font-normal text-slate-500 ml-2">— use these on flyers, social media, and marketing materials</span>
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 print:gap-12 print:grid-cols-3">
                         {storeQRTypes.map(qr => (
-                            <div key={qr.key} className={`rounded-2xl p-6 border flex flex-col items-center text-center ${qr.bgClass}`}>
-                                <div className={`${qr.badgeClass} px-3 py-1 rounded-lg text-xs font-bold mb-4 flex items-center gap-1`}>
+                            <div key={qr.key} className={`rounded-2xl p-6 border flex flex-col items-center text-center ${qr.bgClass} print:border-slate-300 print:text-black break-inside-avoid`}>
+                                <h3 className="text-xl font-black text-white print:text-black mb-1">{storeName.toUpperCase()}</h3>
+                                <div className={`${qr.badgeClass} px-3 py-1 rounded-lg text-xs font-bold mb-4 flex items-center gap-1 print:bg-slate-100 print:text-black`}>
                                     {qr.icon} {qr.label}
                                 </div>
-                                <div className="bg-white p-3 rounded-xl mb-4 shadow-lg">
+                                <div className="bg-white p-3 rounded-xl mb-4 shadow-lg border-2 border-white/20 print:border-slate-200">
                                     <QRCodeSVG
                                         id={`store-qr-${qr.key}`}
                                         value={qr.url}
@@ -168,10 +169,11 @@ export default function TableQRCodes() {
                                         level="M"
                                     />
                                 </div>
-                                <p className="text-sm text-slate-400 mb-3 leading-relaxed">{qr.desc}</p>
+                                <p className="text-sm text-slate-400 print:text-slate-600 mb-3 leading-relaxed">{qr.desc}</p>
+                                <p className="text-[10px] font-black text-slate-500 font-mono tracking-widest uppercase mt-auto">Powered by Chapuu</p>
                                 <button
                                     onClick={() => downloadQR(`store-qr-${qr.key}`, `${storeName}-${qr.key}-qr`)}
-                                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${qr.textClass} bg-white/5 hover:bg-white/10`}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${qr.textClass} bg-white/5 hover:bg-white/10 print:hidden`}
                                 >
                                     <Download size={14} /> Download PNG
                                 </button>
@@ -232,8 +234,9 @@ export default function TableQRCodes() {
                     const scanUrl = `${storeAppUrl}/scan?store=${storeId}&table=${t.id}`;
                     return (
                         <div key={t.id} className="glass-dark rounded-3xl p-6 border border-white/10 flex flex-col items-center text-center print:border-slate-300 print:shadow-none break-inside-avoid">
+                            <span className="text-[9px] font-black uppercase text-slate-500 print:text-slate-600 tracking-wider mb-1">{storeName}</span>
                             <h3 className="text-2xl font-black text-white print:text-black mb-1">TABLE {t.number}</h3>
-                            <p className="text-sm text-slate-400 print:text-slate-600 mb-4">{t.capacity} Seats</p>
+                            <p className="text-xs text-slate-400 print:text-slate-600 mb-4">{t.capacity} Seats</p>
 
                             <div className="bg-white p-4 rounded-2xl border-2 border-white/20 print:border-slate-200 mb-4 shadow-xl">
                                 <QRCodeSVG
@@ -247,6 +250,7 @@ export default function TableQRCodes() {
                             </div>
 
                             <p className="text-sm font-medium text-primary-400 print:text-slate-800 mb-3">Scan to Order</p>
+                            <span className="text-[9px] font-black uppercase text-slate-500 print:text-slate-600 font-mono tracking-widest leading-none mt-1">Powered by Chapuu</span>
                             <button
                                 onClick={() => downloadQR(`table-qr-${t.id}`, `table-${t.number}-qr`)}
                                 className="flex items-center gap-1 text-xs text-slate-500 hover:text-white transition-colors print:hidden"

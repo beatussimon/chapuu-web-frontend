@@ -55,7 +55,7 @@ export default function ReservationForm() {
         // Fetch best sellers for this store
         apiClient.get(`/products/?store=${selectedStore}`)
             .then(res => {
-                const data = Array.isArray(res.data) ? res.data : [];
+                const data = res.data?.results || (Array.isArray(res.data) ? res.data : []);
                 const active = data.filter(p => p.is_active);
                 setBestSellers(active.slice(0, 4));
             })
@@ -89,21 +89,21 @@ export default function ReservationForm() {
             return;
         }
 
-        const isoTimeStr = `${date}T${time}:00Z`;
+        const isoTimeStr = new Date(`${date}T${time}`).toISOString();
         setIsSubmitting(true);
         const toastId = toast.loading("Checking availability...");
 
         const payload = {
             store: selectedStore,
             reservation_time: isoTimeStr,
-            duration_minutes: duration,
+            duration_minutes: parseInt(duration),
             guest_count: guests
         };
         if (selectedTable) payload.table = selectedTable;
 
         apiClient.post('/reservations/', payload)
             .then(res => {
-                toast.success("Table Confirmed!", { id: toastId });
+                toast.success("Reservation Submitted! Awaiting restaurant confirmation", { id: toastId });
                 setConfirmedRes(res.data);
                 setIsSubmitting(false);
                 if (!wantsPreOrder) {
@@ -161,11 +161,11 @@ export default function ReservationForm() {
                 <div className="glass-dark border border-green-500/20 p-8 md:p-10 rounded-3xl max-w-lg w-full text-center relative overflow-hidden shadow-2xl shadow-green-500/10">
                     <div className="absolute top-0 right-0 w-64 h-64 bg-green-500/10 rounded-full blur-3xl pointer-events-none"></div>
                     <CheckCircle className="w-20 h-20 text-green-500 mx-auto mb-6 relative z-10" />
-                    <h2 className="text-3xl font-black mb-4 z-10 text-white relative">Table Confirmed!</h2>
+                    <h2 className="text-3xl font-black mb-4 z-10 text-white relative">Reservation Submitted!</h2>
                     <p className="text-slate-300 mb-8 z-10 relative">
                         {wantsPreOrder
-                            ? "Your table is secured. Would you like to order food now so it's ready when you arrive?"
-                            : "Your table is secured! We'll see you there. Redirecting..."}
+                            ? "Your reservation is submitted and awaiting restaurant confirmation. Would you like to order food now so it's ready when you arrive?"
+                            : "Your reservation is submitted and awaiting restaurant confirmation! We'll see you there. Redirecting..."}
                     </p>
 
                     <div className="bg-dark-900/50 z-10 relative border border-white/5 rounded-2xl p-6 text-left mb-8 space-y-4 shadow-inner">

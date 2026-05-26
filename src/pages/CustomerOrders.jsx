@@ -5,15 +5,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ShoppingBag, ArrowRight, ArrowLeft, Calendar, Star, X, Clock, AlertCircle } from 'lucide-react';
 import { useCurrency } from '../utils/useCurrency';
 import toast from 'react-hot-toast';
+import useInfiniteScroll from '../hooks/useInfiniteScroll';
+import InfiniteScrollTrigger from '../components/InfiniteScrollTrigger';
 
 export default function CustomerOrders() {
-    const [allOrders, setAllOrders] = useState([]);
-    const [displayedOrders, setDisplayedOrders] = useState([]);
-    const [reservations, setReservations] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [page, setPage] = useState(1);
     const [activeTab, setActiveTab] = useState('ORDERS'); // 'ORDERS' or 'RESERVATIONS'
-    const ITEMS_PER_PAGE = 10;
 
     // Reschedule state
     const [rescheduleTarget, setRescheduleTarget] = useState(null);
@@ -21,26 +17,26 @@ export default function CustomerOrders() {
     const navigate = useNavigate();
     const { formatPrice } = useCurrency();
 
-    const fetchData = (showLoading = true) => {
-        if (showLoading) setLoading(true);
-        Promise.all([
-            apiClient.get('/orders/'),
-            apiClient.get('/reservations/')
-        ]).then(([ordersRes, resRes]) => {
-            const ordersData = Array.isArray(ordersRes.data) ? ordersRes.data : [];
-            const sortedOrders = [...ordersData].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-            setAllOrders(sortedOrders);
-            setDisplayedOrders(sortedOrders.slice(0, ITEMS_PER_PAGE));
-            
-            const resData = Array.isArray(resRes.data) ? resRes.data : [];
-            const sortedRes = [...resData].sort((a, b) => new Date(b.reservation_time) - new Date(a.reservation_time));
-            setReservations(sortedRes);
-            setLoading(false);
-        }).catch(err => {
-            console.error("Failed to load data", err);
-            setLoading(false);
-        });
-    }
+    // Use infinite scroll hooks
+    const {
+        items: orders,
+        loadMore: loadMoreOrders,
+        hasMore: hasMoreOrders,
+        isLoading: ordersLoadingInit,
+        isLoadingMore: ordersLoadingMore,
+        refresh: refreshOrders
+    } = useInfiniteScroll('/orders/');
+
+    const {
+        items: reservations,
+        loadMore: loadMoreReservations,
+        hasMore: hasMoreReservations,
+        isLoading: reservationsLoadingInit,
+        isLoadingMore: reservationsLoadingMore,
+        refresh: refreshReservations
+    } = useInfiniteScroll('/reservations/');
+
+    const loading = activeTab === 'ORDERS' ? ordersLoadingInit : reservationsLoadingInit;
 
     const handleCancelReservation = (id) => {
         if (!window.confirm("Are you sure you want to cancel this reservation? Any linked food orders will also be cancelled.")) return;
@@ -49,37 +45,26 @@ export default function CustomerOrders() {
         apiClient.post(`/reservations/${id}/cancel/`)
             .then(() => {
                 toast.success("Reservation cancelled.", { id: tid });
-                fetchData(false);
+                refreshReservations();
             })
             .catch(err => {
                 toast.error(err.response?.data?.error || "Failed to cancel.", { id: tid });
             });
     }
 
+    // Polling refresh effect - only runs if not loading more to avoid page reset
     useEffect(() => {
-        fetchData();
-        const interval = setInterval(() => fetchData(false), 30000);
+        const interval = setInterval(() => {
+            if (activeTab === 'ORDERS') {
+                if (!ordersLoadingMore) refreshOrders();
+            } else {
+                if (!reservationsLoadingMore) refreshReservations();
+            }
+        }, 30000);
         return () => clearInterval(interval);
-    }, []);
+    }, [activeTab, ordersLoadingMore, reservationsLoadingMore, refreshOrders, refreshReservations]);
 
-    // Intersection Observer for Infinite Scroll
-    const handleObserver = (entities) => {
-        const target = entities[0];
-        if (target.isIntersecting && displayedOrders.length < allOrders.length) {
-            const nextPage = page + 1;
-            setPage(nextPage);
-            setDisplayedOrders(allOrders.slice(0, nextPage * ITEMS_PER_PAGE));
-        }
-    };
-
-    useEffect(() => {
-        const observer = new IntersectionObserver(handleObserver, { root: null, rootMargin: '20px', threshold: 1.0 });
-        const loaderNode = document.getElementById('scroll-loader');
-        if (loaderNode) observer.observe(loaderNode);
-        return () => { if (loaderNode) observer.unobserve(loaderNode); };
-    }, [displayedOrders, allOrders, page, activeTab]);
-
-    if (loading && allOrders.length === 0 && reservations.length === 0) {
+    if (loading && orders.length === 0 && reservations.length === 0) {
         return (
             <div className="w-full max-w-4xl mx-auto py-4 md:py-8 text-white px-2 md:px-4 animate-pulse">
                 {/* Header Skeleton */}
@@ -143,7 +128,7 @@ export default function CustomerOrders() {
 
             {activeTab === 'ORDERS' && (
                 <>
-                    {displayedOrders.length === 0 ? (
+                    {orders.length === 0 ? (
                         <div className="glass-dark border border-white/10 rounded-3xl p-8 md:p-12 text-center shadow-xl">
                             <ShoppingBag size={40} className="mx-auto text-slate-600 mb-4" />
                             <h2 className="text-lg md:text-xl font-bold mb-2">No orders yet</h2>
@@ -153,9 +138,10 @@ export default function CustomerOrders() {
                             </Link>
                         </div>
                     ) : (
-                        <div className="space-y-4">
+                        <>
+                            <div className="space-y-4">
                             <AnimatePresence>
-                                {displayedOrders.map(order => (
+                                {orders.map(order => (
                                     <motion.div
                                         initial={{ opacity: 0, y: 10 }}
                                         animate={{ opacity: 1, y: 0 }}
@@ -212,7 +198,14 @@ export default function CustomerOrders() {
                                 ))}
                             </AnimatePresence>
                         </div>
-                    )}
+                        <InfiniteScrollTrigger
+                            loadMore={loadMoreOrders}
+                            hasMore={hasMoreOrders}
+                            isLoading={ordersLoadingInit}
+                            isLoadingMore={ordersLoadingMore}
+                        />
+                    </>
+                )}
                 </>
             )}
 
@@ -228,7 +221,8 @@ export default function CustomerOrders() {
                             </Link>
                         </div>
                     ) : (
-                        <div className="space-y-4">
+                        <>
+                            <div className="space-y-4">
                             <AnimatePresence>
                                 {reservations.map(res => (
                                     <motion.div
@@ -314,7 +308,14 @@ export default function CustomerOrders() {
                                 ))}
                             </AnimatePresence>
                         </div>
-                    )}
+                        <InfiniteScrollTrigger
+                            loadMore={loadMoreReservations}
+                            hasMore={hasMoreReservations}
+                            isLoading={reservationsLoadingInit}
+                            isLoadingMore={reservationsLoadingMore}
+                        />
+                    </>
+                )}
                 </>
             )}
 
@@ -323,7 +324,7 @@ export default function CustomerOrders() {
                 onClose={() => setRescheduleTarget(null)} 
                 onSuccess={() => {
                     setRescheduleTarget(null);
-                    fetchData(false);
+                    refreshReservations();
                 }}
             />
         </div>

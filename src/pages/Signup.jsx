@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAppStore } from '../store/useStore';
 import { Lock, User, Loader2, Utensils, Phone, Mail, Scale, ShieldAlert, FileText, CheckCircle, X, ChevronRight, ChevronLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -27,6 +27,7 @@ export default function Signup() {
     const scrollContainerRef = useRef(null);
     const login = useAppStore(state => state.login);
     const navigate = useNavigate();
+    const location = useLocation();
 
     // Scroll tracker inside the T&C modal
     const handleTermsScroll = (e) => {
@@ -125,7 +126,8 @@ export default function Signup() {
             toast.success('Account created! Logging you in...', { id: toastId });
 
             await login(username, password);
-            navigate('/menu');
+            const destination = location.state?.from || '/menu';
+            navigate(destination);
 
         } catch (error) {
             const data = error.response?.data;

@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { 
     Shield, Store, Users, UserPlus, Home, Save, BarChart3, TrendingUp, 
     DollarSign, Bell, Plus, Edit2, Trash2, Check, X, Ban, Power, 
     Phone, Mail, MessageSquare, AlertTriangle, RefreshCw, Search,
-    Award, Zap, Coins, Star, LayoutGrid, MapPin, Navigation, Compass
+    Award, Zap, Coins, Star, LayoutGrid, MapPin, Navigation, Compass, Gift, Printer,
+    Lightbulb
 } from 'lucide-react';
 import { 
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, 
@@ -14,6 +16,7 @@ import toast from 'react-hot-toast';
 import apiClient from '../api/client';
 import { useCurrency } from '../utils/useCurrency';
 import { useAppStore } from '../store/useStore';
+import PaginationControls from '../components/PaginationControls';
 const formatDateTimeLocal = (isoString) => {
     if (!isoString) return '';
     const date = new Date(isoString);
@@ -24,9 +27,21 @@ const formatDateTimeLocal = (isoString) => {
 
 export default function AdminDashboard() {
     const [stores, setStores] = useState([]);
+    const [storesPage, setStoresPage] = useState(1);
+    const [storesPagination, setStoresPagination] = useState({ count: 0, totalPages: 1 });
+    const [storesLoading, setStoresLoading] = useState(false);
+
     const [showGridModal, setShowGridModal] = useState(false);
     const [users, setUsers] = useState([]);
+    const [usersPage, setUsersPage] = useState(1);
+    const [usersPagination, setUsersPagination] = useState({ count: 0, totalPages: 1 });
+    const [usersLoading, setUsersLoading] = useState(false);
+
     const [orders, setOrders] = useState([]);
+    const [ordersPage, setOrdersPage] = useState(1);
+    const [ordersPagination, setOrdersPagination] = useState({ count: 0, totalPages: 1 });
+    const [ordersLoading, setOrdersLoading] = useState(false);
+
     const [globalPaymentMethods, setGlobalPaymentMethods] = useState([]);
     const [selectedOwner, setSelectedOwner] = useState('');
     const { formatPrice } = useCurrency();
@@ -181,19 +196,67 @@ export default function AdminDashboard() {
     // Actions loaders
     const [storeLockLoading, setStoreLockLoading] = useState(null);
 
-    const fetchData = useCallback(() => {
-        apiClient.get('/stores/')
-            .then(res => setStores(Array.isArray(res.data) ? res.data : []))
-            .catch(err => console.error("Failed to load stores", err));
+    const fetchStores = useCallback(() => {
+        setStoresLoading(true);
+        apiClient.get(`/stores/?page=${storesPage}`)
+            .then(res => {
+                const data = res.data;
+                if (data && typeof data === 'object' && 'results' in data) {
+                    setStores(Array.isArray(data.results) ? data.results : []);
+                    setStoresPagination({
+                        count: data.count || 0,
+                        totalPages: Math.ceil((data.count || 0) / 50)
+                    });
+                } else {
+                    setStores(Array.isArray(data) ? data : []);
+                    setStoresPagination({ count: data.length || 0, totalPages: 1 });
+                }
+            })
+            .catch(err => console.error("Failed to load stores", err))
+            .finally(() => setStoresLoading(false));
+    }, [storesPage]);
 
-        apiClient.get('/users/')
-            .then(res => setUsers(Array.isArray(res.data) ? res.data : []))
-            .catch(err => console.error("Failed to load users", err));
+    const fetchUsers = useCallback(() => {
+        setUsersLoading(true);
+        apiClient.get(`/users/?page=${usersPage}&search=${searchUser}`)
+            .then(res => {
+                const data = res.data;
+                if (data && typeof data === 'object' && 'results' in data) {
+                    setUsers(Array.isArray(data.results) ? data.results : []);
+                    setUsersPagination({
+                        count: data.count || 0,
+                        totalPages: Math.ceil((data.count || 0) / 50)
+                    });
+                } else {
+                    setUsers(Array.isArray(data) ? data : []);
+                    setUsersPagination({ count: data.length || 0, totalPages: 1 });
+                }
+            })
+            .catch(err => console.error("Failed to load users", err))
+            .finally(() => setUsersLoading(false));
+    }, [usersPage, searchUser]);
 
-        apiClient.get('/orders/')
-            .then(res => setOrders(Array.isArray(res.data) ? res.data : []))
-            .catch(err => console.error("Failed to load orders", err));
+    const fetchOrders = useCallback(() => {
+        setOrdersLoading(true);
+        apiClient.get(`/orders/?page=${ordersPage}&is_locked=true`)
+            .then(res => {
+                const data = res.data;
+                if (data && typeof data === 'object' && 'results' in data) {
+                    setOrders(Array.isArray(data.results) ? data.results : []);
+                    setOrdersPagination({
+                        count: data.count || 0,
+                        totalPages: Math.ceil((data.count || 0) / 20)
+                    });
+                } else {
+                    setOrders(Array.isArray(data) ? data : []);
+                    setOrdersPagination({ count: data.length || 0, totalPages: 1 });
+                }
+            })
+            .catch(err => console.error("Failed to load orders", err))
+            .finally(() => setOrdersLoading(false));
+    }, [ordersPage]);
 
+    const fetchGlobalAndAnalytics = useCallback(() => {
         apiClient.get('/global-payment-methods/')
             .then(res => setGlobalPaymentMethods(Array.isArray(res.data) ? res.data : []))
             .catch(err => console.error("Failed to load global payment methods", err));
@@ -208,6 +271,13 @@ export default function AdminDashboard() {
                 setAnalyticsLoading(false);
             });
     }, []);
+
+    const fetchData = useCallback(() => {
+        fetchStores();
+        fetchUsers();
+        fetchOrders();
+        fetchGlobalAndAnalytics();
+    }, [fetchStores, fetchUsers, fetchOrders, fetchGlobalAndAnalytics]);
 
     const fetchBillingData = useCallback(() => {
         setLoadingBilling(true);
@@ -244,16 +314,32 @@ export default function AdminDashboard() {
     }, [billingPage, billingSearch]);
 
     useEffect(() => {
-        fetchData();
-        const interval = setInterval(fetchData, 45000);
+        fetchStores();
+    }, [fetchStores]);
+
+    useEffect(() => {
+        fetchUsers();
+    }, [fetchUsers]);
+
+    useEffect(() => {
+        fetchOrders();
+    }, [fetchOrders]);
+
+    useEffect(() => {
+        fetchGlobalAndAnalytics();
+        const interval = setInterval(fetchGlobalAndAnalytics, 45000);
         return () => clearInterval(interval);
-    }, [fetchData]);
+    }, [fetchGlobalAndAnalytics]);
 
     useEffect(() => {
         fetchBillingData();
         const interval = setInterval(fetchBillingData, 45000);
         return () => clearInterval(interval);
     }, [fetchBillingData]);
+
+    useEffect(() => {
+        setUsersPage(1);
+    }, [searchUser]);
 
     useEffect(() => {
         setIsMounted(true);
@@ -568,7 +654,7 @@ export default function AdminDashboard() {
 
 
     // Search and filter users list
-    const filteredUsers = users.filter(u => u.username.toLowerCase().includes(searchUser.toLowerCase()));
+    const filteredUsers = users;
 
     return (
         <div className="w-full min-h-screen py-4 md:py-6 px-2 md:px-6 text-white bg-dark-950 overflow-x-hidden">
@@ -751,7 +837,7 @@ export default function AdminDashboard() {
                                     <p className="text-xs text-slate-400 mt-1">Order stage distributions breakdown</p>
                                 </div>
                                 <span className="text-xs bg-dark-900 border border-white/5 text-slate-400 px-3 py-1.5 rounded-full font-semibold">
-                                    Total: {orders.length} orders
+                                    Total: {ordersPagination.count} orders
                                 </span>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-6">
@@ -895,7 +981,7 @@ export default function AdminDashboard() {
                                         <div className="space-y-2.5 max-h-[180px] overflow-y-auto pr-1 custom-scrollbar">
                                             {platformAnalytics.insights && platformAnalytics.insights.map((insight, idx) => (
                                                 <div key={idx} className="flex gap-2 text-xs text-slate-300 bg-dark-900/50 p-2.5 border border-white/5 rounded-xl leading-relaxed">
-                                                    <span className="text-primary-400 select-none font-bold">💡</span>
+                                                    <Lightbulb size={12} className="text-primary-400 shrink-0 mt-0.5" />
                                                     <span>{insight}</span>
                                                 </div>
                                             ))}
@@ -992,8 +1078,9 @@ export default function AdminDashboard() {
                                     <label className="block text-xs text-slate-400 mb-1">Address / Location</label>
                                     <div className="flex gap-2">
                                         <input type="text" required placeholder="Address / location" value={newStoreAddress} onChange={e => setNewStoreAddress(e.target.value)} className="flex-1 bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary-500 placeholder-slate-600 transition-all text-white" />
-                                        <button type="button" onClick={handleGetNewStoreLocation} className="px-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs font-bold text-slate-300 hover:text-white transition-colors cursor-pointer flex items-center gap-1">
-                                            📍 Locate
+                                        <button type="button" onClick={handleGetNewStoreLocation} className="px-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs font-bold text-slate-300 hover:text-white transition-colors cursor-pointer flex items-center gap-1.5">
+                                            <MapPin size={12} className="text-primary-400 shrink-0" />
+                                            <span>Locate</span>
                                         </button>
                                     </div>
                                     {(newLatitude || newLongitude) && (
@@ -1054,20 +1141,20 @@ export default function AdminDashboard() {
                                             
                                             if (now >= start && now <= end) {
                                                 return (
-                                                    <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded mb-2 self-start animate-pulse">
-                                                        🎁 Trial (Active)
+                                                    <span className="inline-flex items-center gap-1.5 text-[9px] font-black uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded mb-2 self-start animate-pulse">
+                                                        Trial (Active)
                                                     </span>
                                                 );
                                             } else if (now < start) {
                                                 return (
-                                                    <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-2 py-0.5 rounded mb-2 self-start">
-                                                        🎁 Trial (Scheduled)
+                                                    <span className="inline-flex items-center gap-1.5 text-[9px] font-black uppercase bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-2 py-0.5 rounded mb-2 self-start">
+                                                        Trial (Scheduled)
                                                     </span>
                                                 );
                                             } else {
                                                 return (
-                                                    <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase bg-white/5 text-slate-500 border border-white/5 px-2 py-0.5 rounded mb-2 self-start">
-                                                        🎁 Trial (Expired)
+                                                    <span className="inline-flex items-center gap-1.5 text-[9px] font-black uppercase bg-white/5 text-slate-500 border border-white/5 px-2 py-0.5 rounded mb-2 self-start">
+                                                        Trial (Expired)
                                                     </span>
                                                 );
                                             }
@@ -1112,11 +1199,25 @@ export default function AdminDashboard() {
                                             >
                                                 Edit
                                             </button>
+
+                                            <Link 
+                                                to={`/admin/print-branding/${s.id}`}
+                                                className="px-2.5 py-1.5 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-lg hover:bg-purple-500 hover:text-white transition-all text-xs font-bold flex items-center gap-1.5"
+                                                title="Print Branded Packaging Templates"
+                                            >
+                                                <Printer size={12} /> Packaging
+                                            </Link>
                                         </div>
                                     </div>
                                 );
                             })}
                         </div>
+                        <PaginationControls
+                            page={storesPage}
+                            totalPages={storesPagination.totalPages}
+                            onPageChange={setStoresPage}
+                            isLoading={storesLoading}
+                        />
                     </div>
                 </div>
             )}
@@ -1181,7 +1282,7 @@ export default function AdminDashboard() {
                             <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="glass-dark border border-white/5 rounded-3xl p-6 shadow-xl xl:col-span-1 flex flex-col justify-center items-center text-center py-12 relative overflow-hidden">
                                 <div className="absolute top-0 right-0 w-24 h-24 bg-red-500/5 rounded-full blur-2xl pointer-events-none"></div>
                                 <Shield className="text-slate-500 mb-3" size={40} />
-                                <h3 className="text-sm font-bold text-white uppercase tracking-tight">Payments Form Guarded 🔒</h3>
+                                <h3 className="text-sm font-bold text-white uppercase tracking-tight">Payments Form Guarded</h3>
                                 <p className="text-xs text-slate-500 leading-relaxed max-w-sm mt-1.5">
                                     Registering or modifying global payment method templates is strictly restricted to the Platform Owner (Superuser).
                                 </p>
@@ -1288,7 +1389,7 @@ export default function AdminDashboard() {
                                                 {(u.role === 'ADMIN' || u.role === 'SUPERUSER') && userRole !== 'SUPERUSER' ? (
                                                     <div className="flex items-center gap-1.5 text-slate-400 bg-white/5 border border-white/5 px-3 py-2 rounded-lg text-sm w-full max-w-[150px] cursor-not-allowed" title="Editing Admin/Superuser requires Platform Owner role">
                                                         <span className="w-2 h-2 rounded-full bg-purple-500"></span>
-                                                        <span>{u.role} 🔒</span>
+                                                        <span>{u.role}</span>
                                                     </div>
                                                 ) : (
                                                     <select 
@@ -1335,6 +1436,12 @@ export default function AdminDashboard() {
                             </table>
                         </div>
                     </div>
+                    <PaginationControls
+                        page={usersPage}
+                        totalPages={usersPagination.totalPages}
+                        onPageChange={setUsersPage}
+                        isLoading={usersLoading}
+                    />
                 </div>
             )}
  
@@ -1435,6 +1542,12 @@ export default function AdminDashboard() {
                                             </div>
                                         </div>
                                     ))}
+                                    <PaginationControls
+                                        page={ordersPage}
+                                        totalPages={ordersPagination.totalPages}
+                                        onPageChange={setOrdersPage}
+                                        isLoading={ordersLoading}
+                                    />
                                 </div>
                             ) : (
                                 <div className="bg-dark-950/60 border border-white/5 p-8 rounded-2xl flex flex-col items-center justify-center text-center">
@@ -1457,7 +1570,7 @@ export default function AdminDashboard() {
                             <div className="mb-6 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center gap-3 text-amber-300 backdrop-blur-md">
                                 <AlertTriangle size={20} className="shrink-0 animate-pulse" />
                                 <div className="text-xs font-semibold leading-relaxed">
-                                    <span className="font-bold text-white block mb-0.5">Platform Settings Locked 🔒</span>
+                                    <span className="font-bold text-white block mb-0.5">Platform Settings Locked</span>
                                     Only the Platform Owner (Superuser) can modify support contacts or safety parameters. Regular admins have read-only access.
                                 </div>
                             </div>
@@ -2024,8 +2137,9 @@ export default function AdminDashboard() {
                                     <label className="block text-xs text-slate-400 mb-1">Location</label>
                                     <div className="flex gap-2">
                                         <input type="text" required value={editStoreData.location} onChange={e => setEditStoreData({ ...editStoreData, location: e.target.value })} className="flex-1 bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none text-white transition-all" />
-                                        <button type="button" onClick={handleGetEditStoreLocation} className="px-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs font-bold text-slate-300 hover:text-white transition-colors cursor-pointer flex items-center gap-1">
-                                            📍 Locate
+                                        <button type="button" onClick={handleGetEditStoreLocation} className="px-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs font-bold text-slate-300 hover:text-white transition-colors cursor-pointer flex items-center gap-1.5">
+                                            <MapPin size={12} className="text-primary-400 shrink-0" />
+                                            <span>Locate</span>
                                         </button>
                                     </div>
                                 </div>

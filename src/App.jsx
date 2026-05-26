@@ -29,10 +29,12 @@ const ReservationManager = lazy(() => import('./pages/ReservationManager'));
 const TableQRCodes = lazy(() => import('./pages/TableQRCodes'));
 const PublicDisplay = lazy(() => import('./pages/PublicDisplay'));
 const CustomerProfile = lazy(() => import('./pages/CustomerProfile'));
+const OrderVerification = lazy(() => import('./pages/OrderVerification'));
+const StoreBrandingPrint = lazy(() => import('./pages/admin/StoreBrandingPrint'));
 
 import { Utensils, LayoutDashboard, LogOut, ShoppingBag, TerminalSquare, QrCode, Calendar, Package, Shield, Store, Menu, X, Navigation, Tv, BarChart3, Compass, UtensilsCrossed, HelpCircle, ListOrdered, ShoppingCart, TrendingUp, LayoutGrid, User } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
-import { setStoreResetFn } from './api/client';
+import apiClient, { setStoreResetFn } from './api/client';
 
 function ProtectedRoute({ children, role }) {
   const userRole = useAppStore(state => state.userRole);
@@ -44,7 +46,7 @@ function ProtectedRoute({ children, role }) {
   return children;
 }
 
-function TopNavigation() {
+function TopNavigation({ storeId }) {
   const { token, userRole, clearAuth, cart } = useAppStore();
   const navigate = useNavigate();
   const location = useLocation();
@@ -99,7 +101,7 @@ function TopNavigation() {
                     <Link to="/seller/qrcodes" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0"><QrCode size={16} /><span className="text-sm font-medium">QRs</span></Link>
                   </>
                 )}
-                <Link to="/tv/1" target="_blank" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0"><Tv size={16} /><span className="text-sm font-medium">TV</span></Link>
+                <Link to={`/tv/${storeId || 1}`} target="_blank" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0"><Tv size={16} /><span className="text-sm font-medium">TV</span></Link>
                 {['ADMIN', 'SUPERUSER'].includes(userRole) && (
                   <Link to="/admin" className="flex items-center gap-2 px-3 py-2 text-purple-400 hover:text-purple-300 transition-colors ml-2 flex-shrink-0"><Shield size={16} /><span className="text-sm font-medium">Admin</span></Link>
                 )}
@@ -186,7 +188,7 @@ const getBottomNavPaths = (role) => {
   return [];
 };
 
-const getDrawerLinks = (userRole) => {
+const getDrawerLinks = (userRole, storeId) => {
   const links = [];
   if (!userRole) return links;
 
@@ -240,7 +242,7 @@ const getDrawerLinks = (userRole) => {
         description: 'Generate scan-to-order codes'
       },
       {
-        path: '/tv/1',
+        path: `/tv/${storeId || 1}`,
         label: 'Public TV Display',
         icon: <Tv className="text-teal-400" size={20} />,
         description: 'Real-time kitchen order board'
@@ -257,7 +259,7 @@ const getDrawerLinks = (userRole) => {
           description: 'Live kitchen orders & prep queue'
         },
         {
-          path: '/tv/1',
+          path: `/tv/${storeId || 1}`,
           label: 'TV Display',
           icon: <Tv className="text-teal-400" size={20} />,
           description: 'Public kitchen order board'
@@ -354,7 +356,7 @@ function BottomNav({ moreMenuOpen, onToggleMore }) {
   );
 }
 
-function BottomDrawer({ isOpen, onClose }) {
+function BottomDrawer({ isOpen, onClose, storeId }) {
   const { userRole, clearAuth } = useAppStore();
   const navigate = useNavigate();
   const location = useLocation();
@@ -372,7 +374,7 @@ function BottomDrawer({ isOpen, onClose }) {
     navigate('/login');
   };
 
-  const links = getDrawerLinks(userRole);
+  const links = getDrawerLinks(userRole, storeId);
   if (links.length === 0) return null;
 
   return (
@@ -454,68 +456,94 @@ function BottomDrawer({ isOpen, onClose }) {
   );
 }
 
-function App() {
+function AppLayout() {
   const clearAuth = useAppStore(state => state.clearAuth);
+  const token = useAppStore(state => state.token);
+  const userRole = useAppStore(state => state.userRole);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const [storeId, setStoreId] = useState(null);
+  const location = useLocation();
 
   useEffect(() => {
     setStoreResetFn(clearAuth);
   }, [clearAuth]);
 
+  useEffect(() => {
+    if (token && ['SELLER', 'CHEF', 'DELIVERY', 'ACCOUNTANT', 'ADMIN', 'SUPERUSER'].includes(userRole)) {
+      apiClient.get('/stores/my_store/')
+        .then(res => {
+          if (res.data && res.data.id) {
+            setStoreId(res.data.id);
+          }
+        })
+        .catch(err => console.error("Failed to fetch my store", err));
+    } else {
+      setStoreId(null);
+    }
+  }, [token, userRole, clearAuth]);
+
+  const isPrintBrandingPage = location.pathname.startsWith('/admin/print-branding/');
+
   return (
-    <Router>
-      <div className="flex flex-col min-h-screen">
-        <TopNavigation />
-        <Toaster position="bottom-right" toastOptions={{
-          style: { background: '#1e293b', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' },
-          success: { iconTheme: { primary: '#22c55e', secondary: '#fff' } }
-        }} />
+    <div className="flex flex-col min-h-screen">
+      {!isPrintBrandingPage && <TopNavigation storeId={storeId} />}
+      <Toaster position="bottom-right" toastOptions={{
+        style: { background: '#1e293b', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' },
+        success: { iconTheme: { primary: '#22c55e', secondary: '#fff' } }
+      }} />
 
-        <main className="flex-1 w-full max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8 pb-20 lg:pb-8">
-          <Suspense fallback={
-            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-              <div className="w-10 h-10 border-3 border-primary-500/30 border-t-primary-500 rounded-full animate-spin" />
-              <p className="text-sm text-slate-400 animate-pulse">Loading...</p>
-            </div>
-          }>
-            <Routes>
-              {/* Public App Routes */}
-              <Route path="/" element={<DiscoverPage />} />
-              <Route path="/faq" element={<FAQ />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Signup />} />
-              <Route path="/terms" element={<TermsAndConditions />} />
-              <Route path="/tv/:storeId?" element={<PublicDisplay />} />
+      <main className={isPrintBrandingPage ? "flex-1 w-full" : "flex-1 w-full max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8 pb-20 lg:pb-8"}>
+        <Suspense fallback={
+          <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+            <div className="w-10 h-10 border-3 border-primary-500/30 border-t-primary-500 rounded-full animate-spin" />
+            <p className="text-sm text-slate-400 animate-pulse">Loading...</p>
+          </div>
+        }>
+          <Routes>
+            {/* Public App Routes */}
+            <Route path="/" element={<DiscoverPage />} />
+            <Route path="/faq" element={<FAQ />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Signup />} />
+            <Route path="/terms" element={<TermsAndConditions />} />
+            <Route path="/tv/:storeId?" element={<PublicDisplay />} />
+            <Route path="/verify/order/:id" element={<OrderVerification />} />
 
-              {/* Customer Routes (Accessible by any authenticated user) */}
-              <Route path="/stores" element={<ProtectedRoute><StoreSelection /></ProtectedRoute>} />
-              <Route path="/menu" element={<ProtectedRoute><CustomerDashboard /></ProtectedRoute>} />
-              <Route path="/cart" element={<ProtectedRoute><GlobalCart /></ProtectedRoute>} />
-              <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
-              <Route path="/orders" element={<ProtectedRoute><CustomerOrders /></ProtectedRoute>} />
-              <Route path="/order/confirmation/:id" element={<ProtectedRoute><OrderConfirmation /></ProtectedRoute>} />
-              <Route path="/order/track/:id" element={<ProtectedRoute><OrderTracker /></ProtectedRoute>} />
-              <Route path="/scan" element={<ProtectedRoute><ScanHandler /></ProtectedRoute>} />
-              <Route path="/reserve" element={<ProtectedRoute><ReservationForm /></ProtectedRoute>} />
-              <Route path="/profile" element={<ProtectedRoute><CustomerProfile /></ProtectedRoute>} />
-              <Route path="/seller" element={<ProtectedRoute><SellerDashboard /></ProtectedRoute>} />
-              <Route path="/seller/menu" element={<ProtectedRoute role="SELLER"><MenuBuilder /></ProtectedRoute>} />
-              <Route path="/seller/reservations" element={<ProtectedRoute role="SELLER"><ReservationManager /></ProtectedRoute>} />
-              <Route path="/seller/inventory" element={<ProtectedRoute role="SELLER"><InventoryDashboard /></ProtectedRoute>} />
-              <Route path="/seller/analytics" element={<ProtectedRoute role="SELLER"><SellerAnalytics /></ProtectedRoute>} />
-              <Route path="/seller/qrcodes" element={<ProtectedRoute role="SELLER"><TableQRCodes /></ProtectedRoute>} />
-              <Route path="/admin" element={<ProtectedRoute role="ADMIN"><AdminDashboard /></ProtectedRoute>} />
+            {/* Customer Routes (Accessible by any authenticated user) */}
+            <Route path="/stores" element={<ProtectedRoute><StoreSelection /></ProtectedRoute>} />
+            <Route path="/menu" element={<ProtectedRoute><CustomerDashboard /></ProtectedRoute>} />
+            <Route path="/cart" element={<ProtectedRoute><GlobalCart /></ProtectedRoute>} />
+            <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
+            <Route path="/orders" element={<ProtectedRoute><CustomerOrders /></ProtectedRoute>} />
+            <Route path="/order/confirmation/:id" element={<ProtectedRoute><OrderConfirmation /></ProtectedRoute>} />
+            <Route path="/order/track/:id" element={<ProtectedRoute><OrderTracker /></ProtectedRoute>} />
+            <Route path="/scan" element={<ProtectedRoute><ScanHandler /></ProtectedRoute>} />
+            <Route path="/reserve" element={<ProtectedRoute><ReservationForm /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><CustomerProfile /></ProtectedRoute>} />
+            <Route path="/seller" element={<ProtectedRoute><SellerDashboard /></ProtectedRoute>} />
+            <Route path="/seller/menu" element={<ProtectedRoute role="SELLER"><MenuBuilder /></ProtectedRoute>} />
+            <Route path="/seller/reservations" element={<ProtectedRoute role="SELLER"><ReservationManager /></ProtectedRoute>} />
+            <Route path="/seller/inventory" element={<ProtectedRoute role="SELLER"><InventoryDashboard /></ProtectedRoute>} />
+            <Route path="/seller/analytics" element={<ProtectedRoute role="SELLER"><SellerAnalytics /></ProtectedRoute>} />
+            <Route path="/seller/qrcodes" element={<ProtectedRoute role="SELLER"><TableQRCodes /></ProtectedRoute>} />
+            <Route path="/admin" element={<ProtectedRoute role="ADMIN"><AdminDashboard /></ProtectedRoute>} />
+            <Route path="/admin/print-branding/:id" element={<ProtectedRoute role="ADMIN"><StoreBrandingPrint /></ProtectedRoute>} />
 
-              {/* Delivery Routes */}
-              <Route path="/delivery" element={<ProtectedRoute role="DELIVERY"><DeliveryDashboard /></ProtectedRoute>} />
-            </Routes>
-          </Suspense>
-        </main>
-        <BottomNav moreMenuOpen={moreMenuOpen} onToggleMore={() => setMoreMenuOpen(!moreMenuOpen)} />
-        <BottomDrawer isOpen={moreMenuOpen} onClose={() => setMoreMenuOpen(false)} />
-      </div>
-    </Router>
+            {/* Delivery Routes */}
+            <Route path="/delivery" element={<ProtectedRoute role="DELIVERY"><DeliveryDashboard /></ProtectedRoute>} />
+          </Routes>
+        </Suspense>
+      </main>
+      {!isPrintBrandingPage && <BottomNav moreMenuOpen={moreMenuOpen} onToggleMore={() => setMoreMenuOpen(!moreMenuOpen)} />}
+      {!isPrintBrandingPage && <BottomDrawer isOpen={moreMenuOpen} onClose={() => setMoreMenuOpen(false)} storeId={storeId} />}
+    </div>
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <Router>
+      <AppLayout />
+    </Router>
+  );
+}

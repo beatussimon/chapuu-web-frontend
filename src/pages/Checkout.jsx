@@ -516,10 +516,20 @@ export default function Checkout() {
                                                 <button
                                                     type="button"
                                                     onClick={triggerGeolocation}
-                                                    className="text-xs text-primary-400 hover:underline font-bold bg-transparent border-0 cursor-pointer"
+                                                    className="text-xs text-primary-400 hover:underline font-bold bg-transparent border-0 cursor-pointer flex items-center gap-1.5"
                                                     disabled={isLocatingCustomer}
                                                 >
-                                                    {isLocatingCustomer ? "Locating..." : "📍 Recenter GPS"}
+                                                    {isLocatingCustomer ? (
+                                                        <>
+                                                            <span className="w-3 h-3 border-2 border-primary-500 border-t-transparent rounded-full animate-spin shrink-0"></span>
+                                                            <span>Locating...</span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <MapPin size={12} className="text-primary-400 shrink-0" />
+                                                            <span>Recenter GPS</span>
+                                                        </>
+                                                    )}
                                                 </button>
                                             </div>
                                             <textarea

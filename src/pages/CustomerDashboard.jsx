@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, Navigate, useLocation } from 'react-router-dom';
+import { useNavigate, Navigate, useLocation, useSearchParams } from 'react-router-dom';
 import apiClient from '../api/client';
 import { useAppStore } from '../store/useStore';
 import { ShoppingCart, ChefHat, Plus, Minus, CreditCard, UtensilsCrossed, Trash2, ArrowLeft, Star, Search, ShoppingBag, X, Phone, Mail, ChevronUp, ChevronLeft, ChevronRight, Image, Clock, Heart, MapPin } from 'lucide-react';
@@ -22,7 +22,9 @@ export default function CustomerDashboard() {
     const [cartCollapsed, setCartCollapsed] = useState(false);
     const [lightboxOpen, setLightboxOpen] = useState(false);
     const [lightboxIndex, setLightboxIndex] = useState(0);
-    const [activeTab, setActiveTab] = useState('menu');
+    const [searchParams] = useSearchParams();
+    const initialTab = searchParams.get('tab') || 'menu';
+    const [activeTab, setActiveTab] = useState(initialTab);
     const [reviewPage, setReviewPage] = useState(1);
     const [reviewsCount, setReviewsCount] = useState(0);
     const [reviewsAvgRating, setReviewsAvgRating] = useState('New');
@@ -80,7 +82,7 @@ export default function CustomerDashboard() {
             apiClient.get(`/products/?store=${selectedStore.id}`)
                 .then(res => {
                     // De-duplicate products by ID just in case API returns multiples
-                    const data = Array.isArray(res.data) ? res.data : [];
+                    const data = res.data?.results || (Array.isArray(res.data) ? res.data : []);
                     const unique = Array.from(new Map(data.map(item => [item.id, item])).values());
                     setProducts(unique);
                     setLoading(false);
@@ -195,7 +197,7 @@ export default function CustomerDashboard() {
     };
 
     return (
-        <div className="w-full relative">
+        <div className="w-full relative pb-36 md:pb-12">
 
             <div className="flex flex-col lg:flex-row gap-8">
                 {/* Main Menu Section */}

@@ -10,10 +10,17 @@ export default function ReservationManager() {
     const [now, setNow] = useState(new Date());
     const [wsConnected, setWsConnected] = useState(false);
     const [activeMobileTab, setActiveMobileTab] = useState('pending');
+    
+    // Walk-in and Date Filter States
+    const [filterToday, setFilterToday] = useState(true);
+    const [showWalkInModal, setShowWalkInModal] = useState(false);
+    const [walkInForm, setWalkInForm] = useState({ guestCount: 2, durationMinutes: 60, tableId: '' });
+    const [storeDetails, setStoreDetails] = useState(null);
+    const [tables, setTables] = useState([]);
 
     const fetchReservations = () => {
         apiClient.get('/reservations/')
-            .then(res => setReservations(Array.isArray(res.data) ? res.data : []))
+            .then(res => setReservations(Array.isArray(res.data.results) ? res.data.results : (Array.isArray(res.data) ? res.data : [])))
             .catch(err => toast.error("Failed to load reservations."));
     }
 
@@ -26,6 +33,21 @@ export default function ReservationManager() {
 
     useEffect(() => {
         fetchReservations();
+
+        // Fetch store details to load tables for walk-ins
+        apiClient.get('/stores/my_store/')
+            .then(res => {
+                setStoreDetails(res.data);
+                if (res.data && res.data.id) {
+                    apiClient.get(`/tables/?store=${res.data.id}`)
+                        .then(tableRes => setTables(Array.isArray(tableRes.data) ? tableRes.data : []))
+                        .catch(() => {});
+                }
+            })
+            .catch(() => {});
+
+        // Polling fallback every 30 seconds
+        const pollInterval = setInterval(fetchReservations, 30000);
         
         let socket = null;
         let reconnectTimeout = null;
@@ -40,7 +62,6 @@ export default function ReservationManager() {
                     const data = JSON.parse(event.data);
                     if (data.type === 'order_update') {
                         fetchReservations();
-                        // If it's a new pending reservation arrival (implicitly), chime
                         playNotification();
                     }
                 } catch (e) { console.error("[Host WS] Parse error", e); }
@@ -65,6 +86,7 @@ export default function ReservationManager() {
             }
             if (reconnectTimeout) clearTimeout(reconnectTimeout);
             clearInterval(clockInterval); 
+            clearInterval(pollInterval);
         };
     }, []);
 
@@ -84,21 +106,26 @@ export default function ReservationManager() {
             .catch(err => toast.error("Check-in failed: " + (err.response?.data?.error || err.message), { id: toastId }));
     }
 
+    const handleCancel = (id) => {
+        if (confirm("Are you sure you want to reject/cancel this reservation?")) {
+            apiClient.post(`/reservations/${id}/cancel/`)
+                .then(() => { toast.success("Reservation rejected/cancelled."); fetchReservations(); })
+                .catch(err => toast.error("Error cancelling."));
+        }
+    }
+
     const handleCheckOut = (res) => {
+        if (!res.session_id) {
+            toast.error("No active session ID found.");
+            return;
+        }
         const toastId = toast.loading("Processing check-out...");
-        apiClient.get('/sessions/')
-            .then(sessRes => {
-                const data = Array.isArray(sessRes.data) ? sessRes.data : [];
-                const session = data.find(s => s.reservation === res.id && s.is_active);
-                if (session) {
-                    apiClient.post(`/sessions/${session.id}/close/`)
-                        .then(() => { toast.success("Guest checked out!", { id: toastId }); fetchReservations(); })
-                        .catch(() => toast.error("Check-out failed.", { id: toastId }));
-                } else {
-                    toast.error("No active session found.", { id: toastId });
-                }
+        apiClient.post(`/sessions/${res.session_id}/close/`)
+            .then(() => { 
+                toast.success("Guest checked out!", { id: toastId }); 
+                fetchReservations(); 
             })
-            .catch(() => toast.error("Connection error.", { id: toastId }));
+            .catch(() => toast.error("Check-out failed.", { id: toastId }));
     }
 
     const getElapsedTime = (startedAt) => {
@@ -119,10 +146,22 @@ export default function ReservationManager() {
         return now.getTime() > expiryMs;
     };
 
+    const isToday = (dateStr) => {
+        const d = new Date(dateStr);
+        const today = new Date();
+        return d.getDate() === today.getDate() &&
+               d.getMonth() === today.getMonth() &&
+               d.getFullYear() === today.getFullYear();
+    };
+
     // Filter logic
-    const pending = reservations.filter(r => r.status === 'PENDING');
-    const upcoming = reservations.filter(r => r.status === 'CONFIRMED');
-    const active = reservations.filter(r => r.status === 'ACTIVE');
+    const filteredReservations = filterToday 
+        ? reservations.filter(r => isToday(r.reservation_time))
+        : reservations;
+
+    const pending = filteredReservations.filter(r => r.status === 'PENDING').sort((a, b) => new Date(a.reservation_time) - new Date(b.reservation_time));
+    const upcoming = filteredReservations.filter(r => r.status === 'CONFIRMED').sort((a, b) => new Date(a.reservation_time) - new Date(b.reservation_time));
+    const active = filteredReservations.filter(r => r.status === 'ACTIVE').sort((a, b) => new Date(a.reservation_time) - new Date(b.reservation_time));
     const history = reservations.filter(r => ['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(r.status)).reverse();
 
     const handleNoShow = (id) => {
@@ -192,9 +231,14 @@ export default function ReservationManager() {
                 {!isHistory && (
                     <div className="flex gap-2">
                         {res.status === 'PENDING' && (
-                            <button onClick={() => handleConfirm(res.id)} className="flex-1 bg-primary-600/20 hover:bg-primary-600/40 text-primary-400 py-2 rounded-lg text-sm font-medium transition-colors flex justify-center items-center gap-2">
-                                <Check size={16} /> Confirm
-                            </button>
+                            <>
+                                <button onClick={() => handleConfirm(res.id)} className="flex-1 bg-primary-600/20 hover:bg-primary-600/40 text-primary-400 py-2 rounded-lg text-sm font-medium transition-colors flex justify-center items-center gap-2">
+                                    <Check size={16} /> Confirm
+                                </button>
+                                <button onClick={() => handleCancel(res.id)} className="flex-1 bg-red-500/10 hover:bg-red-500/25 border border-red-500/20 text-red-400 py-2 rounded-lg text-sm font-medium transition-colors flex justify-center items-center gap-2">
+                                    <X size={16} /> Reject
+                                </button>
+                            </>
                         )}
                         {res.status === 'CONFIRMED' && (
                             <button onClick={() => handleCheckIn(res.id)} className="flex-1 bg-green-500/20 hover:bg-green-500/40 text-green-400 py-2 rounded-lg text-sm font-medium transition-colors flex justify-center items-center gap-2">
@@ -234,21 +278,47 @@ export default function ReservationManager() {
                         <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">{wsConnected ? 'Live Connection Active' : 'Offline - Sync Required'}</p>
                     </div>
                 </div>
-                <div className="flex items-center gap-2 bg-dark-900 border border-white/5 rounded-xl p-1 self-stretch sm:self-auto">
+                <div className="flex flex-wrap items-center gap-3 self-stretch sm:self-auto">
                     <button 
-                        onClick={() => setShowHistory(false)}
-                        className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all ${!showHistory ? 'bg-primary-500 text-dark-950 shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                        onClick={() => setShowWalkInModal(true)}
+                        className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-lg shadow-indigo-600/10 active:scale-95 flex items-center gap-2"
                     >
-                        Active Floor
+                        <Users size={14} /> Seat Walk-In
                     </button>
-                    <button 
-                        onClick={() => setShowHistory(true)}
-                        className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all ${showHistory ? 'bg-primary-500 text-dark-950 shadow-lg' : 'text-slate-400 hover:text-white'}`}
-                    >
-                        History
-                    </button>
+                    <div className="flex items-center gap-2 bg-dark-900 border border-white/5 rounded-xl p-1 flex-1 sm:flex-none justify-center">
+                        <button 
+                            onClick={() => setShowHistory(false)}
+                            className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all ${!showHistory ? 'bg-primary-500 text-dark-950 shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                        >
+                            Active Floor
+                        </button>
+                        <button 
+                            onClick={() => setShowHistory(true)}
+                            className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all ${showHistory ? 'bg-primary-500 text-dark-950 shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                        >
+                            History
+                        </button>
+                    </div>
                 </div>
             </div>
+
+            {!showHistory && (
+                <div className="flex items-center gap-4 mb-6 bg-white/5 border border-white/5 p-3 rounded-2xl w-fit">
+                    <span className="text-xs font-bold text-slate-400">Date Filter:</span>
+                    <button 
+                        onClick={() => setFilterToday(true)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${filterToday ? 'bg-primary-500 text-dark-950' : 'text-slate-400 hover:text-white'}`}
+                    >
+                        Today Only
+                    </button>
+                    <button 
+                        onClick={() => setFilterToday(false)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${!filterToday ? 'bg-primary-500 text-dark-950' : 'text-slate-400 hover:text-white'}`}
+                    >
+                        All Upcoming
+                    </button>
+                </div>
+            )}
 
             {!showHistory ? (
                 <div>
@@ -324,6 +394,92 @@ export default function ReservationManager() {
                     </div>
                 </div>
             )}
+
+            <AnimatePresence>
+                {showWalkInModal && (
+                    <div className="fixed inset-0 bg-dark-950/80 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
+                            className="bg-dark-900 border border-white/10 w-full max-w-md rounded-3xl p-6 shadow-2xl relative text-left text-white"
+                        >
+                            <button onClick={() => setShowWalkInModal(false)} className="absolute top-4 right-4 p-2 hover:bg-white/5 rounded-full text-slate-400 hover:text-white transition-colors"><X size={20} /></button>
+                            
+                            <h3 className="text-xl font-black text-white uppercase tracking-tight mb-6">Seat Walk-In Guest</h3>
+
+                            <form onSubmit={(e) => {
+                                e.preventDefault();
+                                const payload = {
+                                    store: storeDetails?.id,
+                                    guest_count: parseInt(walkInForm.guestCount),
+                                    duration_minutes: parseInt(walkInForm.durationMinutes),
+                                    table: walkInForm.tableId || undefined
+                                };
+                                const tid = toast.loading("Seating walk-in guest...");
+                                apiClient.post('/reservations/walk_in/', payload)
+                                    .then(res => {
+                                        toast.success("Guest seated successfully!", { id: tid });
+                                        setShowWalkInModal(false);
+                                        fetchReservations();
+                                    })
+                                    .catch(err => {
+                                        const msg = err.response?.data?.error || "Seating failed.";
+                                        toast.error(msg, { id: tid });
+                                    });
+                            }} className="space-y-6">
+                                <div>
+                                    <label className="block text-xs text-slate-400 font-bold uppercase mb-2">Guest Count</label>
+                                    <input 
+                                        type="number"
+                                        required
+                                        min="1"
+                                        value={walkInForm.guestCount}
+                                        onChange={e => setWalkInForm({ ...walkInForm, guestCount: e.target.value })}
+                                        className="w-full bg-dark-950 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-500 text-sm font-medium"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs text-slate-400 font-bold uppercase mb-2">Duration (Minutes)</label>
+                                    <input 
+                                        type="number"
+                                        required
+                                        min="15"
+                                        value={walkInForm.durationMinutes}
+                                        onChange={e => setWalkInForm({ ...walkInForm, durationMinutes: e.target.value })}
+                                        className="w-full bg-dark-950 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-500 text-sm font-medium"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs text-slate-400 font-bold uppercase mb-2">Assign Table (Optional)</label>
+                                    <select 
+                                        value={walkInForm.tableId}
+                                        onChange={e => setWalkInForm({ ...walkInForm, tableId: e.target.value })}
+                                        className="w-full bg-dark-950 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-500 text-sm font-medium"
+                                    >
+                                        <option value="">Auto-Assign Table</option>
+                                        {tables.map(table => (
+                                            <option key={table.id} value={table.id}>
+                                                Table {table.number} (Seats {table.capacity})
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="flex gap-3 pt-2">
+                                    <button type="button" onClick={() => setShowWalkInModal(false)} className="flex-1 py-3 rounded-xl bg-dark-800 font-bold hover:bg-dark-700 text-sm transition-colors text-white">Cancel</button>
+                                    <button 
+                                        type="submit" 
+                                        className="flex-1 py-3 rounded-xl bg-primary-500 text-dark-950 font-black hover:bg-primary-400 text-sm uppercase tracking-wider shadow-lg shadow-primary-500/20 transition-all cursor-pointer"
+                                    >
+                                        Seat Guest
+                                    </button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

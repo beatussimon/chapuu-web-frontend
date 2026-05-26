@@ -98,3 +98,40 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   filter: none !important;
   cursor: pointer !important;
 }
+
+@media print {
+  body {
+    background: white !important;
+    background-image: none !important;
+    color: black !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  nav, footer, .no-print, .bottom-nav, [class*="BottomNav"], [class*="BottomDrawer"], .toast, .toaster {
+    display: none !important;
+  }
+
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: transparent !important;
+    display: block !important;
+  }
+
+  #root, #root > div {
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+    min-height: 0 !important;
+  }
+  
+  @page {
+    margin: 0;
+    size: auto;
+  }
+}

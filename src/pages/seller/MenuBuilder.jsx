@@ -26,7 +26,7 @@ export default function MenuBuilder() {
             apiClient.get(`/products/?store=${sid}`)
         ]).then(([catRes, prodRes]) => {
             setCategories(Array.isArray(catRes.data) ? catRes.data : []);
-            setProducts(Array.isArray(prodRes.data) ? prodRes.data : []);
+            setProducts(prodRes.data?.results || (Array.isArray(prodRes.data) ? prodRes.data : []));
             setLoading(false);
         }).catch(err => {
             toast.error("Failed to load catalog data");

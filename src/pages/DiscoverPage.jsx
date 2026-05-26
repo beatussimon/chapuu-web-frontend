@@ -11,6 +11,8 @@ import { useLocation } from '../hooks/useLocation';
 import { triggerHaptic, hapticPatterns } from '../utils/haptics';
 import SearchResults from '../components/SearchResults';
 import MapModal from '../components/MapModal';
+import useInfiniteScroll from '../hooks/useInfiniteScroll';
+import InfiniteScrollTrigger from '../components/InfiniteScrollTrigger';
 
 // Localized proximity slider component to achieve 60fps drag performance without triggering parent rerenders
 function ProximitySlider({ hasLocation, activeRadius, onChange }) {
@@ -72,7 +74,6 @@ function ProximitySlider({ hasLocation, activeRadius, onChange }) {
 }
 
 export default function DiscoverPage() {
-    const [stores, setStores] = useState([]);
     const [stats, setStats] = useState({
         metrics: { total_stores: 0, total_meals_served: 0 },
         top_stores: [],
@@ -81,7 +82,6 @@ export default function DiscoverPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [activeFilter, setActiveFilter] = useState('ALL');
     const [initialLoading, setInitialLoading] = useState(true);
-    const [storesLoading, setStoresLoading] = useState(false);
     const { setSelectedStore, token, savedStores, toggleSaveStore } = useAppStore();
     const isAuthenticated = !!token;
     const { formatPrice } = useCurrency();
@@ -98,32 +98,46 @@ export default function DiscoverPage() {
     const [mapOpen, setMapOpen] = useState(false);
     const [showFiltersPanel, setShowFiltersPanel] = useState(false);
 
-    // Baseline listings load
-    useEffect(() => {
-        if (initialLoading) {
-            // Keep initial full-page loader active
-        } else {
-            setStoresLoading(true);
+    // Memoize store parameters to prevent infinite loops / refetches in hook
+    const storeParams = React.useMemo(() => {
+        const p = {};
+        if (hasLocation && location?.lat && location?.lng) {
+            p.lat = location.lat;
+            p.lng = location.lng;
+            if (activeRadius) p.radius = activeRadius;
         }
+        if (activeFilter !== 'ALL') {
+            p.store_type = activeFilter;
+        }
+        if (isOpenOnly) {
+            p.is_open = true;
+        }
+        return p;
+    }, [hasLocation, location?.lat, location?.lng, activeRadius, activeFilter, isOpenOnly]);
+
+    // Use infinite scroll for main store listings
+    const {
+        items: stores,
+        loadMore: loadMoreStores,
+        hasMore: hasMoreStores,
+        isLoading: storesLoadingInit,
+        isLoadingMore: storesLoadingMore
+    } = useInfiniteScroll('/stores/', storeParams);
+
+    const storesLoading = storesLoadingInit || storesLoadingMore;
+
+    // Baseline stats & categories load
+    useEffect(() => {
         const params = {};
         if (hasLocation && location?.lat && location?.lng) {
             params.lat = location.lat;
             params.lng = location.lng;
-            if (activeRadius) params.radius = activeRadius;
-        }
-        if (activeFilter !== 'ALL') {
-            params.store_type = activeFilter;
-        }
-        if (isOpenOnly) {
-            params.is_open = true;
         }
 
         Promise.all([
-            apiClient.get('/stores/', { params }),
-            apiClient.get('/stats/billboard/', { params: hasLocation && location?.lat ? { lat: location.lat, lng: location.lng } : {} }),
+            apiClient.get('/stats/billboard/', { params }),
             apiClient.get('/categories/')
-        ]).then(([storesRes, statsRes, categoriesRes]) => {
-            setStores(Array.isArray(storesRes.data) ? storesRes.data : []);
+        ]).then(([statsRes, categoriesRes]) => {
             const statsData = statsRes.data || {};
             setStats({
                 metrics: statsData.metrics || { total_stores: 0, total_meals_served: 0 },
@@ -132,14 +146,11 @@ export default function DiscoverPage() {
             });
             setCategories(Array.isArray(categoriesRes.data) ? categoriesRes.data : []);
             setInitialLoading(false);
-            setStoresLoading(false);
         }).catch((err) => {
-            console.error("Discover load error:", err);
-            toast.error("Failed to load discover data");
+            console.error("Discover stats load error:", err);
             setInitialLoading(false);
-            setStoresLoading(false);
         });
-    }, [hasLocation, location?.lat, location?.lng, activeRadius, activeFilter, isOpenOnly]);
+    }, [hasLocation, location?.lat, location?.lng]);
 
     // Search query & category pill debouncer
     useEffect(() => {
@@ -736,9 +747,17 @@ export default function DiscoverPage() {
                                 )}
                             </div>
                         ) : (
-                            <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 transition-opacity duration-200 ${storesLoading ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
-                                {stores.map(store => renderStoreCard(store))}
-                            </div>
+                            <>
+                                <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 transition-opacity duration-200 ${storesLoading ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
+                                    {stores.map(store => renderStoreCard(store))}
+                                </div>
+                                <InfiniteScrollTrigger
+                                    loadMore={loadMoreStores}
+                                    hasMore={hasMoreStores}
+                                    isLoading={storesLoadingInit}
+                                    isLoadingMore={storesLoadingMore}
+                                />
+                            </>
                         )}
                     </div>
                 </>

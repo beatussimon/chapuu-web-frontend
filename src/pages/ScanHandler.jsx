@@ -27,15 +27,23 @@ export default function ScanHandler() {
                 // Save table context if provided
                 if (tableId) {
                     localStorage.setItem('scanned_table_id', tableId);
+                    localStorage.setItem('scanned_table_time', Date.now().toString());
                 } else {
-                    localStorage.removeItem('scanned_table_id');
+                    const scanTime = localStorage.getItem('scanned_table_time');
+                    if (scanTime) {
+                        const elapsed = Date.now() - parseInt(scanTime, 10);
+                        if (elapsed > 4 * 60 * 60 * 1000) { // 4 hours
+                            localStorage.removeItem('scanned_table_id');
+                            localStorage.removeItem('scanned_table_time');
+                        }
+                    }
                 }
 
                 // Route based on action
                 switch (action) {
                     case 'review':
                         toast.success(`Leave a review for ${res.data.name}!`);
-                        navigate('/orders'); // Goes to orders page which has review links
+                        navigate('/menu?tab=reviews');
                         break;
                     case 'reserve':
                         toast.success(`Make a reservation at ${res.data.name}!`);

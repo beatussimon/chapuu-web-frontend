@@ -100,7 +100,7 @@ export default function Login() {
                 <div className="mt-6 sm:mt-8 text-center">
                     <p className="text-slate-400 text-sm sm:text-base">
                         New to Chapuu?{' '}
-                        <Link to="/register" className="text-primary-400 hover:text-primary-300 font-semibold transition-colors">
+                        <Link to="/register" state={{ from: location.state?.from }} className="text-primary-400 hover:text-primary-300 font-semibold transition-colors">
                             Create an account
                         </Link>
                     </p>

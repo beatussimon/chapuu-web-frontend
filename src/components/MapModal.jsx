@@ -99,7 +99,7 @@ export default function MapModal({
         if (userLocation?.lat && userLocation?.lng) {
             L.marker([userLocation.lat, userLocation.lng], { icon: userIcon })
                 .addTo(map)
-                .bindPopup(`<div class="text-xs font-bold text-dark-950">📍 Your Location<br/><span class="font-normal text-slate-500">${userLocation.name || 'Active Session'}</span></div>`)
+                .bindPopup(`<div class="text-xs font-bold text-dark-950"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#00b4d8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:4px;"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>Your Location<br/><span class="font-normal text-slate-500 mt-1 block">${userLocation.name || 'Active Session'}</span></div>`)
                 .openPopup();
         }
 

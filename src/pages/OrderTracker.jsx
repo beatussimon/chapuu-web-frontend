@@ -250,22 +250,25 @@ export default function OrderTracker() {
     const progressPercent = (currentStepIndex / (displayStates.length - 1)) * 100;
 
     return (
-        <div className="w-full max-w-3xl mx-auto py-4 md:py-8 px-2 md:px-4">
+        <>
+            <div className="w-full max-w-3xl mx-auto py-4 md:py-8 px-2 md:px-4 no-print">
 
-            <div className="flex items-center gap-3 mb-8">
-                <button onClick={() => navigate('/orders')} className="p-2 bg-white/5 hover:bg-white/10 rounded-xl transition-colors text-slate-400">
-                    <ArrowLeft size={18} />
-                </button>
-                <div className="flex-1">
-                    <h1 className="text-xl md:text-3xl font-bold text-white flex items-center justify-between">
-                        Order #{order.id}
-                        <button onClick={fetchOrder} className="text-slate-500 hover:text-primary-500 transition-colors" title="Refresh">
-                            <RefreshCw size={18} />
-                        </button>
-                    </h1>
-                    <p className="text-slate-400 text-xs md:text-sm mt-0.5">{order.store_name || `Store #${order.store}`}</p>
+                <div className="flex items-center gap-3 mb-8">
+                    <button onClick={() => navigate('/orders')} className="p-2 bg-white/5 hover:bg-white/10 rounded-xl transition-colors text-slate-400">
+                        <ArrowLeft size={18} />
+                    </button>
+                    <div className="flex-1">
+                        <h1 className="text-xl md:text-3xl font-bold text-white flex items-center justify-between">
+                            Order #{order.id}
+                            <div className="flex items-center gap-2">
+                                <button onClick={fetchOrder} className="text-slate-500 hover:text-primary-500 transition-colors" title="Refresh">
+                                    <RefreshCw size={18} />
+                                </button>
+                            </div>
+                        </h1>
+                        <p className="text-slate-400 text-xs md:text-sm mt-0.5">{order.store_name || `Store #${order.store}`}</p>
+                    </div>
                 </div>
-            </div>
 
             <div className="glass-dark border border-white/10 rounded-2xl md:rounded-3xl p-4 md:p-8 mb-8 shadow-2xl">
                 <h3 className="text-sm md:text-lg font-black text-white mb-8 border-b border-white/5 pb-4 uppercase tracking-widest">Live Status</h3>
@@ -820,6 +823,7 @@ export default function OrderTracker() {
                     </div>
                 )}
             </AnimatePresence>
-        </div>
+            </div>
+        </>
     );
 }

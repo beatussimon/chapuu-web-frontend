@@ -6,13 +6,16 @@ import {
     SquareTerminal, Star, MessageSquare, Truck, Bell, QrCode, Calendar, 
     Store, Plus, Edit2, Trash2, X, ShoppingBag, ShoppingCart, Users, 
     UserPlus, Key, Power, Search, BarChart3, Settings, Save, Phone, Mail, 
-    TerminalSquare, Shield, RefreshCw, AlertTriangle, Image, Upload, LayoutGrid
+    TerminalSquare, Shield, RefreshCw, AlertTriangle, Image, Upload, LayoutGrid, Printer,
+    MapPin
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAppStore } from '../store/useStore';
 import { useCurrency, formatPriceStatic } from '../utils/useCurrency';
 import { QRCodeSVG } from 'qrcode.react';
 import OptimizedImage from '../components/OptimizedImage';
+import PaginationControls from '../components/PaginationControls';
+import PackagingSlip from '../components/PackagingSlip';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
 
@@ -81,6 +84,17 @@ const parseTime12h = (time12hStr) => {
 
 export default function SellerDashboard() {
     const [orders, setOrders] = useState([]);
+    const [ordersPage, setOrdersPage] = useState(1);
+    const [ordersPagination, setOrdersPagination] = useState({ count: 0, totalPages: 1 });
+    const [printingOrder, setPrintingOrder] = useState(null);
+
+    const handlePrintOrder = (order) => {
+        setPrintingOrder(order);
+        setTimeout(() => {
+            window.print();
+        }, 150);
+    };
+
     const [queueSize, setQueueSize] = useState(0);
     const [loading, setLoading] = useState(true);
     const [storeType, setStoreType] = useState('RESTAURANT'); // 'RESTAURANT' or 'SHOP'
@@ -101,7 +115,14 @@ export default function SellerDashboard() {
     
     // Billing States
     const [invoices, setInvoices] = useState([]);
+    const [invoicesPage, setInvoicesPage] = useState(1);
+    const [invoicesPagination, setInvoicesPagination] = useState({ count: 0, totalPages: 1 });
+    const [invoicesLoading, setInvoicesLoading] = useState(false);
+
     const [ledgerEntries, setLedgerEntries] = useState([]);
+    const [ledgerPage, setLedgerPage] = useState(1);
+    const [ledgerPagination, setLedgerPagination] = useState({ count: 0, totalPages: 1 });
+    const [ledgerLoading, setLedgerLoading] = useState(false);
     const [platformPaymentMethods, setPlatformPaymentMethods] = useState([]);
     const [globalPaymentMethods, setGlobalPaymentMethods] = useState([]);
     const [showPaymentModal, setShowPaymentModal] = useState({ open: false, invoice: null });
@@ -381,11 +402,21 @@ export default function SellerDashboard() {
         
         try {
             // DYNAMIC DATA: Fetch every sync cycle
-            const ordersRes = await apiClient.get('/orders/');
-            setOrders(Array.isArray(ordersRes.data) ? ordersRes.data : []);
+            const ordersRes = await apiClient.get(`/orders/?page=${ordersPage}`);
+            const data = ordersRes.data;
+            if (data && typeof data === 'object' && 'results' in data) {
+                setOrders(Array.isArray(data.results) ? data.results : []);
+                setOrdersPagination({
+                    count: data.count || 0,
+                    totalPages: Math.ceil((data.count || 0) / 20)
+                });
+            } else {
+                setOrders(Array.isArray(data) ? data : []);
+                setOrdersPagination({ count: data.length || 0, totalPages: 1 });
+            }
 
             const noticesRes = await apiClient.get('/notices/');
-            setNotices(Array.isArray(noticesRes.data) ? noticesRes.data : []);
+            setNotices(noticesRes.data?.results || (Array.isArray(noticesRes.data) ? noticesRes.data : []));
 
             // Role-scoped dynamic data
             if (storeIdRef.current) {
@@ -402,7 +433,7 @@ export default function SellerDashboard() {
             setLoading(false);
             isFetchingRef.current = false;
         }
-    }, [userRole]);
+    }, [userRole, ordersPage]);
 
     const advanceOrderState = useCallback((orderId, newState, payload = {}) => {
         const toastId = toast.loading(`Updating order to ${newState}...`);
@@ -492,13 +523,41 @@ export default function SellerDashboard() {
     const fetchBillingData = useCallback(() => {
         if (userRole !== 'SELLER' && userRole !== 'ADMIN' && userRole !== 'SUPERUSER') return;
         
-        apiClient.get('/billing/invoices/')
-            .then(res => setInvoices(Array.isArray(res.data) ? res.data : []))
-            .catch(e => console.error("Failed to fetch invoices", e));
+        setInvoicesLoading(true);
+        apiClient.get(`/billing/invoices/?page=${invoicesPage}`)
+            .then(res => {
+                const data = res.data;
+                if (data && typeof data === 'object' && 'results' in data) {
+                    setInvoices(Array.isArray(data.results) ? data.results : []);
+                    setInvoicesPagination({
+                        count: data.count || 0,
+                        totalPages: Math.ceil((data.count || 0) / 10)
+                    });
+                } else {
+                    setInvoices(Array.isArray(data) ? data : []);
+                    setInvoicesPagination({ count: data.length || 0, totalPages: 1 });
+                }
+            })
+            .catch(e => console.error("Failed to fetch invoices", e))
+            .finally(() => setInvoicesLoading(false));
 
-        apiClient.get('/billing/ledger/')
-            .then(res => setLedgerEntries(Array.isArray(res.data) ? res.data : []))
-            .catch(e => console.error("Failed to fetch ledger", e));
+        setLedgerLoading(true);
+        apiClient.get(`/billing/ledger/?page=${ledgerPage}`)
+            .then(res => {
+                const data = res.data;
+                if (data && typeof data === 'object' && 'results' in data) {
+                    setLedgerEntries(Array.isArray(data.results) ? data.results : []);
+                    setLedgerPagination({
+                        count: data.count || 0,
+                        totalPages: Math.ceil((data.count || 0) / 10)
+                    });
+                } else {
+                    setLedgerEntries(Array.isArray(data) ? data : []);
+                    setLedgerPagination({ count: data.length || 0, totalPages: 1 });
+                }
+            })
+            .catch(e => console.error("Failed to fetch ledger", e))
+            .finally(() => setLedgerLoading(false));
 
         apiClient.get('/billing/payment-methods/')
             .then(res => setPlatformPaymentMethods(Array.isArray(res.data) ? res.data : []))
@@ -507,7 +566,7 @@ export default function SellerDashboard() {
         apiClient.get('/billing/invoices/current_month_preview/')
             .then(res => setCurrentMonthPreview(res.data))
             .catch(e => console.error("Failed to fetch current month billing preview", e));
-    }, [userRole]);
+    }, [userRole, invoicesPage, ledgerPage]);
 
     const handleSubmitPaymentProof = (e) => {
         e.preventDefault();
@@ -577,7 +636,10 @@ export default function SellerDashboard() {
 
                 if (['SELLER', 'ADMIN', 'SUPERUSER'].includes(userRole)) {
                     apiClient.get('/products/')
-                        .then(res => setPosProducts(Array.isArray(res.data) ? res.data : []))
+                        .then(res => {
+                            const data = res.data;
+                            setPosProducts(data && data.results ? data.results : (Array.isArray(data) ? data : []));
+                        })
                         .catch(() => {});
 
                     apiClient.get('/global-payment-methods/')
@@ -860,7 +922,8 @@ export default function SellerDashboard() {
     };
 
     return (
-        <div className="w-full min-h-screen flex flex-col pt-2 pb-8 px-2 md:px-4 overflow-y-auto">
+        <>
+            <div className="w-full min-h-screen flex flex-col pt-2 pb-8 px-2 md:px-4 overflow-y-auto no-print">
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
                 <div className="flex flex-col gap-1">
                     <h2 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-primary-400 to-yellow-300 bg-clip-text text-transparent drop-shadow-sm">
@@ -1081,7 +1144,7 @@ export default function SellerDashboard() {
                                 <span className="ml-auto bg-primary-500/20 text-primary-400 px-2 py-0.5 rounded-full text-[10px] font-bold border border-primary-500/30">{reservationOrders.length}</span>
                             </div>
                             <div className="overflow-y-auto pr-1 space-y-3 flex-grow custom-scrollbar">
-                                {loading ? <LoadingSkeleton /> : <AnimatePresence>{reservationOrders.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} onOpenHandoffPinModal={(id) => setHandoffPinModal({ open: true, orderId: id, pin: '', loading: false })} onOpenUpdateFeeModal={(o) => setUpdateFeeModal({ open: true, order: o, fee: o.delivery_fee || '' })} />)}</AnimatePresence>}
+                                {loading ? <LoadingSkeleton /> : <AnimatePresence>{reservationOrders.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} onOpenHandoffPinModal={(id) => setHandoffPinModal({ open: true, orderId: id, pin: '', loading: false })} onOpenUpdateFeeModal={(o) => setUpdateFeeModal({ open: true, order: o, fee: o.delivery_fee || '' })} onPrint={handlePrintOrder} />)}</AnimatePresence>}
                                 {!loading && reservationOrders.length === 0 && <EmptyState icon={<Calendar size={40} />} text="No reserved orders" />}
                             </div>
                         </div>
@@ -1094,7 +1157,7 @@ export default function SellerDashboard() {
                                     <span className="ml-auto bg-dark-800 text-slate-400 px-2 py-0.5 rounded-full text-[10px] font-bold border border-white/5">{queuedOrders.length}</span>
                                 </div>
                                 <div className="overflow-y-auto pr-1 space-y-3 flex-grow custom-scrollbar">
-                                    {loading ? <LoadingSkeleton /> : <AnimatePresence>{queuedOrders.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} onOpenHandoffPinModal={(id) => setHandoffPinModal({ open: true, orderId: id, pin: '', loading: false })} onOpenUpdateFeeModal={(o) => setUpdateFeeModal({ open: true, order: o, fee: o.delivery_fee || '' })} />)}</AnimatePresence>}
+                                    {loading ? <LoadingSkeleton /> : <AnimatePresence>{queuedOrders.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} onOpenHandoffPinModal={(id) => setHandoffPinModal({ open: true, orderId: id, pin: '', loading: false })} onOpenUpdateFeeModal={(o) => setUpdateFeeModal({ open: true, order: o, fee: o.delivery_fee || '' })} onPrint={handlePrintOrder} />)}</AnimatePresence>}
                                     {!loading && queuedOrders.length === 0 && <EmptyState icon={<ListOrdered size={40} />} text="Queue is empty" />}
                                 </div>
                             </div>
@@ -1106,7 +1169,7 @@ export default function SellerDashboard() {
                                 <span className="ml-auto bg-primary-500/20 text-primary-400 px-2 py-0.5 rounded-full text-[10px] font-bold border border-primary-500/30">{preparingOrders.length}</span>
                             </div>
                             <div className="overflow-y-auto pr-1 space-y-3 flex-grow z-10 custom-scrollbar">
-                                {loading ? <LoadingSkeleton /> : <AnimatePresence>{preparingOrders.map(order => <OrderCard key={order.id} order={order} markItemReadyFn={markItemReady} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} onOpenHandoffPinModal={(id) => setHandoffPinModal({ open: true, orderId: id, pin: '', loading: false })} onOpenUpdateFeeModal={(o) => setUpdateFeeModal({ open: true, order: o, fee: o.delivery_fee || '' })} />)}</AnimatePresence>}
+                                {loading ? <LoadingSkeleton /> : <AnimatePresence>{preparingOrders.map(order => <OrderCard key={order.id} order={order} markItemReadyFn={markItemReady} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} onOpenHandoffPinModal={(id) => setHandoffPinModal({ open: true, orderId: id, pin: '', loading: false })} onOpenUpdateFeeModal={(o) => setUpdateFeeModal({ open: true, order: o, fee: o.delivery_fee || '' })} onPrint={handlePrintOrder} />)}</AnimatePresence>}
                                 {!loading && preparingOrders.length === 0 && <EmptyState active icon={<Utensils size={40} />} text="Kitchen is waiting" />}
                             </div>
                         </div>
@@ -1118,11 +1181,17 @@ export default function SellerDashboard() {
                                 <span className="ml-auto bg-dark-800 text-slate-400 px-2 py-0.5 rounded-full text-[10px] font-bold border border-white/5">{readyForKitchen.length}</span>
                             </div>
                             <div className="overflow-y-auto pr-1 space-y-3 flex-grow custom-scrollbar">
-                                {loading ? <LoadingSkeleton /> : <AnimatePresence>{readyForKitchen.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} onOpenHandoffPinModal={(id) => setHandoffPinModal({ open: true, orderId: id, pin: '', loading: false })} onOpenUpdateFeeModal={(o) => setUpdateFeeModal({ open: true, order: o, fee: o.delivery_fee || '' })} />)}</AnimatePresence>}
+                                {loading ? <LoadingSkeleton /> : <AnimatePresence>{readyForKitchen.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} onOpenHandoffPinModal={(id) => setHandoffPinModal({ open: true, orderId: id, pin: '', loading: false })} onOpenUpdateFeeModal={(o) => setUpdateFeeModal({ open: true, order: o, fee: o.delivery_fee || '' })} onPrint={handlePrintOrder} />)}</AnimatePresence>}
                                 {!loading && readyForKitchen.length === 0 && <EmptyState icon={<CheckCircle2 size={40} />} text="No items to dispatch" />}
                             </div>
                         </div>
                     </div>
+                    <PaginationControls
+                        page={ordersPage}
+                        totalPages={ordersPagination.totalPages}
+                        onPageChange={setOrdersPage}
+                        isLoading={loading}
+                    />
                 </div>
             )}
 
@@ -1134,7 +1203,7 @@ export default function SellerDashboard() {
                         <span className="ml-auto bg-indigo-500/20 text-indigo-400 px-3 py-1 rounded-full text-xs font-bold border border-indigo-500/30">{awaitingPaymentOrders.length}</span>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {loading ? <LoadingSkeleton /> : <AnimatePresence>{awaitingPaymentOrders.map(order => <OrderCard key={order.id} order={order} onVerifyPayment={() => setVerifyModal({ open: true, order, fee: '' })} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} onOpenHandoffPinModal={(id) => setHandoffPinModal({ open: true, orderId: id, pin: '', loading: false })} onOpenUpdateFeeModal={(o) => setUpdateFeeModal({ open: true, order: o, fee: o.delivery_fee || '' })} />)}</AnimatePresence>}
+                        {loading ? <LoadingSkeleton /> : <AnimatePresence>{awaitingPaymentOrders.map(order => <OrderCard key={order.id} order={order} onVerifyPayment={() => setVerifyModal({ open: true, order, fee: '' })} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} onOpenHandoffPinModal={(id) => setHandoffPinModal({ open: true, orderId: id, pin: '', loading: false })} onOpenUpdateFeeModal={(o) => setUpdateFeeModal({ open: true, order: o, fee: o.delivery_fee || '' })} onPrint={handlePrintOrder} />)}</AnimatePresence>}
                         {!loading && awaitingPaymentOrders.length === 0 && <div className="col-span-full"><EmptyState icon={<CreditCard size={48} />} text="No pending payments" /></div>}
                     </div>
                 </div>
@@ -1179,7 +1248,7 @@ export default function SellerDashboard() {
                                 <span className="ml-auto bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-xs font-bold border border-green-500/30">{readyForDelivery.length}</span>
                             </div>
                             <div className="overflow-y-auto pr-2 space-y-4 flex-grow">
-                                {loading ? <LoadingSkeleton /> : <AnimatePresence>{readyForDelivery.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} onOpenHandoffPinModal={(id) => setHandoffPinModal({ open: true, orderId: id, pin: '', loading: false })} onOpenUpdateFeeModal={(o) => setUpdateFeeModal({ open: true, order: o, fee: o.delivery_fee || '' })} />)}</AnimatePresence>}
+                                {loading ? <LoadingSkeleton /> : <AnimatePresence>{readyForDelivery.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} onOpenHandoffPinModal={(id) => setHandoffPinModal({ open: true, orderId: id, pin: '', loading: false })} onOpenUpdateFeeModal={(o) => setUpdateFeeModal({ open: true, order: o, fee: o.delivery_fee || '' })} onPrint={handlePrintOrder} />)}</AnimatePresence>}
                                 {!loading && readyForDelivery.length === 0 && <EmptyState icon={<CheckCircle2 size={48} />} text="No orders awaiting dispatch" />}
                             </div>
                         </div>
@@ -1190,7 +1259,7 @@ export default function SellerDashboard() {
                                 <span className="ml-auto bg-purple-500/20 text-purple-400 px-3 py-1 rounded-full text-xs font-bold border border-purple-500/30">{outForDeliveryOrders.length}</span>
                             </div>
                             <div className="overflow-y-auto pr-2 space-y-4 flex-grow">
-                                {loading ? <LoadingSkeleton /> : <AnimatePresence>{outForDeliveryOrders.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} onOpenHandoffPinModal={(id) => setHandoffPinModal({ open: true, orderId: id, pin: '', loading: false })} onOpenUpdateFeeModal={(o) => setUpdateFeeModal({ open: true, order: o, fee: o.delivery_fee || '' })} />)}</AnimatePresence>}
+                                {loading ? <LoadingSkeleton /> : <AnimatePresence>{outForDeliveryOrders.map(order => <OrderCard key={order.id} order={order} advanceOrderStateFn={advanceOrderState} userRole={userRole} isSelected={selectedOrders.includes(order.id)} onSelect={() => toggleOrderSelection(order.id)} onOpenHandoffPinModal={(id) => setHandoffPinModal({ open: true, orderId: id, pin: '', loading: false })} onOpenUpdateFeeModal={(o) => setUpdateFeeModal({ open: true, order: o, fee: o.delivery_fee || '' })} onPrint={handlePrintOrder} />)}</AnimatePresence>}
                                 {!loading && outForDeliveryOrders.length === 0 && <EmptyState icon={<Truck size={48} />} text="No active deliveries" />}
                             </div>
                         </div>
@@ -1443,6 +1512,12 @@ export default function SellerDashboard() {
                                 </div>
                             )}
                         </div>
+                        <PaginationControls
+                            page={invoicesPage}
+                            totalPages={invoicesPagination.totalPages}
+                            onPageChange={setInvoicesPage}
+                            isLoading={invoicesLoading}
+                        />
                     </div>
 
                     {/* Transaction Splits Ledger */}
@@ -1490,6 +1565,12 @@ export default function SellerDashboard() {
                                 </tbody>
                             </table>
                         </div>
+                        <PaginationControls
+                            page={ledgerPage}
+                            totalPages={ledgerPagination.totalPages}
+                            onPageChange={setLedgerPage}
+                            isLoading={ledgerLoading}
+                        />
                     </div>
                 </div>
             )}
@@ -1606,9 +1687,10 @@ export default function SellerDashboard() {
                                             <button 
                                                 type="button" 
                                                 onClick={handleGetEditStoreLocation} 
-                                                className="text-xs text-primary-400 font-bold hover:underline flex items-center gap-1"
+                                                className="text-xs text-primary-400 font-bold hover:underline flex items-center gap-1.5"
                                             >
-                                                📍 Get Location
+                                                <MapPin size={12} className="text-primary-400 shrink-0" />
+                                                <span>Get Location</span>
                                             </button>
                                         )}
                                     </div>
@@ -2630,11 +2712,17 @@ export default function SellerDashboard() {
                     </>
                 )}
             </AnimatePresence>
-        </div>
+            </div>
+            {printingOrder && (
+                <div className="hidden print:block">
+                    <PackagingSlip order={printingOrder} />
+                </div>
+            )}
+        </>
     );
 }
 
-const OrderCard = ({ order, markItemReadyFn, advanceOrderStateFn, onVerifyPayment, userRole, isSelected, onSelect, onOpenHandoffPinModal, onOpenUpdateFeeModal }) => {
+const OrderCard = ({ order, markItemReadyFn, advanceOrderStateFn, onVerifyPayment, userRole, isSelected, onSelect, onOpenHandoffPinModal, onOpenUpdateFeeModal, onPrint }) => {
     const isAwaitingPayment = order.state === 'AWAITING_PAYMENT';
     const isQueued = order.state === 'QUEUED' || order.state === 'PAID';
     const isPreparing = order.state === 'PREPARING';
@@ -2796,6 +2884,15 @@ const OrderCard = ({ order, markItemReadyFn, advanceOrderStateFn, onVerifyPaymen
                     className="w-full mt-3 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                 >
                     Edit Delivery Fee
+                </button>
+            )}
+
+            {onPrint && (
+                <button
+                    onClick={() => onPrint(order)}
+                    className="w-full mt-3 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                >
+                    <Printer size={14} /> Print Packaging Slip
                 </button>
             )}
         </motion.div>

@@ -31,7 +31,10 @@ export default function InventoryDashboard() {
             .catch(err => console.error("Failed to load inventory:", err));
 
         apiClient.get('/products/')
-            .then(res => setProducts(Array.isArray(res.data) ? res.data : []))
+            .then(res => {
+                const data = res.data;
+                setProducts(data && data.results ? data.results : (Array.isArray(data) ? data : []));
+            })
             .catch(err => console.error("Failed to load products:", err));
 
         apiClient.get('/ingredients/')
