@@ -13,15 +13,23 @@ import {
   Platform 
 } from 'react-native';
 import * as Location from 'expo-location';
-import * as Notifications from 'expo-notifications';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 
-// Configure notification behavior safely
-try {
-  const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
-  const isAndroidExpoGo = Platform.OS === 'android' && isExpoGo;
+const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+const isAndroidExpoGo = Platform.OS === 'android' && isExpoGo;
 
-  if (!isAndroidExpoGo) {
+let Notifications: any = null;
+if (!isAndroidExpoGo && Platform.OS !== 'web') {
+  try {
+    Notifications = require('expo-notifications');
+  } catch (e) {
+    console.warn('Failed to load expo-notifications:', e);
+  }
+}
+
+// Configure notification behavior safely
+if (Notifications) {
+  try {
     Notifications.setNotificationHandler({
       handleNotification: async () => ({
         shouldShowAlert: true,
@@ -31,11 +39,11 @@ try {
         shouldShowList: true,
       }),
     });
-  } else {
-    console.warn('Skipping NotificationHandler setup under Android Expo Go (SDK 53+)');
+  } catch (e) {
+    console.warn('Failed to set notification handler:', e);
   }
-} catch (e) {
-  console.warn('Failed to set notification handler:', e);
+} else {
+  console.warn('Skipping NotificationHandler setup (expo-notifications not loaded)');
 }
 
 interface UserLocation {
@@ -134,15 +142,7 @@ export default function RootLayout() {
   // Request notifications permission on login
   useEffect(() => {
     async function registerForPushNotifications() {
-      if (Platform.OS === 'web') return;
-
-      const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
-      const isAndroidExpoGo = Platform.OS === 'android' && isExpoGo;
-
-      if (isAndroidExpoGo) {
-        console.warn('Skipping Android remote notification permissions check in Expo Go (SDK 53+)');
-        return;
-      }
+      if (!Notifications) return;
 
       try {
         const { status: existingStatus } = await Notifications.getPermissionsAsync();

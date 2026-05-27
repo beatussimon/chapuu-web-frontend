@@ -4,7 +4,19 @@ import { WebView } from 'react-native-webview';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUser } from '../app/_layout';
 import { useRouter, useNavigation } from 'expo-router';
-import * as Notifications from 'expo-notifications';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
+
+const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+const isAndroidExpoGo = Platform.OS === 'android' && isExpoGo;
+
+let Notifications: any = null;
+if (!isAndroidExpoGo && Platform.OS !== 'web') {
+  try {
+    Notifications = require('expo-notifications');
+  } catch (e) {
+    console.warn('Failed to load expo-notifications:', e);
+  }
+}
 
 const DEFAULT_URL = 'https://pasifiq.store';
 const BASE_URL = process.env.EXPO_PUBLIC_WEB_URL || DEFAULT_URL;
@@ -176,16 +188,20 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
           body = `Your order from ${storeName} has been cancelled.`;
         }
         
-        Notifications.scheduleNotificationAsync({
-          content: {
-            title: `Order Status Update`,
-            body,
-            data: { orderId },
-          },
-          trigger: null,
-        }).catch(err => {
-          console.warn('Failed to schedule local notification:', err);
-        });
+        if (Notifications) {
+          Notifications.scheduleNotificationAsync({
+            content: {
+              title: `Order Status Update`,
+              body,
+              data: { orderId },
+            },
+            trigger: null,
+          }).catch((err: any) => {
+            console.warn('Failed to schedule local notification:', err);
+          });
+        } else {
+          console.warn('Skipping notification scheduling: expo-notifications not loaded');
+        }
       }
     } catch (e) {
       // Non-JSON message, ignore
