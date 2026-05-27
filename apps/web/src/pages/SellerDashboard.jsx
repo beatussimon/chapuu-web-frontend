@@ -404,11 +404,8 @@ export default function SellerDashboard() {
         
         try {
             // DYNAMIC DATA: Fetch every sync cycle
-            const storeId = storeIdRef.current;
-            let ordersUrl = '/orders/?no_pagination=true&exclude_inactive=true';
-            if (storeId) {
-                ordersUrl += `&store=${storeId}`;
-            }
+            // Reverted store constraint: Sellers need a unified command centre for all their owned/employed stores
+            const ordersUrl = '/orders/?no_pagination=true&exclude_inactive=true';
             
             const ordersRes = await apiClient.get(ordersUrl);
             const data = ordersRes.data;
@@ -2817,6 +2814,11 @@ const OrderCard = ({ order, markItemReadyFn, advanceOrderStateFn, onVerifyPaymen
             <div className="flex justify-between items-start mb-4 text-left">
                 <div>
                     <h4 className="text-xl font-black text-white">#{order.id}</h4>
+                    {order.store_name && (
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 bg-white/5 px-2 py-0.5 rounded-md mt-1 inline-block border border-white/5">
+                            {order.store_name}
+                        </span>
+                    )}
                     <span className="text-xs text-primary-400 font-bold block mt-1">{formatPriceStatic(order.total_amount)} {order.delivery_fee > 0 && `(Fee: ${order.delivery_fee})`}</span>
                     {order.reservation_time && (
                         <div className="flex items-center gap-1.5 mt-2 bg-primary-500/10 text-primary-400 px-2 py-1 rounded-md border border-primary-500/20 w-fit">
