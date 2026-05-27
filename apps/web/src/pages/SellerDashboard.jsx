@@ -214,7 +214,7 @@ export default function SellerDashboard() {
 
     // Notification Badge Calculations
     const kitchenCount = orders.filter(o => ['QUEUED', 'PAID', 'PREPARING'].includes(o.state)).length;
-    const accountingCount = orders.filter(o => o.state === 'AWAITING_PAYMENT').length;
+    const accountingCount = orders.filter(o => o.state === 'AWAITING_PAYMENT' || o.state === 'CREATED').length;
     const deliveryCount = orders.filter(o => o.fulfillment_mode === 'DELIVERY' && ['READY', 'OUT_FOR_DELIVERY'].includes(o.state)).length;
     const unreadNoticesCount = notices.filter(n => !n.is_read).length;
 
@@ -404,8 +404,13 @@ export default function SellerDashboard() {
         
         try {
             // DYNAMIC DATA: Fetch every sync cycle
-            // Reverted store constraint: Sellers need a unified command centre for all their owned/employed stores
-            const ordersUrl = '/orders/?no_pagination=true&exclude_inactive=true';
+            const storeId = storeIdRef.current;
+            let ordersUrl = '/orders/?no_pagination=true&exclude_inactive=true';
+            
+            // Secure Scoping: The command centre MUST be strictly scoped to the selected store
+            if (storeId) {
+                ordersUrl += `&store=${storeId}`;
+            }
             
             const ordersRes = await apiClient.get(ordersUrl);
             const data = ordersRes.data;
@@ -730,7 +735,7 @@ export default function SellerDashboard() {
     // Sync active queue order count back to native shell
     useEffect(() => {
         if (window.ReactNativeWebView && Array.isArray(orders)) {
-            const activeQueueCount = orders.filter(o => !['COMPLETED', 'CANCELLED', 'REFUNDED', 'EXPIRED', 'CREATED'].includes(o.state)).length;
+            const activeQueueCount = orders.filter(o => !['COMPLETED', 'CANCELLED', 'REFUNDED', 'EXPIRED'].includes(o.state)).length;
             window.ReactNativeWebView.postMessage(JSON.stringify({
                 type: 'ACTIVE_ORDERS_COUNT',
                 payload: { count: activeQueueCount }
@@ -743,8 +748,12 @@ export default function SellerDashboard() {
         return o.state === 'PAID' && o.scheduled_start_time && new Date(o.scheduled_start_time) > new Date();
     };
     const upcomingScheduledOrders = ordersArray.filter(isFutureScheduled);
-    const activeOrders = ordersArray.filter(o => o.state !== 'COMPLETED' && o.state !== 'CANCELLED' && o.state !== 'CREATED' && o.state !== 'REFUNDED' && !isFutureScheduled(o));
-    const awaitingPaymentOrders = activeOrders.filter(o => o.state === 'AWAITING_PAYMENT');
+    
+    // BUG FIX: Stopped filtering out 'CREATED'. Ghost/stuck orders will now show up instead of vanishing silently.
+    const activeOrders = ordersArray.filter(o => o.state !== 'COMPLETED' && o.state !== 'CANCELLED' && o.state !== 'REFUNDED' && o.state !== 'EXPIRED' && !isFutureScheduled(o));
+    
+    // Group CREATED (stuck) and AWAITING_PAYMENT into the Accounting tab
+    const awaitingPaymentOrders = activeOrders.filter(o => o.state === 'AWAITING_PAYMENT' || o.state === 'CREATED');
     const queuedOrders = activeOrders.filter(o => (o.state === 'QUEUED' || o.state === 'PAID') && o.fulfillment_mode !== 'RESERVATION');
     const reservationOrders = activeOrders.filter(o => (o.state === 'QUEUED' || o.state === 'PAID') && o.fulfillment_mode === 'RESERVATION');
     const preparingOrders = activeOrders.filter(o => o.state === 'PREPARING');
