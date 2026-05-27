@@ -19,7 +19,14 @@ export default function DeliveryDashboard() {
     const fetchOrders = () => {
         apiClient.get('/orders/')
             .then(res => {
-                const data = Array.isArray(res.data) ? res.data : [];
+                // Handle both paginated and non-paginated responses
+                let data = [];
+                if (res.data && typeof res.data === 'object' && 'results' in res.data) {
+                    data = Array.isArray(res.data.results) ? res.data.results : [];
+                } else {
+                    data = Array.isArray(res.data) ? res.data : [];
+                }
+
                 const deliveryOrders = data.filter(o =>
                     o.fulfillment_mode === 'DELIVERY' &&
                     ['PREPARING', 'READY', 'OUT_FOR_DELIVERY'].includes(o.state)
