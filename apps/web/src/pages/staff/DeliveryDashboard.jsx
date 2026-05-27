@@ -17,7 +17,7 @@ export default function DeliveryDashboard() {
     const [confirmingPin, setConfirmingPin] = useState(false);
 
     const fetchOrders = () => {
-        apiClient.get('/orders/')
+        apiClient.get('/orders/?no_pagination=true&exclude_inactive=true')
             .then(res => {
                 // Handle both paginated and non-paginated responses
                 let data = [];

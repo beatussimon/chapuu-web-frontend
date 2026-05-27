@@ -642,7 +642,7 @@ function AppLayout() {
     }
 
     const pollActiveOrders = () => {
-      apiClient.get('/orders/?no_pagination=true')
+      apiClient.get('/orders/?no_pagination=true&exclude_inactive=true')
         .then(res => {
           if (res.data && Array.isArray(res.data)) {
             const orders = res.data;
