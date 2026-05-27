@@ -10,7 +10,8 @@ import {
   TouchableOpacity, 
   StyleSheet, 
   Linking, 
-  Platform 
+  Platform,
+  Image 
 } from 'react-native';
 import * as Location from 'expo-location';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
@@ -271,8 +272,12 @@ export default function RootLayout() {
 
   if (!isReady) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#020617', justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#eab308" />
+      <View style={{ flex: 1, backgroundColor: '#020617', justifyContent: 'center', alignItems: 'center', gap: 24 }}>
+        <Image 
+          source={require('../assets/favicon.png')} 
+          style={{ width: 80, height: 80, resizeMode: 'contain' }} 
+        />
+        <ActivityIndicator size="small" color="#eab308" />
       </View>
     );
   }

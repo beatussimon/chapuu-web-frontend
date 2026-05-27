@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useAppStore } from './store/useStore';
 
@@ -553,14 +553,38 @@ function AppLayout() {
   }, [isWebView]);
 
   // Bidirectional state synchronization with native container
+  const lastSyncedCart = useRef(JSON.stringify(useAppStore.getState().cart));
+  const lastSyncedToken = useRef(useAppStore.getState().token);
+  const lastSyncedRole = useRef(useAppStore.getState().userRole);
+  const lastSyncedLocation = useRef(JSON.stringify(useAppStore.getState().userLocation));
+
   useEffect(() => {
     if (isWebView && window.ReactNativeWebView) {
       // 1. Subscribe to local Zustand changes and post to native container
       const unsubscribe = useAppStore.subscribe((state) => {
-        window.ReactNativeWebView.postMessage(JSON.stringify({
-          type: 'STORAGE_UPDATE',
-          payload: { state }
-        }));
+        if (window.__isSyncingFromNative) {
+          // Bypasses sending STORAGE_UPDATE back if this change was triggered by native STATE_SYNC!
+          return;
+        }
+
+        const cartStr = JSON.stringify(state.cart);
+        const locStr = JSON.stringify(state.userLocation);
+        const hasCartChanged = cartStr !== lastSyncedCart.current;
+        const hasTokenChanged = state.token !== lastSyncedToken.current;
+        const hasRoleChanged = state.userRole !== lastSyncedRole.current;
+        const hasLocationChanged = locStr !== lastSyncedLocation.current;
+
+        if (hasCartChanged || hasTokenChanged || hasRoleChanged || hasLocationChanged) {
+          lastSyncedCart.current = cartStr;
+          lastSyncedToken.current = state.token;
+          lastSyncedRole.current = state.userRole;
+          lastSyncedLocation.current = locStr;
+
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'STORAGE_UPDATE',
+            payload: { state }
+          }));
+        }
       });
 
       // 2. Listen to native container updates and update local Zustand store
@@ -570,12 +594,29 @@ function AppLayout() {
           if (message.type === 'STATE_SYNC') {
             const { state } = message.payload;
             if (state) {
-              useAppStore.setState({
-                token: state.token,
-                userRole: state.userRole,
-                cart: state.cart || [],
-                userLocation: state.userLocation || { lat: null, lng: null, name: null, granted: false }
-              });
+              const incomingCartStr = JSON.stringify(state.cart);
+              const incomingLocStr = JSON.stringify(state.userLocation);
+              
+              const hasTokenChanged = state.token !== lastSyncedToken.current;
+              const hasRoleChanged = state.userRole !== lastSyncedRole.current;
+              const hasCartChanged = incomingCartStr !== lastSyncedCart.current;
+              const hasLocationChanged = incomingLocStr !== lastSyncedLocation.current;
+
+              if (hasTokenChanged || hasRoleChanged || hasCartChanged || hasLocationChanged) {
+                lastSyncedToken.current = state.token;
+                lastSyncedRole.current = state.userRole;
+                lastSyncedCart.current = incomingCartStr;
+                lastSyncedLocation.current = incomingLocStr;
+
+                window.__isSyncingFromNative = true;
+                useAppStore.setState({
+                  token: state.token,
+                  userRole: state.userRole,
+                  cart: state.cart || [],
+                  userLocation: state.userLocation || { lat: null, lng: null, name: null, granted: false }
+                });
+                window.__isSyncingFromNative = false;
+              }
             }
           }
         } catch (e) {}

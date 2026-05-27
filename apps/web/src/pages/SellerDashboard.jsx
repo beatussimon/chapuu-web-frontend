@@ -719,7 +719,8 @@ export default function SellerDashboard() {
     useEffect(() => {
         fetchDashboard();
         fetchStaff();
-        const interval = setInterval(fetchDashboard, 45000); // 45s interval
+        // Increase polling interval to 60s to reduce server load
+        const interval = setInterval(fetchDashboard, 60000); 
         return () => clearInterval(interval);
     }, [userRole, fetchDashboard]);
 
