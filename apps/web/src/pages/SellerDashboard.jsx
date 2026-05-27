@@ -400,17 +400,18 @@ export default function SellerDashboard() {
 
     const fetchDashboard = useCallback(async (force = false) => {
         if (isFetchingRef.current && !force) return;
+        
+        const storeId = storeIdRef.current;
+        if (!storeId) return; // Wait until store is identified
+
         isFetchingRef.current = true;
         
         try {
             // DYNAMIC DATA: Fetch every sync cycle
-            const storeId = storeIdRef.current;
             let ordersUrl = '/orders/?no_pagination=true&exclude_inactive=true';
             
             // Secure Scoping: The command centre MUST be strictly scoped to the selected store
-            if (storeId) {
-                ordersUrl += `&store=${storeId}`;
-            }
+            ordersUrl += `&store=${storeId}`;
             
             const ordersRes = await apiClient.get(ordersUrl);
             const data = ordersRes.data;
@@ -725,12 +726,13 @@ export default function SellerDashboard() {
 
     // Polling & Initial Fetch
     useEffect(() => {
+        if (!storeDetails?.id) return;
         fetchDashboard();
         fetchStaff();
         // Increase polling interval to 60s to reduce server load
         const interval = setInterval(fetchDashboard, 60000); 
         return () => clearInterval(interval);
-    }, [userRole, fetchDashboard]);
+    }, [userRole, fetchDashboard, storeDetails?.id]);
 
     // Sync active queue order count back to native shell
     useEffect(() => {
