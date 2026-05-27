@@ -633,6 +633,74 @@ function AppLayout() {
     }
   }, [isWebView]);
 
+  const prevStatesRef = useRef({});
+
+  useEffect(() => {
+    if (!token || userRole !== 'CUSTOMER') {
+      prevStatesRef.current = {};
+      return;
+    }
+
+    const pollActiveOrders = () => {
+      apiClient.get('/orders/?no_pagination=true')
+        .then(res => {
+          if (res.data && Array.isArray(res.data)) {
+            const orders = res.data;
+
+            // 1. Calculate active orders (excluding COMPLETED, CANCELLED, REFUNDED, EXPIRED)
+            const activeOrders = orders.filter(o => !['COMPLETED', 'CANCELLED', 'REFUNDED', 'EXPIRED'].includes(o.state));
+            const activeCount = activeOrders.length;
+
+            if (window.ReactNativeWebView) {
+              window.ReactNativeWebView.postMessage(JSON.stringify({
+                type: 'ACTIVE_ORDERS_COUNT',
+                payload: { count: activeCount }
+              }));
+            }
+
+            // 2. Detect state transitions for ALL orders in the list
+            orders.forEach(order => {
+              const prevState = prevStatesRef.current[order.id];
+              if (prevState && prevState !== order.state) {
+                // State changed! Post message natively to trigger system notification
+                if (window.ReactNativeWebView) {
+                  window.ReactNativeWebView.postMessage(JSON.stringify({
+                    type: 'ORDER_STATUS_NOTIFICATION',
+                    payload: {
+                      orderId: order.id,
+                      state: order.state,
+                      storeName: order.store_name || `Store #${order.store}`,
+                      fulfillmentMode: order.fulfillment_mode
+                    }
+                  }));
+                }
+              }
+              // Update our cache
+              prevStatesRef.current[order.id] = order.state;
+            });
+
+            // Clean up orders that are no longer returned in the list
+            const currentIds = new Set(orders.map(o => o.id));
+            Object.keys(prevStatesRef.current).forEach(id => {
+              if (!currentIds.has(Number(id))) {
+                delete prevStatesRef.current[id];
+              }
+            });
+          }
+        })
+        .catch(err => {
+          console.error("Failed to poll active orders globally", err);
+        });
+    };
+
+    // Run immediately on mount or login
+    pollActiveOrders();
+
+    // Poll every 20 seconds
+    const interval = setInterval(pollActiveOrders, 20000);
+    return () => clearInterval(interval);
+  }, [token, userRole]);
+
   const isPrintBrandingPage = location.pathname.startsWith('/admin/print-branding/');
   const hideNavigation = isPrintBrandingPage || isWebView;
 

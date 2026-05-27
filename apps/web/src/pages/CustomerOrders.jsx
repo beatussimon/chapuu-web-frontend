@@ -64,17 +64,6 @@ export default function CustomerOrders() {
         return () => clearInterval(interval);
     }, [activeTab, ordersLoadingMore, reservationsLoadingMore, refreshOrders, refreshReservations]);
 
-    // Post active orders count back to the native shell (excluding COMPLETED, CANCELLED, REFUNDED, EXPIRED)
-    useEffect(() => {
-        if (window.ReactNativeWebView && Array.isArray(orders)) {
-            const activeCount = orders.filter(o => !['COMPLETED', 'CANCELLED', 'REFUNDED', 'EXPIRED'].includes(o.state)).length;
-            window.ReactNativeWebView.postMessage(JSON.stringify({
-                type: 'ACTIVE_ORDERS_COUNT',
-                payload: { count: activeCount }
-            }));
-        }
-    }, [orders]);
-
     if (loading && orders.length === 0 && reservations.length === 0) {
         return (
             <div className="w-full max-w-4xl mx-auto py-4 md:py-8 text-white px-2 md:px-4 animate-pulse">

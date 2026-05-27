@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
-import { StyleSheet, View, ActivityIndicator, Platform, Image } from 'react-native';
+import { StyleSheet, View, ActivityIndicator, Platform, Image, Linking } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUser } from '../app/_layout';
@@ -261,6 +261,18 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
   // Fully stable request load interceptor
   const handleShouldStartLoadWithRequest = useCallback((request: any) => {
     const { url } = request;
+
+    // Intercept native URL schemes like tel:, mailto:, sms:, whatsapp:
+    if (
+      url.startsWith('tel:') || 
+      url.startsWith('mailto:') || 
+      url.startsWith('sms:') || 
+      url.startsWith('whatsapp:')
+    ) {
+      Linking.openURL(url).catch((err) => console.warn('Failed to open URL natively:', err));
+      return false; // Stop WebView from attempting to load this URL
+    }
+
     if (!url.startsWith(BASE_URL)) return true;
 
     // Parse pathname

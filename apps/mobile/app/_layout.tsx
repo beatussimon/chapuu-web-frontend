@@ -22,7 +22,6 @@ import { getPermissionsAsync, requestPermissionsAsync } from 'expo-notifications
 try {
   setNotificationHandler({
     handleNotification: async () => ({
-      shouldShowAlert: true,
       shouldPlaySound: true,
       shouldSetBadge: false,
       shouldShowBanner: true,
@@ -82,6 +81,7 @@ export default function RootLayout() {
   const [isReady, setIsReady] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [canAskAgain, setCanAskAgain] = useState(true);
+  const [hasLoggedIn, setHasLoggedIn] = useState(false);
 
   const segments = useSegments();
   const router = useRouter();
@@ -94,11 +94,13 @@ export default function RootLayout() {
         const cachedToken = await AsyncStorage.getItem('chapuu_access_token');
         const cachedCart = await AsyncStorage.getItem('chapuu_cart');
         const cachedLoc = await AsyncStorage.getItem('chapuu_location');
+        const cachedHasLoggedIn = await AsyncStorage.getItem('chapuu_has_logged_in');
 
         if (cachedRole) setUserRole(cachedRole);
         if (cachedToken) setToken(cachedToken);
         if (cachedCart) setCart(JSON.parse(cachedCart));
         if (cachedLoc) setUserLocation(JSON.parse(cachedLoc));
+        if (cachedHasLoggedIn === 'true') setHasLoggedIn(true);
       } catch (e) {
         // Silent error
       } finally {
@@ -116,15 +118,21 @@ export default function RootLayout() {
     const inAuthGroup = currentSegment === 'onboarding' || currentSegment === 'login' || currentSegment === 'signup';
 
     if (!token) {
-      if (!inAuthGroup) {
-        router.replace('/onboarding');
+      if (hasLoggedIn && currentSegment === 'onboarding') {
+        router.replace('/login');
+      } else if (!inAuthGroup) {
+        if (hasLoggedIn) {
+          router.replace('/login');
+        } else {
+          router.replace('/onboarding');
+        }
       }
     } else {
       if (inAuthGroup) {
         router.replace('/(tabs)');
       }
     }
-  }, [token, segments, isReady]);
+  }, [token, segments, isReady, hasLoggedIn]);
 
   // Request notifications permission on login
   useEffect(() => {
@@ -190,6 +198,8 @@ export default function RootLayout() {
       }
       if (tokenVal) {
         await AsyncStorage.setItem('chapuu_access_token', tokenVal);
+        await AsyncStorage.setItem('chapuu_has_logged_in', 'true');
+        setHasLoggedIn(true);
       } else {
         await AsyncStorage.removeItem('chapuu_access_token');
         // Clear cached state on logout

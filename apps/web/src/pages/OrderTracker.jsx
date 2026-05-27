@@ -109,28 +109,6 @@ export default function OrderTracker() {
         };
     }, []);
 
-    // Push local notifications on order status updates
-    const prevOrderStateRef = useRef(null);
-    useEffect(() => {
-        if (order && order.state) {
-            const prevState = prevOrderStateRef.current;
-            if (prevState && prevState !== order.state) {
-                if (window.ReactNativeWebView) {
-                    window.ReactNativeWebView.postMessage(JSON.stringify({
-                        type: 'ORDER_STATUS_NOTIFICATION',
-                        payload: {
-                            orderId: order.id,
-                            state: order.state,
-                            storeName: order.store_name || `Store #${order.store}`,
-                            fulfillmentMode: order.fulfillment_mode
-                        }
-                    }));
-                }
-            }
-            prevOrderStateRef.current = order.state;
-        }
-    }, [order]);
-
     useEffect(() => {
         if (!isTabFocused) return; // Suspend polling/WS in background
 
