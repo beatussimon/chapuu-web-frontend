@@ -14,36 +14,22 @@ import {
 } from 'react-native';
 import * as Location from 'expo-location';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
-
-const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
-const isAndroidExpoGo = Platform.OS === 'android' && isExpoGo;
-
-let Notifications: any = null;
-if (!isAndroidExpoGo && Platform.OS !== 'web') {
-  try {
-    Notifications = require('expo-notifications');
-  } catch (e) {
-    console.warn('Failed to load expo-notifications:', e);
-  }
-}
+import { setNotificationHandler } from 'expo-notifications/build/NotificationsHandler';
+import { getPermissionsAsync, requestPermissionsAsync } from 'expo-notifications/build/NotificationPermissions';
 
 // Configure notification behavior safely
-if (Notifications) {
-  try {
-    Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-        shouldShowBanner: true,
-        shouldShowList: true,
-      }),
-    });
-  } catch (e) {
-    console.warn('Failed to set notification handler:', e);
-  }
-} else {
-  console.warn('Skipping NotificationHandler setup (expo-notifications not loaded)');
+try {
+  setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+} catch (e) {
+  console.warn('Failed to set notification handler:', e);
 }
 
 interface UserLocation {
@@ -142,17 +128,17 @@ export default function RootLayout() {
   // Request notifications permission on login
   useEffect(() => {
     async function registerForPushNotifications() {
-      if (!Notifications) return;
+      if (Platform.OS === 'web') return;
 
       try {
-        const { status: existingStatus } = await Notifications.getPermissionsAsync();
+        const { status: existingStatus } = await getPermissionsAsync();
         let finalStatus = existingStatus;
         if (existingStatus !== 'granted') {
-          const { status } = await Notifications.requestPermissionsAsync();
+          const { status } = await requestPermissionsAsync();
           finalStatus = status;
         }
       } catch (e) {
-        console.warn('Failed to register for push notifications:', e);
+        console.warn('Failed to request notifications permission:', e);
       }
     }
     if (isReady && token) {

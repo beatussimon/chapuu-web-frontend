@@ -937,7 +937,7 @@ export default function SellerDashboard() {
     return (
         <>
             <div className="w-full min-h-screen flex flex-col pt-2 pb-8 px-2 md:px-4 overflow-y-auto no-print">
-            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6 webview-hide-header">
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
                 <div className="flex flex-col gap-1">
                     <h2 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-primary-400 to-yellow-300 bg-clip-text text-transparent drop-shadow-sm">
                         {userRole === 'ACCOUNTANT' ? 'Accounting Center' : 
