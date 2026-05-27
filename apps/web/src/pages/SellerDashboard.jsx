@@ -404,7 +404,13 @@ export default function SellerDashboard() {
         
         try {
             // DYNAMIC DATA: Fetch every sync cycle
-            const ordersRes = await apiClient.get('/orders/?no_pagination=true&exclude_inactive=true');
+            const storeId = storeIdRef.current;
+            let ordersUrl = '/orders/?no_pagination=true&exclude_inactive=true';
+            if (storeId) {
+                ordersUrl += `&store=${storeId}`;
+            }
+            
+            const ordersRes = await apiClient.get(ordersUrl);
             const data = ordersRes.data;
             if (data && typeof data === 'object' && 'results' in data) {
                 setOrders(Array.isArray(data.results) ? data.results : []);
