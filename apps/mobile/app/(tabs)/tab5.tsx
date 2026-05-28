@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import WebViewTab from '../../components/WebViewTab';
-import { useUser } from '../_layout';
+import { useUser } from '../../context/UserContext';
 import { 
   Calendar, 
   Grid, 

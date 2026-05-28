@@ -14,7 +14,7 @@ import {
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, User, Lock } from 'lucide-react-native';
-import { useUser } from './_layout';
+import { useUser } from '../context/UserContext';
 
 const DEFAULT_URL = 'https://pasifiq.store';
 const BASE_URL = process.env.EXPO_PUBLIC_WEB_URL || DEFAULT_URL;

@@ -557,6 +557,7 @@ function AppLayout() {
   const lastSyncedToken = useRef(useAppStore.getState().token);
   const lastSyncedRole = useRef(useAppStore.getState().userRole);
   const lastSyncedLocation = useRef(JSON.stringify(useAppStore.getState().userLocation));
+  const lastSyncedSavedStores = useRef(JSON.stringify(useAppStore.getState().savedStores));
 
   useEffect(() => {
     if (isWebView && window.ReactNativeWebView) {
@@ -569,16 +570,19 @@ function AppLayout() {
 
         const cartStr = JSON.stringify(state.cart);
         const locStr = JSON.stringify(state.userLocation);
+        const savedStr = JSON.stringify(state.savedStores);
         const hasCartChanged = cartStr !== lastSyncedCart.current;
         const hasTokenChanged = state.token !== lastSyncedToken.current;
         const hasRoleChanged = state.userRole !== lastSyncedRole.current;
         const hasLocationChanged = locStr !== lastSyncedLocation.current;
+        const hasSavedChanged = savedStr !== lastSyncedSavedStores.current;
 
-        if (hasCartChanged || hasTokenChanged || hasRoleChanged || hasLocationChanged) {
+        if (hasCartChanged || hasTokenChanged || hasRoleChanged || hasLocationChanged || hasSavedChanged) {
           lastSyncedCart.current = cartStr;
           lastSyncedToken.current = state.token;
           lastSyncedRole.current = state.userRole;
           lastSyncedLocation.current = locStr;
+          lastSyncedSavedStores.current = savedStr;
 
           window.ReactNativeWebView.postMessage(JSON.stringify({
             type: 'STORAGE_UPDATE',
@@ -596,24 +600,28 @@ function AppLayout() {
             if (state) {
               const incomingCartStr = JSON.stringify(state.cart);
               const incomingLocStr = JSON.stringify(state.userLocation);
+              const incomingSavedStr = JSON.stringify(state.savedStores);
               
               const hasTokenChanged = state.token !== lastSyncedToken.current;
               const hasRoleChanged = state.userRole !== lastSyncedRole.current;
               const hasCartChanged = incomingCartStr !== lastSyncedCart.current;
               const hasLocationChanged = incomingLocStr !== lastSyncedLocation.current;
+              const hasSavedChanged = incomingSavedStr !== lastSyncedSavedStores.current;
 
-              if (hasTokenChanged || hasRoleChanged || hasCartChanged || hasLocationChanged) {
+              if (hasTokenChanged || hasRoleChanged || hasCartChanged || hasLocationChanged || hasSavedChanged) {
                 lastSyncedToken.current = state.token;
                 lastSyncedRole.current = state.userRole;
                 lastSyncedCart.current = incomingCartStr;
                 lastSyncedLocation.current = incomingLocStr;
+                lastSyncedSavedStores.current = incomingSavedStr;
 
                 window.__isSyncingFromNative = true;
                 useAppStore.setState({
                   token: state.token,
                   userRole: state.userRole,
                   cart: state.cart || [],
-                  userLocation: state.userLocation || { lat: null, lng: null, name: null, granted: false }
+                  userLocation: state.userLocation || { lat: null, lng: null, name: null, granted: false },
+                  savedStores: state.savedStores || []
                 });
                 window.__isSyncingFromNative = false;
               }

@@ -15,57 +15,25 @@ import {
 } from 'react-native';
 import * as Location from 'expo-location';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
-import { setNotificationHandler } from 'expo-notifications/build/NotificationsHandler';
-import { getPermissionsAsync, requestPermissionsAsync } from 'expo-notifications/build/NotificationPermissions';
+import * as Notifications from 'expo-notifications';
+import { UserContext, UserContextType, UserLocation } from '../context/UserContext';
 
 // Configure notification behavior safely
 try {
-  setNotificationHandler({
-    handleNotification: async () => ({
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-      shouldShowBanner: true,
-      shouldShowList: true,
-    }),
-  });
+  const isExpoGo = Constants.executionEnvironment === 'storeClient' || Constants.appOwnership === 'expo';
+  if (Platform.OS !== 'android' || !isExpoGo) {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+        shouldShowBanner: true,
+        shouldShowList: true,
+      }),
+    });
+  }
 } catch (e) {
   console.warn('Failed to set notification handler:', e);
 }
-
-interface UserLocation {
-  lat: number | null;
-  lng: number | null;
-  name: string | null;
-  granted: boolean;
-}
-
-interface UserContextType {
-  userRole: string | null;
-  token: string | null;
-  cart: any[];
-  userLocation: UserLocation;
-  activeOrderCount: number;
-  updateUser: (role: string | null, token: string | null) => void;
-  updateCart: (cart: any[]) => void;
-  updateUserLocation: (loc: UserLocation) => void;
-  updateActiveOrderCount: (count: number) => void;
-  requestLocationPermission: () => Promise<void>;
-}
-
-const UserContext = createContext<UserContextType>({
-  userRole: 'CUSTOMER',
-  token: null,
-  cart: [],
-  userLocation: { lat: null, lng: null, name: null, granted: false },
-  activeOrderCount: 0,
-  updateUser: () => {},
-  updateCart: () => {},
-  updateUserLocation: () => {},
-  updateActiveOrderCount: () => {},
-  requestLocationPermission: async () => {},
-});
-
-export const useUser = () => useContext(UserContext);
 
 export default function RootLayout() {
   const [userRole, setUserRole] = useState<string | null>('CUSTOMER');
@@ -77,6 +45,7 @@ export default function RootLayout() {
     name: null,
     granted: false,
   });
+  const [savedStores, setSavedStores] = useState<number[]>([]);
   const [activeOrderCount, setActiveOrderCount] = useState<number>(0);
   const [isReady, setIsReady] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
@@ -86,7 +55,7 @@ export default function RootLayout() {
   const segments = useSegments();
   const router = useRouter();
 
-  // Load cached role/token/cart/location on mount
+  // Load cached role/token/cart/location/savedStores on mount
   useEffect(() => {
     async function loadCachedData() {
       try {
@@ -94,12 +63,14 @@ export default function RootLayout() {
         const cachedToken = await AsyncStorage.getItem('chapuu_access_token');
         const cachedCart = await AsyncStorage.getItem('chapuu_cart');
         const cachedLoc = await AsyncStorage.getItem('chapuu_location');
+        const cachedSaved = await AsyncStorage.getItem('chapuu_saved_stores');
         const cachedHasLoggedIn = await AsyncStorage.getItem('chapuu_has_logged_in');
 
         if (cachedRole) setUserRole(cachedRole);
         if (cachedToken) setToken(cachedToken);
         if (cachedCart) setCart(JSON.parse(cachedCart));
         if (cachedLoc) setUserLocation(JSON.parse(cachedLoc));
+        if (cachedSaved) setSavedStores(JSON.parse(cachedSaved));
         if (cachedHasLoggedIn === 'true') setHasLoggedIn(true);
       } catch (e) {
         // Silent error
@@ -139,11 +110,18 @@ export default function RootLayout() {
     async function registerForPushNotifications() {
       if (Platform.OS === 'web') return;
 
+      // SDK 53+ Android remote push notifications cannot run inside Expo Go
+      const isExpoGo = Constants.executionEnvironment === 'storeClient' || Constants.appOwnership === 'expo';
+      if (Platform.OS === 'android' && isExpoGo) {
+        console.warn('Android remote notifications are disabled in Expo Go. Skipping permission requests.');
+        return;
+      }
+
       try {
-        const { status: existingStatus } = await getPermissionsAsync();
+        const { status: existingStatus } = await Notifications.getPermissionsAsync();
         let finalStatus = existingStatus;
         if (existingStatus !== 'granted') {
-          const { status } = await requestPermissionsAsync();
+          const { status } = await Notifications.requestPermissionsAsync();
           finalStatus = status;
         }
       } catch (e) {
@@ -205,9 +183,11 @@ export default function RootLayout() {
         // Clear cached state on logout
         setCart([]);
         setUserLocation({ lat: null, lng: null, name: null, granted: false });
+        setSavedStores([]);
         setActiveOrderCount(0);
         await AsyncStorage.removeItem('chapuu_cart');
         await AsyncStorage.removeItem('chapuu_location');
+        await AsyncStorage.removeItem('chapuu_saved_stores');
       }
     } catch (e) {
       // Silent error
@@ -225,6 +205,13 @@ export default function RootLayout() {
     setUserLocation(newLoc);
     try {
       await AsyncStorage.setItem('chapuu_location', JSON.stringify(newLoc));
+    } catch (e) {}
+  };
+
+  const updateSavedStores = async (newStores: number[]) => {
+    setSavedStores(newStores);
+    try {
+      await AsyncStorage.setItem('chapuu_saved_stores', JSON.stringify(newStores));
     } catch (e) {}
   };
 
@@ -298,10 +285,12 @@ export default function RootLayout() {
       token, 
       cart, 
       userLocation, 
+      savedStores,
       activeOrderCount, 
       updateUser, 
       updateCart, 
       updateUserLocation, 
+      updateSavedStores,
       updateActiveOrderCount,
       requestLocationPermission
     }}>

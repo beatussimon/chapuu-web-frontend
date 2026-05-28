@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { useUser } from '../_layout';
+import { useUser } from '../../context/UserContext';
 import { 
   Compass, 
   Utensils, 

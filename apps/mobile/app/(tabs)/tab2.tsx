@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import WebViewTab from '../../components/WebViewTab';
-import { useUser } from '../_layout';
+import { useUser } from '../../context/UserContext';
 
 export default function Tab2Screen() {
   const { userRole, updateUser } = useUser();

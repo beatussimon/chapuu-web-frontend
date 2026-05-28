@@ -1,10 +1,11 @@
 import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
-import { StyleSheet, View, ActivityIndicator, Platform, Image, Linking } from 'react-native';
+import { StyleSheet, View, ActivityIndicator, Platform, Image, Linking, BackHandler, Vibration, TouchableOpacity, Alert, Text } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useUser } from '../app/_layout';
+import { ArrowLeft, User, LogOut } from 'lucide-react-native';
+import { useUser } from '../context/UserContext';
 import { useRouter, useNavigation } from 'expo-router';
-import { scheduleNotificationAsync } from 'expo-notifications/build/scheduleNotificationAsync';
+import * as Notifications from 'expo-notifications';
 
 const DEFAULT_URL = 'https://pasifiq.store';
 const BASE_URL = process.env.EXPO_PUBLIC_WEB_URL || DEFAULT_URL;
@@ -22,13 +23,100 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
     userRole, 
     cart, 
     userLocation, 
+    savedStores,
     updateCart, 
     updateUser, 
+    updateSavedStores,
     updateActiveOrderCount 
   } = useUser();
 
   const navigation = useNavigation();
   const [isFocused, setIsFocused] = useState(navigation.isFocused());
+  const [canGoBack, setCanGoBack] = useState(false);
+
+  const isDiscoverTab = path === '/' || path === '/seller';
+  const showBackHeader = canGoBack || !isDiscoverTab;
+
+  // Handle native back action (haptic click + webview history pop / Discover switch)
+  const handleNativeBack = useCallback(() => {
+    if (webViewRef.current && canGoBack) {
+      Vibration.vibrate(10);
+      webViewRef.current.goBack();
+    } else if (!isDiscoverTab) {
+      Vibration.vibrate(10);
+      router.navigate('/(tabs)'); // Switches natively to Tab 1 (Discover)
+    }
+  }, [canGoBack, isDiscoverTab]);
+
+  // Android hardware back button handler
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      const onBackPress = () => {
+        if (isFocused) {
+          if (canGoBack && webViewRef.current) {
+            Vibration.vibrate(10);
+            webViewRef.current.goBack();
+            return true; // Intercept & navigate WebView history
+          } else if (!isDiscoverTab) {
+            Vibration.vibrate(10);
+            router.navigate('/(tabs)'); // Switch back to Discover tab natively
+            return true; // Intercept
+          }
+        }
+        return false; // Propagate (exits app)
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => {
+        subscription.remove();
+      };
+    }
+  }, [canGoBack, isFocused, isDiscoverTab]);
+
+  // Reset WebView to default path on double-tapping bottom tab bar
+  useEffect(() => {
+    const handleTabPress = () => {
+      if (navigation.isFocused() && webViewRef.current) {
+        Vibration.vibrate(10);
+        webViewRef.current.injectJavaScript(`window.location.href = '${targetUrl}';`);
+      }
+    };
+
+    const unsubscribe1 = navigation.addListener('tabPress' as any, handleTabPress);
+    const unsubscribe2 = navigation.getParent()?.addListener('tabPress' as any, handleTabPress);
+
+    return () => {
+      unsubscribe1();
+      if (unsubscribe2) unsubscribe2();
+    };
+  }, [navigation, targetUrl]);
+
+  // Handle Profile & Logout overlay buttons
+  const handleProfilePress = useCallback(() => {
+    if (webViewRef.current) {
+      Vibration.vibrate(10);
+      webViewRef.current.injectJavaScript("window.location.href = '/profile';");
+    }
+  }, []);
+
+  const handleLogoutPress = useCallback(() => {
+    Vibration.vibrate(10);
+    Alert.alert(
+      "Confirm Logout",
+      "Are you sure you want to log out of Chapuu?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Logout", 
+          style: "destructive",
+          onPress: () => {
+            Vibration.vibrate(15);
+            updateUser(null, null); // Triggers native logout cleaning
+          }
+        }
+      ]
+    );
+  }, [updateUser]);
 
   useEffect(() => {
     const unsubscribeFocus = navigation.addListener('focus', () => {
@@ -67,6 +155,7 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
   const lastSyncedToken = useRef(token);
   const lastSyncedRole = useRef(userRole);
   const lastSyncedLocation = useRef(JSON.stringify(userLocation));
+  const lastSyncedSavedStores = useRef(JSON.stringify(savedStores));
 
   // Sync callbacks/states to refs on every render to keep WebView handlers stable
   const tokenRef = useRef(token);
@@ -75,6 +164,7 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
   const userLocationRef = useRef(userLocation);
   const updateCartRef = useRef(updateCart);
   const updateUserRef = useRef(updateUser);
+  const updateSavedStoresRef = useRef(updateSavedStores);
   const updateActiveOrderCountRef = useRef(updateActiveOrderCount);
   const onStateUpdateRef = useRef(onStateUpdate);
 
@@ -85,6 +175,7 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
     userLocationRef.current = userLocation;
     updateCartRef.current = updateCart;
     updateUserRef.current = updateUser;
+    updateSavedStoresRef.current = updateSavedStores;
     updateActiveOrderCountRef.current = updateActiveOrderCount;
     onStateUpdateRef.current = onStateUpdate;
 
@@ -92,7 +183,8 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
     lastSyncedToken.current = token;
     lastSyncedRole.current = userRole;
     lastSyncedLocation.current = JSON.stringify(userLocation);
-  }, [token, userRole, cart, userLocation, onStateUpdate, updateCart, updateUser, updateActiveOrderCount]);
+    lastSyncedSavedStores.current = JSON.stringify(savedStores);
+  }, [token, userRole, cart, userLocation, savedStores, onStateUpdate, updateCart, updateUser, updateSavedStores, updateActiveOrderCount]);
 
   // Pre-load Auth and Cart state into webview localStorage before content loads.
   // We compute this ONCE on component mount to prevent changing the prop, which causes WebView to reload/flicker!
@@ -100,12 +192,14 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
   const initialRole = useRef(userRole);
   const initialCart = useRef(cart);
   const initialLocation = useRef(userLocation);
+  const initialSavedStores = useRef(savedStores);
 
   const beforeContentLoadedJS = useMemo(() => {
     const nativeToken = initialToken.current ? `'${initialToken.current}'` : 'null';
     const nativeRole = initialRole.current ? `'${initialRole.current}'` : 'null';
     const nativeCart = initialCart.current ? JSON.stringify(initialCart.current) : '[]';
     const nativeLocation = initialLocation.current ? JSON.stringify(initialLocation.current) : '{"lat":null,"lng":null,"name":null,"granted":false}';
+    const nativeSaved = initialSavedStores.current ? JSON.stringify(initialSavedStores.current) : '[]';
     
     return `
       (function() {
@@ -114,6 +208,7 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
           const nativeRole = ${nativeRole};
           const nativeCart = ${nativeCart};
           const nativeLocation = ${nativeLocation};
+          const nativeSaved = ${nativeSaved};
           
           if (nativeToken) {
             localStorage.setItem('access_token', nativeToken);
@@ -134,7 +229,7 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
                 selectedStore: parsedState?.state?.selectedStore || null,
                 activeReservation: parsedState?.state?.activeReservation || null,
                 userLocation: nativeLocation,
-                savedStores: parsedState?.state?.savedStores || []
+                savedStores: nativeSaved
               },
               version: 0
             };
@@ -165,24 +260,28 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
     if (webViewRef.current && isFocused) {
       const cartStr = JSON.stringify(cart);
       const locStr = JSON.stringify(userLocation);
+      const savedStr = JSON.stringify(savedStores);
       
       const hasCartChanged = cartStr !== lastSyncedCart.current;
       const hasTokenChanged = token !== lastSyncedToken.current;
       const hasRoleChanged = userRole !== lastSyncedRole.current;
       const hasLocChanged = locStr !== lastSyncedLocation.current;
+      const hasSavedChanged = savedStr !== lastSyncedSavedStores.current;
 
-      if (hasCartChanged || hasTokenChanged || hasRoleChanged || hasLocChanged) {
+      if (hasCartChanged || hasTokenChanged || hasRoleChanged || hasLocChanged || hasSavedChanged) {
         lastSyncedCart.current = cartStr;
         lastSyncedToken.current = token;
         lastSyncedRole.current = userRole;
         lastSyncedLocation.current = locStr;
+        lastSyncedSavedStores.current = savedStr;
 
         const stateObj = {
           state: {
             token,
             userRole,
             cart,
-            userLocation
+            userLocation,
+            savedStores
           }
         };
         webViewRef.current.postMessage(JSON.stringify({
@@ -191,7 +290,7 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
         }));
       }
     }
-  }, [token, userRole, cart, userLocation, isFocused]);
+  }, [token, userRole, cart, userLocation, savedStores, isFocused]);
 
   // Fully stable event message handler
   const handleMessage = useCallback((event: any) => {
@@ -202,13 +301,19 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
         const state = message.payload?.state || null;
         if (state) {
           const incomingCartStr = JSON.stringify(state.cart);
+          const incomingSavedStr = JSON.stringify(state.savedStores);
           const hasCartChanged = incomingCartStr !== lastSyncedCart.current;
+          const hasSavedChanged = incomingSavedStr !== lastSyncedSavedStores.current;
           const hasTokenChanged = state.token !== lastSyncedToken.current;
           const hasRoleChanged = state.userRole !== lastSyncedRole.current;
 
           if (hasCartChanged && state.cart) {
             lastSyncedCart.current = incomingCartStr;
             updateCartRef.current(state.cart);
+          }
+          if (hasSavedChanged && state.savedStores) {
+            lastSyncedSavedStores.current = incomingSavedStr;
+            updateSavedStoresRef.current(state.savedStores);
           }
           if ((hasTokenChanged || hasRoleChanged) && onStateUpdateRef.current) {
             if (hasTokenChanged) lastSyncedToken.current = state.token;
@@ -242,7 +347,7 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
           body = `Your order from ${storeName} has been cancelled.`;
         }
         
-        scheduleNotificationAsync({
+        Notifications.scheduleNotificationAsync({
           content: {
             title: `Order Status Update`,
             body,
@@ -262,13 +367,21 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
   const handleShouldStartLoadWithRequest = useCallback((request: any) => {
     const { url } = request;
 
-    // Intercept native URL schemes like tel:, mailto:, sms:, whatsapp:
-    if (
+    // 1. Intercept custom URL schemes like tel:, mailto:, sms:, whatsapp:
+    const isCustomScheme = 
       url.startsWith('tel:') || 
       url.startsWith('mailto:') || 
       url.startsWith('sms:') || 
-      url.startsWith('whatsapp:')
-    ) {
+      url.startsWith('whatsapp:');
+
+    // 2. Intercept web-based contact links (like wa.me, api.whatsapp.com)
+    const isWhatsAppWeb = url.includes('wa.me') || url.includes('api.whatsapp.com');
+
+    // 3. Intercept external web URLs that don't belong in the app's internal navigation
+    const isWebUrl = url.startsWith('http://') || url.startsWith('https://');
+    const isExternalWebUrl = isWebUrl && !url.startsWith(BASE_URL);
+
+    if (isCustomScheme || isWhatsAppWeb || isExternalWebUrl) {
       Linking.openURL(url).catch((err) => console.warn('Failed to open URL natively:', err));
       return false; // Stop WebView from attempting to load this URL
     }
@@ -326,11 +439,60 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
+      {showBackHeader ? (
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={handleNativeBack}
+            activeOpacity={0.7}
+            hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+          >
+            <ArrowLeft size={22} color="#eab308" />
+          </TouchableOpacity>
+          <View style={styles.headerTitleContainer}>
+            <Image 
+              source={require('../assets/favicon.png')} 
+              style={styles.headerLogo} 
+            />
+          </View>
+          <View style={styles.headerPlaceholder} />
+        </View>
+      ) : (
+        /* Branded Root Tab Header with Profile & Logout Actions */
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <Text style={styles.brandText}>CHAPUU</Text>
+          </View>
+          <View style={styles.headerRight}>
+            <TouchableOpacity 
+              style={styles.headerIconButton} 
+              onPress={handleProfilePress}
+              activeOpacity={0.7}
+              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+            >
+              <User size={20} color="#eab308" />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.headerIconButton} 
+              onPress={handleLogoutPress}
+              activeOpacity={0.7}
+              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+            >
+              <LogOut size={20} color="#94a3b8" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
       <WebView
         ref={webViewRef}
         source={source}
         style={styles.webview}
         userAgent={customUserAgent}
+        originWhitelist={['*']}
+        allowsBackForwardNavigationGestures={true}
+        onNavigationStateChange={(navState) => {
+          setCanGoBack(navState.canGoBack);
+        }}
         javaScriptEnabled={true}
         domStorageEnabled={true}
         startInLoadingState={true}
@@ -367,6 +529,55 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: '#020617',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  header: {
+    height: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#020617',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+    paddingHorizontal: 16,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+  },
+  headerTitleContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerLogo: {
+    width: 32,
+    height: 32,
+    resizeMode: 'contain',
+  },
+  headerPlaceholder: {
+    width: 40,
+  },
+  headerLeft: {
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+  },
+  brandText: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#eab308',
+    letterSpacing: 1,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 20,
+  },
+  headerIconButton: {
+    padding: 4,
     justifyContent: 'center',
     alignItems: 'center',
   },

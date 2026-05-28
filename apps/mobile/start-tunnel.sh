@@ -29,8 +29,8 @@ for i in {1..10}; do
   if [ ! -z "$TUNNEL_URL" ]; then
     echo "✅ Tunnel established: $TUNNEL_URL"
     export EXPO_PACKAGER_PROXY_URL=$TUNNEL_URL
-    # Start Expo using the manual tunnel URL
-    npx expo start --host localhost
+    # Start Expo using the manual tunnel URL and clear Metro cache
+    npx expo start --clear --host localhost
     exit 0
   fi
 done
