@@ -15,13 +15,22 @@ import {
 } from 'react-native';
 import * as Location from 'expo-location';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
-import * as Notifications from 'expo-notifications';
 import { UserContext, UserContextType, UserLocation } from '../context/UserContext';
+
+const isExpoGo = Constants.executionEnvironment === 'storeClient' || Constants.appOwnership === 'expo';
+let Notifications: any = null;
+
+if (Platform.OS !== 'android' || !isExpoGo) {
+  try {
+    Notifications = require('expo-notifications');
+  } catch (e) {
+    console.warn('Failed to load expo-notifications:', e);
+  }
+}
 
 // Configure notification behavior safely
 try {
-  const isExpoGo = Constants.executionEnvironment === 'storeClient' || Constants.appOwnership === 'expo';
-  if (Platform.OS !== 'android' || !isExpoGo) {
+  if (Notifications) {
     Notifications.setNotificationHandler({
       handleNotification: async () => ({
         shouldPlaySound: true,
@@ -108,14 +117,7 @@ export default function RootLayout() {
   // Request notifications permission on login
   useEffect(() => {
     async function registerForPushNotifications() {
-      if (Platform.OS === 'web') return;
-
-      // SDK 53+ Android remote push notifications cannot run inside Expo Go
-      const isExpoGo = Constants.executionEnvironment === 'storeClient' || Constants.appOwnership === 'expo';
-      if (Platform.OS === 'android' && isExpoGo) {
-        console.warn('Android remote notifications are disabled in Expo Go. Skipping permission requests.');
-        return;
-      }
+      if (Platform.OS === 'web' || !Notifications) return;
 
       try {
         const { status: existingStatus } = await Notifications.getPermissionsAsync();
