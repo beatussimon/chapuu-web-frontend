@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../api/client';
-import { User, Mail, Phone, ArrowLeft, Save, Star, ShieldCheck } from 'lucide-react';
+import { User, Mail, Phone, ArrowLeft, Save, Star, ShieldCheck, Camera } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { triggerHaptic, hapticPatterns } from '../utils/haptics';
@@ -16,9 +16,29 @@ export default function CustomerProfile() {
     const [username, setUsername] = useState('');
     const [loyaltyPoints, setLoyaltyPoints] = useState(0);
     const [userRole, setUserRole] = useState('');
+    const [profilePicture, setProfilePicture] = useState('');
+    const [profilePictureFile, setProfilePictureFile] = useState(null);
+    const [profilePicturePreview, setProfilePicturePreview] = useState('');
     
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+
+    const handleImageChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            if (!file.type.startsWith('image/')) {
+                toast.error("Please select a valid image file.");
+                return;
+            }
+            if (file.size > 5 * 1024 * 1024) {
+                toast.error("Image file size must be less than 5MB.");
+                return;
+            }
+            setProfilePictureFile(file);
+            setProfilePicturePreview(URL.createObjectURL(file));
+            triggerHaptic(hapticPatterns.light);
+        }
+    };
 
     useEffect(() => {
         apiClient.get('/auth/users/me/')
@@ -30,6 +50,7 @@ export default function CustomerProfile() {
                 setEmail(data.email || '');
                 setLoyaltyPoints(data.loyalty_points || 0);
                 setUserRole(data.role || 'CUSTOMER');
+                setProfilePicture(data.profile_picture || '');
                 
                 const parsedLocal = parseLocalPhoneNumber(data.phone_number);
                 setLocalPhone(parsedLocal);
@@ -72,22 +93,32 @@ export default function CustomerProfile() {
         const toastId = toast.loading("Saving changes...");
         const fullPhone = `+255${localPhone}`;
 
-        const payload = {
-            first_name: firstName.trim(),
-            last_name: lastName.trim(),
-            email: email.trim(),
-            phone_number: fullPhone
-        };
+        const formData = new FormData();
+        formData.append('first_name', firstName.trim());
+        formData.append('last_name', lastName.trim());
+        formData.append('email', email.trim());
+        formData.append('phone_number', fullPhone);
+        if (profilePictureFile) {
+            formData.append('profile_picture', profilePictureFile);
+        }
 
-        apiClient.patch('/auth/users/me/', payload)
+        apiClient.patch('/auth/users/me/', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        })
             .then(res => {
+                const data = res.data;
                 toast.success("Profile updated successfully!", { id: toastId });
                 triggerHaptic(hapticPatterns.success);
+                setProfilePicture(data.profile_picture || '');
+                setProfilePictureFile(null);
+                setProfilePicturePreview('');
                 setSaving(false);
             })
             .catch(err => {
                 console.error("Profile update failed:", err);
-                const msg = err.response?.data?.detail || "Failed to save profile changes.";
+                const msg = err.response?.data?.detail || err.response?.data?.profile_picture?.[0] || "Failed to save profile changes.";
                 toast.error(msg, { id: toastId });
                 setSaving(false);
             });
@@ -125,8 +156,28 @@ export default function CustomerProfile() {
                         animate={{ opacity: 1, y: 0 }}
                         className="glass-dark border border-white/10 rounded-3xl p-6 text-center shadow-xl"
                     >
-                        <div className="w-24 h-24 bg-primary-500/10 border border-primary-500/20 rounded-full flex items-center justify-center text-primary-400 text-3xl font-black mx-auto mb-4 uppercase">
-                            {firstName ? firstName[0] : username ? username[0] : 'U'}
+                        <div className="relative w-24 h-24 mx-auto mb-4 group">
+                            {profilePicturePreview || profilePicture ? (
+                                <img 
+                                    src={profilePicturePreview || profilePicture} 
+                                    alt="Profile" 
+                                    className="w-full h-full rounded-full object-cover border-2 border-primary-500/30 group-hover:border-primary-500 transition-colors shadow-lg"
+                                />
+                            ) : (
+                                <div className="w-full h-full bg-primary-500/10 border border-primary-500/20 rounded-full flex items-center justify-center text-primary-400 text-3xl font-black uppercase">
+                                    {firstName ? firstName[0] : username ? username[0] : 'U'}
+                                </div>
+                            )}
+                            
+                            <label className="absolute bottom-0 right-0 p-2 bg-primary-500 hover:bg-primary-400 text-dark-950 rounded-full cursor-pointer shadow-lg hover:scale-105 transition-all flex items-center justify-center border border-dark-950">
+                                <Camera size={14} />
+                                <input 
+                                    type="file" 
+                                    accept="image/*" 
+                                    onChange={handleImageChange} 
+                                    className="hidden" 
+                                />
+                            </label>
                         </div>
                         
                         <h2 className="text-xl font-bold text-white mb-1 truncate">{firstName && lastName ? `${firstName} ${lastName}` : username}</h2>

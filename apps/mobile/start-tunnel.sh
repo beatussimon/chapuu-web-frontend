@@ -22,10 +22,11 @@ echo "🚀 Starting manual ngrok tunnel..."
 # Start ngrok on Metro's port (8081)
 $NGROK_BIN http 8081 --log=stdout > ngrok.log &
 
-# Wait up to 10 seconds for the URL to appear
-for i in {1..10}; do
+# Wait up to 20 seconds for the URL to appear
+sleep 2
+for i in {1..20}; do
   sleep 1
-  TUNNEL_URL=$(curl -s http://localhost:4040/api/tunnels | grep -o 'https://[^ ]*\.ngrok-free\.dev' | head -n 1)
+  TUNNEL_URL=$(curl -s http://localhost:4040/api/tunnels 2>/dev/null | grep -o 'https://[^ ]*\.ngrok-free\.dev' | head -n 1)
   if [ ! -z "$TUNNEL_URL" ]; then
     echo "✅ Tunnel established: $TUNNEL_URL"
     export EXPO_PACKAGER_PROXY_URL=$TUNNEL_URL

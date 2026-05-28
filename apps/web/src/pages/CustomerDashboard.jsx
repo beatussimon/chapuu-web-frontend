@@ -563,12 +563,20 @@ export default function CustomerDashboard() {
                                         {paginatedReviews.map((r, idx) => (
                                             <div key={idx} className="glass-dark border border-white/5 rounded-3xl p-5 hover:border-white/10 transition-all flex flex-col gap-3 shadow-lg">
                                                 <div className="flex justify-between items-start">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 rounded-full bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-primary-400 font-black">
-                                                            {(r.reviewer_username || 'C')[0].toUpperCase()}
-                                                        </div>
-                                                        <div>
-                                                            <h5 className="text-sm font-bold text-slate-100">{r.reviewer_username || 'Customer'}</h5>
+                                                     <div className="flex items-center gap-3">
+                                                         {r.customer_profile_picture ? (
+                                                             <img 
+                                                                 src={r.customer_profile_picture} 
+                                                                 alt={r.customer_name || r.customer_username || 'Customer'} 
+                                                                 className="w-10 h-10 rounded-full object-cover border border-white/10" 
+                                                             />
+                                                         ) : (
+                                                             <div className="w-10 h-10 rounded-full bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-primary-400 font-black">
+                                                                 {(r.customer_name || r.customer_username || 'C')[0].toUpperCase()}
+                                                             </div>
+                                                         )}
+                                                         <div>
+                                                             <h5 className="text-sm font-bold text-slate-100">{r.customer_name || r.customer_username || 'Customer'}</h5>
                                                             <div className="flex gap-0.5 mt-0.5">
                                                                 {[...Array(5)].map((_, i) => (
                                                                     <Star key={i} size={10} className={i < r.rating ? 'text-yellow-500 fill-current' : 'text-slate-600'} />
