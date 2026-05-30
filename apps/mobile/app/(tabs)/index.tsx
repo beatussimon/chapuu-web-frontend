@@ -4,6 +4,8 @@ import WebViewTab from '../../components/WebViewTab';
 import { useUser } from '../../context/UserContext';
 import { useWebViewStateUpdate } from '../../hooks/useWebViewStateUpdate';
 
+import DiscoverScreen from '../../components/DiscoverScreen';
+
 export default function Tab1Screen() {
   const { userRole, pendingDeepLinkPath, setPendingDeepLinkPath } = useUser();
   const handleStateUpdate = useWebViewStateUpdate();
@@ -25,7 +27,11 @@ export default function Tab1Screen() {
 
   return (
     <View style={styles.container}>
-      <WebViewTab path={currentPath} onStateUpdate={handleStateUpdate} />
+      {userRole === 'CUSTOMER' && currentPath === '/' ? (
+        <DiscoverScreen />
+      ) : (
+        <WebViewTab path={currentPath} onStateUpdate={handleStateUpdate} />
+      )}
     </View>
   );
 }
