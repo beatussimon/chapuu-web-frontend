@@ -15,7 +15,9 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.chapuu.app",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Chapuu needs your location to display nearby restaurants and ensure accurate delivery mapping to your doorstep."
+        "NSLocationWhenInUseUsageDescription": "Chapuu needs your location to display nearby restaurants and ensure accurate delivery mapping to your doorstep.",
+        "NSPhotoLibraryUsageDescription": "Chapuu needs access to your photo library to let you upload payment receipts.",
+        "NSCameraUsageDescription": "Chapuu needs access to your camera to let you take photos of payment receipts."
       }
     },
     "android": {
@@ -26,7 +28,10 @@
       "package": "com.chapuu.app",
       "permissions": [
         "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION"
+        "ACCESS_FINE_LOCATION",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "CAMERA"
       ]
     },
     "web": {
@@ -36,7 +41,20 @@
     "plugins": [
       "expo-router",
       "expo-status-bar",
-      "expo-image"
+      "expo-image",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Chapuu to use your location."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app accesses your photos to let you upload payment receipts.",
+          "cameraPermission": "The app accesses your camera to let you take photos of payment receipts."
+        }
+      ]
     ]
   }
 }

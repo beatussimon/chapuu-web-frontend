@@ -4,14 +4,14 @@ import WebViewTab from '../../components/WebViewTab';
 import { useUser } from '../../context/UserContext';
 import { useWebViewStateUpdate } from '../../hooks/useWebViewStateUpdate';
 
+import CartScreen from '../../components/CartScreen';
+
 export default function Tab3Screen() {
   const { userRole } = useUser();
   const handleStateUpdate = useWebViewStateUpdate();
 
   const getPath = () => {
     switch (userRole) {
-      case 'CUSTOMER':
-        return '/cart';
       case 'SELLER':
       case 'ADMIN':
       case 'SUPERUSER':
@@ -23,7 +23,11 @@ export default function Tab3Screen() {
 
   return (
     <View style={styles.container}>
-      <WebViewTab path={getPath()} onStateUpdate={handleStateUpdate} />
+      {userRole === 'CUSTOMER' ? (
+        <CartScreen />
+      ) : (
+        <WebViewTab path={getPath()} onStateUpdate={handleStateUpdate} />
+      )}
     </View>
   );
 }

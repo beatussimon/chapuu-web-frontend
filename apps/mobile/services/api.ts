@@ -42,6 +42,19 @@ export const apiClient = {
     return this.request(endpoint, { ...options, method: 'DELETE' });
   },
 
+  async patch(endpoint: string, body: any, options: ApiOptions = {}) {
+    // Determine if body is FormData. If so, let fetch set the Content-Type automatically.
+    const isFormData = body instanceof FormData;
+    const headers = isFormData ? options.headers : { 'Content-Type': 'application/json', ...options.headers };
+    
+    return this.request(endpoint, {
+      ...options,
+      method: 'PATCH',
+      body: isFormData ? body : JSON.stringify(body),
+      headers,
+    });
+  },
+
   async request(endpoint: string, options: ApiOptions) {
     let url = `${BASE_URL}${endpoint}`;
     
