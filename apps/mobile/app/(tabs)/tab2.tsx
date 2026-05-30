@@ -1,39 +1,42 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import WebViewTab from '../../components/WebViewTab';
 import { useUser } from '../../context/UserContext';
+import { useWebViewStateUpdate } from '../../hooks/useWebViewStateUpdate';
 
 export default function Tab2Screen() {
-  const { userRole, updateUser } = useUser();
+  const { userRole, pendingDeepLinkPath, setPendingDeepLinkPath } = useUser();
+  const handleStateUpdate = useWebViewStateUpdate();
+  const [currentPath, setCurrentPath] = useState<string>('/stores?type=RESTAURANT');
 
-  const getPath = () => {
+  useEffect(() => {
+    let defaultPath = '/';
     switch (userRole) {
       case 'CUSTOMER':
-        return '/stores?type=RESTAURANT';
+        defaultPath = '/stores?type=RESTAURANT';
+        break;
       case 'SELLER':
       case 'ADMIN':
       case 'SUPERUSER':
       case 'CHEF':
-        return '/seller/menu';
+        defaultPath = '/seller/menu';
+        break;
       case 'DELIVERY':
-        return '/delivery';
-      default:
-        return '/';
+        defaultPath = '/delivery';
+        break;
     }
-  };
 
-  const handleStateUpdate = (state: any) => {
-    if (state) {
-      const { userRole: newRole, token: newToken } = state;
-      updateUser(newRole || 'CUSTOMER', newToken || null);
+    if (pendingDeepLinkPath && pendingDeepLinkPath.startsWith('/stores')) {
+      setCurrentPath(pendingDeepLinkPath);
+      setPendingDeepLinkPath(null);
     } else {
-      updateUser('CUSTOMER', null);
+      setCurrentPath(defaultPath);
     }
-  };
+  }, [userRole, pendingDeepLinkPath, setPendingDeepLinkPath]);
 
   return (
     <View style={styles.container}>
-      <WebViewTab path={getPath()} onStateUpdate={handleStateUpdate} />
+      <WebViewTab path={currentPath} onStateUpdate={handleStateUpdate} />
     </View>
   );
 }

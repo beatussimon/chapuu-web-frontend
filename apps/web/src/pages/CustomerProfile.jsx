@@ -6,6 +6,8 @@ import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { triggerHaptic, hapticPatterns } from '../utils/haptics';
 import { parseLocalPhoneNumber } from '../utils/phone';
+import { resolveMediaUrl } from '../utils/imageUtils';
+import OptimizedImage from '../components/OptimizedImage';
 
 export default function CustomerProfile() {
     const navigate = useNavigate();
@@ -22,6 +24,7 @@ export default function CustomerProfile() {
     
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [cacheBuster, setCacheBuster] = useState(Date.now());
 
     const handleImageChange = (e) => {
         const file = e.target.files[0];
@@ -114,6 +117,7 @@ export default function CustomerProfile() {
                 setProfilePicture(data.profile_picture || '');
                 setProfilePictureFile(null);
                 setProfilePicturePreview('');
+                setCacheBuster(Date.now());
                 setSaving(false);
             })
             .catch(err => {
@@ -158,10 +162,14 @@ export default function CustomerProfile() {
                     >
                         <div className="relative w-24 h-24 mx-auto mb-4 group">
                             {profilePicturePreview || profilePicture ? (
-                                <img 
+                                <OptimizedImage 
                                     src={profilePicturePreview || profilePicture} 
+                                    version={cacheBuster}
                                     alt="Profile" 
                                     className="w-full h-full rounded-full object-cover border-2 border-primary-500/30 group-hover:border-primary-500 transition-colors shadow-lg"
+                                    wrapperClassName="w-full h-full rounded-full"
+                                    placeholderType="avatar"
+                                    eager
                                 />
                             ) : (
                                 <div className="w-full h-full bg-primary-500/10 border border-primary-500/20 rounded-full flex items-center justify-center text-primary-400 text-3xl font-black uppercase">

@@ -31,6 +31,10 @@ The mobile app is an Expo native app with a comprehensive bidirectional WebView 
 - **Notifications**: Native system notifications triggered by `ORDER_STATUS_NOTIFICATION` bridge messages. **Safety guards** are in place for Android Expo Go (SDK 53+) compatibility.
 - **Resource Management**: Suspends Web-side polling/WebSockets when native tab loses focus (listens for `focus`/`blur` events).
 - **Haptics**: Leverages `triggerHaptic` which maps to native device vibration.
+- **Tunneling (ngrok)**: 
+    - Use `npm run tunnel` to start Expo with a manual ngrok tunnel.
+    - **Troubleshooting**: If `start-tunnel.sh` fails, verify no orphaned ngrok processes are holding port `4040` or `8081` (`killall -9 ngrok && fuser -k 8081/tcp`).
+    - **Timeout**: Connection can take ~60-100s. The script timeout is set to 120s to accommodate slow handshakes.
 
 ### B. Real-Time Infrastructure (WebSockets)
 - **WebSocket Auth**: Authentication for WebSockets is handled manually via `JWTAuthMiddleware` in `config/middleware.py`. It extracts the `token` from query parameters. **Do not modify this handshake logic.**

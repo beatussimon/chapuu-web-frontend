@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import apiClient from '../api/client';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -63,6 +63,46 @@ export default function CustomerOrders() {
         }, 30000);
         return () => clearInterval(interval);
     }, [activeTab, ordersLoadingMore, reservationsLoadingMore, refreshOrders, refreshReservations]);
+
+    // Sync active orders count and check status changes for notifications
+    const prevOrdersStateRef = useRef({});
+    useEffect(() => {
+        if (!Array.isArray(orders)) return;
+
+        // 1. Sync active orders count (for customer tab badge)
+        if (window.ReactNativeWebView) {
+            const activeStates = ['CREATED', 'AWAITING_PAYMENT', 'PAID', 'QUEUED', 'PREPARING', 'READY', 'OUT_FOR_DELIVERY'];
+            const activeCount = orders.filter(o => activeStates.includes(o.state)).length;
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+                type: 'ACTIVE_ORDERS_COUNT',
+                payload: { count: activeCount }
+            }));
+        }
+
+        // 2. Track order status changes for notification emission
+        orders.forEach(order => {
+            if (!order.id) return;
+            const prevState = prevOrdersStateRef.current[order.id];
+            
+            // If the state has transitioned to a new state
+            if (prevState && prevState !== order.state) {
+                if (window.ReactNativeWebView) {
+                    window.ReactNativeWebView.postMessage(JSON.stringify({
+                        type: 'ORDER_STATUS_NOTIFICATION',
+                        payload: {
+                            orderId: order.id,
+                            state: order.state,
+                            storeName: order.store_name || `Store #${order.store}`,
+                            fulfillmentMode: order.fulfillment_mode
+                        }
+                    }));
+                }
+            }
+            
+            // Update the tracked state
+            prevOrdersStateRef.current[order.id] = order.state;
+        });
+    }, [orders]);
 
     if (loading && orders.length === 0 && reservations.length === 0) {
         return (

@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { triggerHaptic, hapticPatterns } from '../utils/haptics';
 import OptimizedImage from '../components/OptimizedImage';
+import { resolveMediaUrl } from '../utils/imageUtils';
 
 export default function CustomerDashboard() {
     const [products, setProducts] = useState([]);
@@ -565,10 +566,13 @@ export default function CustomerDashboard() {
                                                 <div className="flex justify-between items-start">
                                                      <div className="flex items-center gap-3">
                                                          {r.customer_profile_picture ? (
-                                                             <img 
+                                                             <OptimizedImage 
                                                                  src={r.customer_profile_picture} 
                                                                  alt={r.customer_name || r.customer_username || 'Customer'} 
                                                                  className="w-10 h-10 rounded-full object-cover border border-white/10" 
+                                                                 wrapperClassName="w-10 h-10 rounded-full"
+                                                                 placeholderType="avatar"
+                                                                 eager
                                                              />
                                                          ) : (
                                                              <div className="w-10 h-10 rounded-full bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-primary-400 font-black">

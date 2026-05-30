@@ -1,6 +1,8 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
+import * as Linking from 'expo-linking';
 import { 
   View, 
   ActivityIndicator, 
@@ -9,23 +11,29 @@ import {
   Text, 
   TouchableOpacity, 
   StyleSheet, 
-  Linking, 
   Platform,
-  Image 
+  Image,
+  Animated,
+  AppState,
+  AppStateStatus
 } from 'react-native';
 import * as Location from 'expo-location';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { UserContext, UserContextType, UserLocation } from '../context/UserContext';
+import { CartItem } from '../types';
+import CustomAlertModal from '../components/CustomAlert';
+import { isTokenNearExpiry, silentlyRefreshToken } from '../services/tokenRefresh';
 
 const isExpoGo = Constants.executionEnvironment === 'storeClient' || Constants.appOwnership === 'expo';
 let Notifications: any = null;
 
-if (Platform.OS !== 'android' || !isExpoGo) {
-  try {
+// Safe loading of notifications - Android Expo Go (SDK 53+) does not support remote notifications
+try {
+  if (Platform.OS !== 'android' || !isExpoGo) {
     Notifications = require('expo-notifications');
-  } catch (e) {
-    console.warn('Failed to load expo-notifications:', e);
   }
+} catch (e) {
+  console.error('[ExpoNotifications] Load error:', e);
 }
 
 // Configure notification behavior safely
@@ -44,10 +52,14 @@ try {
   console.warn('Failed to set notification handler:', e);
 }
 
+export { ErrorBoundary } from 'expo-router';
+
 export default function RootLayout() {
+  console.log('[RootLayout] Mounting...');
   const [userRole, setUserRole] = useState<string | null>('CUSTOMER');
   const [token, setToken] = useState<string | null>(null);
-  const [cart, setCart] = useState<any[]>([]);
+  const [refreshToken, setRefreshToken] = useState<string | null>(null);
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [userLocation, setUserLocation] = useState<UserLocation>({
     lat: null,
     lng: null,
@@ -56,35 +68,54 @@ export default function RootLayout() {
   });
   const [savedStores, setSavedStores] = useState<number[]>([]);
   const [activeOrderCount, setActiveOrderCount] = useState<number>(0);
+  const [pendingDeepLinkPath, setPendingDeepLinkPath] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [canAskAgain, setCanAskAgain] = useState(true);
   const [hasLoggedIn, setHasLoggedIn] = useState(false);
+
+  const [showSplash, setShowSplash] = useState(true);
+  const splashOpacity = useRef(new Animated.Value(1)).current;
 
   const segments = useSegments();
   const router = useRouter();
 
   // Load cached role/token/cart/location/savedStores on mount
   useEffect(() => {
+    console.log('[RootLayout] Loading cached data...');
     async function loadCachedData() {
       try {
         const cachedRole = await AsyncStorage.getItem('chapuu_user_role');
-        const cachedToken = await AsyncStorage.getItem('chapuu_access_token');
         const cachedCart = await AsyncStorage.getItem('chapuu_cart');
         const cachedLoc = await AsyncStorage.getItem('chapuu_location');
         const cachedSaved = await AsyncStorage.getItem('chapuu_saved_stores');
         const cachedHasLoggedIn = await AsyncStorage.getItem('chapuu_has_logged_in');
 
+        // SECURE STORE MIGRATION: Check if access token is in AsyncStorage
+        const oldToken = await AsyncStorage.getItem('chapuu_access_token');
+        if (oldToken) {
+          console.log('[RootLayout] Migrating token to SecureStore...');
+          await SecureStore.setItemAsync('chapuu_access_token', oldToken);
+          await AsyncStorage.removeItem('chapuu_access_token');
+        }
+
+        const secureToken = await SecureStore.getItemAsync('chapuu_access_token');
+        const secureRefreshToken = await SecureStore.getItemAsync('chapuu_refresh_token');
+
+        console.log('[RootLayout] Cache loaded:', { hasToken: !!secureToken, role: cachedRole });
+
         if (cachedRole) setUserRole(cachedRole);
-        if (cachedToken) setToken(cachedToken);
+        if (secureToken) setToken(secureToken);
+        if (secureRefreshToken) setRefreshToken(secureRefreshToken);
         if (cachedCart) setCart(JSON.parse(cachedCart));
         if (cachedLoc) setUserLocation(JSON.parse(cachedLoc));
         if (cachedSaved) setSavedStores(JSON.parse(cachedSaved));
         if (cachedHasLoggedIn === 'true') setHasLoggedIn(true);
       } catch (e) {
-        // Silent error
+        console.error('[RootLayout] Cache load error:', e);
       } finally {
         setIsReady(true);
+        console.log('[RootLayout] Ready.');
       }
     }
     loadCachedData();
@@ -97,22 +128,136 @@ export default function RootLayout() {
     const currentSegment = segments[0];
     const inAuthGroup = currentSegment === 'onboarding' || currentSegment === 'login' || currentSegment === 'signup';
 
+    console.log('[RootLayout] Guard check:', { currentSegment, hasToken: !!token });
+
     if (!token) {
       if (hasLoggedIn && currentSegment === 'onboarding') {
+        console.log('[RootLayout] Redirecting to login');
         router.replace('/login');
       } else if (!inAuthGroup) {
         if (hasLoggedIn) {
+          console.log('[RootLayout] Redirecting to login (not in auth group)');
           router.replace('/login');
         } else {
+          console.log('[RootLayout] Redirecting to onboarding');
           router.replace('/onboarding');
         }
       }
     } else {
       if (inAuthGroup) {
+        console.log('[RootLayout] Redirecting to tabs');
         router.replace('/(tabs)');
       }
     }
   }, [token, segments, isReady, hasLoggedIn]);
+
+  // Handle push notification taps
+  useEffect(() => {
+    if (!Notifications) return;
+
+    const responseListener = Notifications.addNotificationResponseReceivedListener((response: any) => {
+      const data = response.notification.request.content.data;
+      if (data?.orderId) {
+        console.log('[RootLayout] Push notification tapped for order:', data.orderId);
+        setPendingDeepLinkPath(`/order/track/${data.orderId}`);
+        router.replace('/(tabs)/tab4');
+      }
+    });
+
+    return () => {
+      Notifications.removeNotificationSubscription(responseListener);
+    };
+  }, []);
+
+  // Handle Expo Deep Links
+  useEffect(() => {
+    const handleDeepLink = (url: string | null) => {
+      if (!url) return;
+      try {
+        const parsedUrl = Linking.parse(url);
+        console.log('[RootLayout] Deep link received:', parsedUrl);
+        const path = parsedUrl.path;
+        if (path) {
+          const queryParams = parsedUrl.queryParams;
+          let webPath = `/${path}`;
+          if (queryParams && Object.keys(queryParams).length > 0) {
+            const queryStr = Object.keys(queryParams)
+              .map(k => `${k}=${encodeURIComponent(queryParams[k] as string)}`)
+              .join('&');
+            webPath += `?${queryStr}`;
+          }
+
+          console.log('[RootLayout] Routing to deep link path:', webPath);
+          setPendingDeepLinkPath(webPath);
+          
+          // Map to specific tabs
+          if (path.startsWith('order/track')) {
+            router.replace('/(tabs)/tab4');
+          } else if (path.startsWith('menu')) {
+            router.replace('/(tabs)/');
+          } else if (path.startsWith('reserve')) {
+            router.replace('/(tabs)/tab5');
+          } else if (path.startsWith('stores')) {
+            router.replace('/(tabs)/tab2');
+          } else {
+            router.replace('/(tabs)/');
+          }
+        }
+      } catch (e) {
+        console.warn('[RootLayout] Failed to parse deep link:', e);
+      }
+    };
+
+    // Check initial URL
+    Linking.getInitialURL().then(url => {
+      if (url) handleDeepLink(url);
+    });
+
+    // Listen to incoming URLs
+    const subscription = Linking.addEventListener('url', ({ url }) => {
+      handleDeepLink(url);
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  // Splash screen transition settlement observer
+  useEffect(() => {
+    if (!isReady) return;
+
+    const currentSegment = segments[0];
+    const inAuthGroup = currentSegment === 'onboarding' || currentSegment === 'login' || currentSegment === 'signup';
+
+    console.log('[RootLayout] Splash check:', { currentSegment, hasToken: !!token, hasLoggedIn, showSplash });
+
+    // Determine if navigation has settled on the correct target path
+    let isSettled = false;
+    if (token) {
+      isSettled = currentSegment === '(tabs)';
+    } else {
+      if (hasLoggedIn) {
+        // Returning logged-out user - must settle on login or signup, onboarding is NOT a settled target
+        isSettled = currentSegment === 'login' || currentSegment === 'signup';
+      } else {
+        // New user - settles on onboarding, login, or signup
+        isSettled = currentSegment === 'onboarding' || currentSegment === 'login' || currentSegment === 'signup';
+      }
+    }
+
+    if (isSettled && showSplash) {
+      console.log('[RootLayout] Navigation settled. Fading out splash...');
+      Animated.timing(splashOpacity, {
+        toValue: 0,
+        duration: 400,
+        useNativeDriver: true,
+      }).start(() => {
+        setShowSplash(false);
+        console.log('[RootLayout] Splash hidden.');
+      });
+    }
+  }, [isReady, token, segments, showSplash, hasLoggedIn]);
 
   // Request notifications permission on login
   useEffect(() => {
@@ -167,9 +312,34 @@ export default function RootLayout() {
     }
   }, [isReady, token, userRole]);
 
-  const updateUser = async (role: string | null, tokenVal: string | null) => {
+  // Silent Token Refresh on App Foreground
+  useEffect(() => {
+    const handleAppStateChange = async (nextAppState: AppStateStatus) => {
+      if (nextAppState === 'active' && token && refreshToken) {
+        if (isTokenNearExpiry(token)) {
+          console.log('[RootLayout] Token near expiry on foreground, refreshing silently...');
+          const newAccess = await silentlyRefreshToken(refreshToken);
+          if (newAccess) {
+            updateUser(userRole, newAccess, refreshToken);
+          } else {
+            // If refresh fails (refresh token expired), we should let the API calls 401 and WebView will trigger UNAUTHORIZED message to log them out
+            console.log('[RootLayout] Silent refresh failed, relying on 401 interceptor.');
+          }
+        }
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => {
+      subscription.remove();
+    };
+  }, [token, refreshToken, userRole]);
+  const updateUser = async (role: string | null, tokenVal: string | null, refreshVal?: string | null) => {
     setUserRole(role);
     setToken(tokenVal);
+    if (refreshVal !== undefined) {
+      setRefreshToken(refreshVal);
+    }
     try {
       if (role) {
         await AsyncStorage.setItem('chapuu_user_role', role);
@@ -177,11 +347,11 @@ export default function RootLayout() {
         await AsyncStorage.removeItem('chapuu_user_role');
       }
       if (tokenVal) {
-        await AsyncStorage.setItem('chapuu_access_token', tokenVal);
+        await SecureStore.setItemAsync('chapuu_access_token', tokenVal);
         await AsyncStorage.setItem('chapuu_has_logged_in', 'true');
         setHasLoggedIn(true);
       } else {
-        await AsyncStorage.removeItem('chapuu_access_token');
+        await SecureStore.deleteItemAsync('chapuu_access_token');
         // Clear cached state on logout
         setCart([]);
         setUserLocation({ lat: null, lng: null, name: null, granted: false });
@@ -191,30 +361,42 @@ export default function RootLayout() {
         await AsyncStorage.removeItem('chapuu_location');
         await AsyncStorage.removeItem('chapuu_saved_stores');
       }
+
+      if (refreshVal) {
+        await SecureStore.setItemAsync('chapuu_refresh_token', refreshVal);
+      } else if (refreshVal === null) {
+        await SecureStore.deleteItemAsync('chapuu_refresh_token');
+      }
     } catch (e) {
-      // Silent error
+      console.warn('[_layout.tsx] updateUser failed:', e);
     }
   };
 
-  const updateCart = async (newCart: any[]) => {
+  const updateCart = async (newCart: CartItem[]) => {
     setCart(newCart);
     try {
       await AsyncStorage.setItem('chapuu_cart', JSON.stringify(newCart));
-    } catch (e) {}
+    } catch (e) {
+      console.warn('[_layout.tsx] updateCart failed:', e);
+    }
   };
 
   const updateUserLocation = async (newLoc: UserLocation) => {
     setUserLocation(newLoc);
     try {
       await AsyncStorage.setItem('chapuu_location', JSON.stringify(newLoc));
-    } catch (e) {}
+    } catch (e) {
+      console.warn('[_layout.tsx] updateUserLocation failed:', e);
+    }
   };
 
   const updateSavedStores = async (newStores: number[]) => {
     setSavedStores(newStores);
     try {
       await AsyncStorage.setItem('chapuu_saved_stores', JSON.stringify(newStores));
-    } catch (e) {}
+    } catch (e) {
+      console.warn('[_layout.tsx] updateSavedStores failed:', e);
+    }
   };
 
   const updateActiveOrderCount = (count: number) => {
@@ -269,31 +451,22 @@ export default function RootLayout() {
     }
   };
 
-  if (!isReady) {
-    return (
-      <View style={{ flex: 1, backgroundColor: '#020617', justifyContent: 'center', alignItems: 'center', gap: 24 }}>
-        <Image 
-          source={require('../assets/favicon.png')} 
-          style={{ width: 80, height: 80, resizeMode: 'contain' }} 
-        />
-        <ActivityIndicator size="small" color="#eab308" />
-      </View>
-    );
-  }
-
   return (
     <UserContext.Provider value={{ 
       userRole, 
       token, 
+      refreshToken,
       cart, 
       userLocation, 
       savedStores,
       activeOrderCount, 
+      pendingDeepLinkPath,
       updateUser, 
       updateCart, 
       updateUserLocation, 
       updateSavedStores,
       updateActiveOrderCount,
+      setPendingDeepLinkPath,
       requestLocationPermission
     }}>
       <StatusBar barStyle="light-content" translucent={true} backgroundColor="transparent" />
@@ -303,12 +476,38 @@ export default function RootLayout() {
           contentStyle: { backgroundColor: '#020617' },
         }}
       >
-        <Stack.Screen name="onboarding" />
-        <Stack.Screen name="login" />
-        <Stack.Screen name="signup" />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="more" options={{ presentation: 'modal' }} />
+        {token ? <Stack.Screen name="(tabs)" /> : null}
+        {token ? <Stack.Screen name="more" options={{ presentation: 'modal' }} /> : null}
+        {!token ? <Stack.Screen name="onboarding" /> : null}
+        {!token ? <Stack.Screen name="login" /> : null}
+        {!token ? <Stack.Screen name="signup" /> : null}
       </Stack>
+
+      <CustomAlertModal />
+
+      {/* Premium Animated Splash Overlay for absolutely zero flash layout transition */}
+      {showSplash && (
+        <Animated.View 
+          style={[
+            StyleSheet.absoluteFill, 
+            { 
+              opacity: splashOpacity, 
+              backgroundColor: '#020617', 
+              justifyContent: 'center', 
+              alignItems: 'center', 
+              gap: 24,
+              zIndex: 9999
+            }
+          ]}
+          pointerEvents={isReady ? 'none' : 'auto'}
+        >
+          <Image 
+            source={require('../assets/favicon.png')} 
+            style={{ width: 80, height: 80, resizeMode: 'contain' }} 
+          />
+          <ActivityIndicator size="small" color="#eab308" />
+        </Animated.View>
+      )}
 
       {/* Premium Geolocation Request Backdrop Modal */}
       <Modal

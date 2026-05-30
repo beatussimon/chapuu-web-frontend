@@ -2,9 +2,11 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import WebViewTab from '../../components/WebViewTab';
 import { useUser } from '../../context/UserContext';
+import { useWebViewStateUpdate } from '../../hooks/useWebViewStateUpdate';
 
 export default function Tab3Screen() {
-  const { userRole, updateUser } = useUser();
+  const { userRole } = useUser();
+  const handleStateUpdate = useWebViewStateUpdate();
 
   const getPath = () => {
     switch (userRole) {
@@ -16,15 +18,6 @@ export default function Tab3Screen() {
         return '/seller/analytics';
       default:
         return '/';
-    }
-  };
-
-  const handleStateUpdate = (state: any) => {
-    if (state) {
-      const { userRole: newRole, token: newToken } = state;
-      updateUser(newRole || 'CUSTOMER', newToken || null);
-    } else {
-      updateUser('CUSTOMER', null);
     }
   };
 

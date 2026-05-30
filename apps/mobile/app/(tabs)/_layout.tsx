@@ -1,6 +1,7 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { useUser } from '../../context/UserContext';
+import { CartItem } from '../../types';
 import { 
   Compass, 
   Utensils, 
@@ -18,7 +19,7 @@ export default function TabLayout() {
   const { userRole, cart, activeOrderCount } = useUser();
 
   // Calculate cart items count
-  const cartCount = cart.reduce((sum: number, item: any) => sum + (item.quantity || 1), 0);
+  const cartCount = cart.reduce((sum: number, item: CartItem) => sum + (item.quantity || 1), 0);
 
   // Helper to determine tab options based on role
   const getTabConfig = (tabId: string) => {
@@ -62,7 +63,7 @@ export default function TabLayout() {
     return null; // Hide the tab if it doesn't match the role config
   };
 
-  const getScreenOptions = (tabId: string): any => {
+  const getScreenOptions = (tabId: string): object => {
     const config = getTabConfig(tabId);
     if (!config) {
       return {
@@ -82,7 +83,7 @@ export default function TabLayout() {
 
     return {
       title: config.label,
-      tabBarIcon: ({ color, size }: any) => (
+      tabBarIcon: ({ color, size }: { color: string; size: number }) => (
         <IconComponent color={color} size={size} />
       ),
       tabBarBadge: badge,
@@ -94,6 +95,7 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
+        animation: 'fade', // Smooth premium cross-fade transition on tab switch
         tabBarActiveTintColor: '#eab308', // Gold active color
         tabBarInactiveTintColor: '#94a3b8', // Slate-400 inactive color
         tabBarStyle: {

@@ -1,6 +1,9 @@
 import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
-import { StyleSheet, View, ActivityIndicator, Platform, Image, Linking, BackHandler, Vibration, TouchableOpacity, Alert, Text } from 'react-native';
-import { WebView } from 'react-native-webview';
+import { StyleSheet, View, ActivityIndicator, Platform, Image, Linking, BackHandler, Vibration, TouchableOpacity, Text, Animated, PanResponder, Keyboard } from 'react-native';
+import { CustomAlert } from './CustomAlert';
+import { WebView, WebViewMessageEvent } from 'react-native-webview';
+import OfflineScreen from './OfflineScreen';
+import { NativeState } from '../types';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, User, LogOut } from 'lucide-react-native';
 import { useUser } from '../context/UserContext';
@@ -10,25 +13,102 @@ import Constants from 'expo-constants';
 const isExpoGo = Constants.executionEnvironment === 'storeClient' || Constants.appOwnership === 'expo';
 let Notifications: any = null;
 
-if (Platform.OS !== 'android' || !isExpoGo) {
-  try {
+try {
+  if (Platform.OS !== 'android' || !isExpoGo) {
     Notifications = require('expo-notifications');
-  } catch (e) {
-    console.warn('Failed to load expo-notifications:', e);
   }
+} catch (e) {
+  console.error('[ExpoNotifications] WebViewTab Load error:', e);
 }
 
-const DEFAULT_URL = 'https://pasifiq.store';
+const DEFAULT_URL = 'https://chapuu.com';
 const BASE_URL = process.env.EXPO_PUBLIC_WEB_URL || DEFAULT_URL;
 
 interface WebViewTabProps {
   path: string;
-  onStateUpdate?: (state: any) => void;
+  onStateUpdate?: (state: Partial<NativeState> | null) => void;
 }
 
 export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
   const [isLoading, setIsLoading] = useState(true);
+  const [isOffline, setIsOffline] = useState(false);
+  const [headerTitle, setHeaderTitle] = useState('');
   const webViewRef = useRef<WebView>(null);
+  
+  // Dynamic Gold Linear Loader Animation
+  const progress = useRef(new Animated.Value(0)).current;
+  const progressOpacity = useRef(new Animated.Value(0)).current;
+  const loadingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [isAtTop, setIsAtTop] = useState(true);
+  const isAtTopRef = useRef(true); // Ref so PanResponder closures always see current value
+  const [showLoader, setShowLoader] = useState(true);
+  const loaderOpacity = useRef(new Animated.Value(1)).current;
+
+  // PanResponder-based pull-to-refresh: tracks drag Y on native thread
+  // Works even when WebView consumes scroll touches - we capture at the container level
+  const dragY = useRef(new Animated.Value(0)).current;
+  const isRefreshingRef = useRef(false);
+
+  // Map drag Y (0..120 downward) → overlay opacity (0..1) on native thread
+  const dragOpacity = dragY.interpolate({
+    inputRange: [0, 120],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
+
+  // PanResponder: intercept downward drags at top of page
+  const panResponder = useRef(
+    PanResponder.create({
+      // Only capture if at top AND dragging downward
+      onMoveShouldSetPanResponder: (_evt, gestureState) => {
+        const threshold = Platform.OS === 'ios' ? 15 : 8;
+        return isAtTopRef.current && gestureState.dy > threshold && Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
+      },
+      onMoveShouldSetPanResponderCapture: (_evt, gestureState) => {
+        const threshold = Platform.OS === 'ios' ? 15 : 8;
+        return isAtTopRef.current && gestureState.dy > threshold && Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
+      },
+      onPanResponderGrant: () => {
+        Keyboard.dismiss();
+        dragY.setValue(0);
+      },
+      onPanResponderMove: (_evt, gestureState) => {
+        if (isRefreshingRef.current) return;
+        const delta = Math.max(0, gestureState.dy);
+        // Apply rubber-band resistance past 60px for elastic feel
+        const dampened = delta < 60 ? delta : 60 + (delta - 60) * 0.4;
+        dragY.setValue(dampened);
+      },
+      onPanResponderRelease: (_evt, gestureState) => {
+        if (isRefreshingRef.current) return;
+        if (gestureState.dy >= 80) {
+          // Triggered — lock at full opacity and reload
+          isRefreshingRef.current = true;
+          Vibration.vibrate(10);
+          loaderOpacity.setValue(1);
+          dragY.setValue(0);
+          setShowLoader(true);
+          webViewRef.current?.reload();
+        } else {
+          // Not far enough — snap back
+          Animated.timing(dragY, {
+            toValue: 0,
+            duration: 200,
+            useNativeDriver: true,
+          }).start();
+        }
+      },
+      onPanResponderTerminate: () => {
+        Animated.timing(dragY, {
+          toValue: 0,
+          duration: 150,
+          useNativeDriver: true,
+        }).start();
+      },
+    })
+  ).current;
+
   const { 
     token, 
     userRole, 
@@ -47,6 +127,111 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
 
   const isDiscoverTab = path === '/' || path === '/seller';
   const showBackHeader = canGoBack || !isDiscoverTab;
+
+  // Normalize path
+  const targetPath = path.startsWith('/') ? path : `/${path}`;
+  const targetUrl = `${BASE_URL}${targetPath}`;
+
+  // React to dynamic path changes (e.g. from deep links)
+  useEffect(() => {
+    if (webViewRef.current && isFocused) {
+      // Small timeout ensures webview is ready
+      setTimeout(() => {
+        webViewRef.current?.injectJavaScript(`
+          if (window.location.href !== '${targetUrl}') {
+            window.location.href = '${targetUrl}';
+          }
+          true;
+        `);
+      }, 100);
+    }
+  }, [targetUrl, isFocused]);
+
+  // Resilient Safari-style linear gold progress loader trigger with opacity fading and stuck load mitigation
+  useEffect(() => {
+    if (loadingTimeoutRef.current) {
+      clearTimeout(loadingTimeoutRef.current);
+      loadingTimeoutRef.current = null;
+    }
+
+    if (isLoading) {
+      // 1. Loading started: make progress visible and animate to 75% width
+      progress.setValue(0);
+      progressOpacity.setValue(1);
+      
+      // Make loader overlay visible and smoothly fade it in
+      setShowLoader(true);
+      Animated.timing(loaderOpacity, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      }).start();
+
+      Animated.timing(progress, {
+        toValue: 0.75,
+        duration: 1500,
+        useNativeDriver: false,
+      }).start();
+
+      // 2. Stuck load mitigation fallback timeout (3.5 seconds)
+      loadingTimeoutRef.current = setTimeout(() => {
+        Animated.parallel([
+          Animated.timing(progress, {
+            toValue: 1,
+            duration: 250,
+            useNativeDriver: false,
+          }),
+          Animated.timing(progressOpacity, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: false,
+          }),
+          Animated.timing(loaderOpacity, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: true,
+          })
+        ]).start(() => {
+          setShowLoader(false);
+        });
+      }, 3500);
+    } else {
+      // 3. Loading completed: shoot width to 100% and fade out in parallel
+      Animated.parallel([
+        Animated.timing(progress, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: false,
+        }),
+        Animated.timing(progressOpacity, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: false,
+        }),
+        Animated.timing(loaderOpacity, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        })
+      ]).start(() => {
+        setShowLoader(false);
+      });
+    }
+
+    return () => {
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+      }
+    };
+  }, [isLoading]);
+
+  const progressWidth = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0%', '100%'],
+  });
+
+  // Memoize source to prevent redundant reloads on re-renders
+  const source = useMemo(() => ({ uri: targetUrl }), [targetUrl]);
 
   // Handle native back action (haptic click + webview history pop / Discover switch)
   const handleNativeBack = useCallback(() => {
@@ -112,7 +297,7 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
 
   const handleLogoutPress = useCallback(() => {
     Vibration.vibrate(10);
-    Alert.alert(
+    CustomAlert.alert(
       "Confirm Logout",
       "Are you sure you want to log out of Chapuu?",
       [
@@ -146,13 +331,6 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
   }, [navigation]);
 
   const router = useRouter();
-
-  // Normalize path
-  const targetPath = path.startsWith('/') ? path : `/${path}`;
-  const targetUrl = `${BASE_URL}${targetPath}`;
-
-  // Memoize source to prevent redundant reloads on re-renders
-  const source = useMemo(() => ({ uri: targetUrl }), [targetUrl]);
 
   // Custom User-Agent to let the web frontend synchronously hide its web navigation bar
   const customUserAgent = useMemo(() => {
@@ -223,38 +401,50 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
           
           if (nativeToken) {
             localStorage.setItem('access_token', nativeToken);
-            
-            const webStorage = localStorage.getItem('chapuu-storage');
-            let parsedState = null;
-            if (webStorage) {
-              try {
-                parsedState = JSON.parse(webStorage);
-              } catch (e) {}
-            }
-            
-            const storageObj = {
-              state: {
-                token: nativeToken,
-                userRole: nativeRole,
-                cart: nativeCart,
-                selectedStore: parsedState?.state?.selectedStore || null,
-                activeReservation: parsedState?.state?.activeReservation || null,
-                userLocation: nativeLocation,
-                savedStores: nativeSaved
-              },
-              version: 0
-            };
-            localStorage.setItem('chapuu-storage', JSON.stringify(storageObj));
           } else {
-            localStorage.removeItem('chapuu-storage');
             localStorage.removeItem('access_token');
             localStorage.removeItem('refresh_token');
           }
+            
+          const webStorage = localStorage.getItem('chapuu-storage');
+          let parsedState = null;
+          if (webStorage) {
+            try {
+              parsedState = JSON.parse(webStorage);
+            } catch (e) {}
+          }
+          
+          // The native values are directly interpolated into the JS as object literals.
+          // They are already Arrays/Objects, so JSON.parse() on them would fail.
+          const storageObj = {
+            state: {
+              token: nativeToken,
+              userRole: nativeRole,
+              cart: Array.isArray(nativeCart) ? nativeCart : [],
+              selectedStore: parsedState?.state?.selectedStore || null,
+              activeReservation: parsedState?.state?.activeReservation || null,
+              userLocation: nativeLocation && typeof nativeLocation === 'object' ? nativeLocation : {lat:null,lng:null,name:null,granted:false},
+              savedStores: Array.isArray(nativeSaved) ? nativeSaved : []
+            },
+            version: 0
+          };
+          localStorage.setItem('chapuu-storage', JSON.stringify(storageObj));
+        } catch (e) {}
+      })();
+      
+      (function() {
+        try {
+          window.addEventListener('scroll', function() {
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'SCROLL_POSITION',
+              payload: { y: window.scrollY }
+            }));
+          }, { passive: true });
         } catch (e) {}
       })();
       true;
     `;
-  }, []); // Empty dependency array -> stable for the entire lifecycle of the WebView component
+  }, [token, userRole, cart, userLocation, savedStores]); // Ensure it injects latest state on every reload
 
   // Synchronize native focus state back to WebView
   useEffect(() => {
@@ -273,38 +463,38 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
       const locStr = JSON.stringify(userLocation);
       const savedStr = JSON.stringify(savedStores);
       
-      const hasCartChanged = cartStr !== lastSyncedCart.current;
-      const hasTokenChanged = token !== lastSyncedToken.current;
-      const hasRoleChanged = userRole !== lastSyncedRole.current;
-      const hasLocChanged = locStr !== lastSyncedLocation.current;
-      const hasSavedChanged = savedStr !== lastSyncedSavedStores.current;
+      // We aggressively send STATE_SYNC whenever dependencies change or tab becomes focused.
+      // This prevents issues where the WebView was paused/suspended in the background
+      // and missed a message, causing Native to think it was synced when it wasn't.
+      lastSyncedCart.current = cartStr;
+      lastSyncedToken.current = token;
+      lastSyncedRole.current = userRole;
+      lastSyncedLocation.current = locStr;
+      lastSyncedSavedStores.current = savedStr;
 
-      if (hasCartChanged || hasTokenChanged || hasRoleChanged || hasLocChanged || hasSavedChanged) {
-        lastSyncedCart.current = cartStr;
-        lastSyncedToken.current = token;
-        lastSyncedRole.current = userRole;
-        lastSyncedLocation.current = locStr;
-        lastSyncedSavedStores.current = savedStr;
-
-        const stateObj = {
-          state: {
-            token,
-            userRole,
-            cart,
-            userLocation,
-            savedStores
-          }
-        };
-        webViewRef.current.postMessage(JSON.stringify({
-          type: 'STATE_SYNC',
-          payload: stateObj
-        }));
-      }
+      const stateObj = {
+        state: {
+          token,
+          userRole,
+          cart,
+          userLocation,
+          savedStores
+        }
+      };
+      // Send message with a slight delay if waking up from background to ensure WebView engine is ready
+      setTimeout(() => {
+        if (webViewRef.current) {
+          webViewRef.current.postMessage(JSON.stringify({
+            type: 'STATE_SYNC',
+            payload: stateObj
+          }));
+        }
+      }, 50);
     }
   }, [token, userRole, cart, userLocation, savedStores, isFocused]);
 
   // Fully stable event message handler
-  const handleMessage = useCallback((event: any) => {
+  const handleMessage = useCallback((event: WebViewMessageEvent) => {
     try {
       const message = JSON.parse(event.nativeEvent.data);
       
@@ -337,7 +527,16 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
       } else if (message.type === 'ACTIVE_ORDERS_COUNT') {
         updateActiveOrderCountRef.current(message.payload?.count || 0);
       } else if (message.type === 'UNAUTHORIZED') {
-        updateUserRef.current('CUSTOMER', null); // Clears storage and triggers login routing guard
+        updateUserRef.current('CUSTOMER', null, null); // Clears secure storage and triggers login routing guard
+      } else if (message.type === 'SCROLL_POSITION') {
+        const y = message.payload?.y ?? 0;
+        const atTop = y <= 5;
+        setIsAtTop((prev) => {
+          if (prev !== atTop) {
+            return atTop;
+          }
+          return prev;
+        });
       } else if (message.type === 'ORDER_STATUS_NOTIFICATION') {
         const { orderId, state, storeName, fulfillmentMode } = message.payload;
         
@@ -366,7 +565,7 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
               data: { orderId },
             },
             trigger: null,
-          }).catch((err: any) => {
+          }).catch((err: Error) => {
             console.warn('Failed to schedule local notification:', err);
           });
         }
@@ -377,7 +576,7 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
   }, []);
 
   // Fully stable request load interceptor
-  const handleShouldStartLoadWithRequest = useCallback((request: any) => {
+  const handleShouldStartLoadWithRequest = useCallback((request: { url: string }) => {
     const { url } = request;
 
     // 1. Intercept custom URL schemes like tel:, mailto:, sms:, whatsapp:
@@ -439,16 +638,25 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
     return true;
   }, [path]);
 
-  // Fully stable loader view renderer
+  // Fully stable loader view renderer — always rendered, driven by combined opacity
+  // loaderOpacity: page load events; dragOpacity: real-time drag preview (PanResponder)
+  const overlayOpacity = Animated.add(loaderOpacity, dragOpacity).interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
+
   const renderLoading = useCallback(() => (
-    <View style={styles.loadingContainer}>
+    <Animated.View
+      pointerEvents="none"
+      style={[styles.loadingContainer, { opacity: overlayOpacity }]}>
       <Image 
         source={require('../assets/favicon.png')} 
-        style={{ width: 80, height: 80, resizeMode: 'contain', marginBottom: 24 }} 
+        style={{ width: 80, height: 80, resizeMode: 'contain' }} 
       />
-      <ActivityIndicator size="small" color="#eab308" />
-    </View>
-  ), []);
+      <ActivityIndicator size="small" color="#eab308" style={{ marginTop: 24 }} />
+    </Animated.View>
+  ), [overlayOpacity]);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -463,10 +671,16 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
             <ArrowLeft size={22} color="#eab308" />
           </TouchableOpacity>
           <View style={styles.headerTitleContainer}>
-            <Image 
-              source={require('../assets/favicon.png')} 
-              style={styles.headerLogo} 
-            />
+            {headerTitle ? (
+              <Text style={styles.headerText} numberOfLines={1}>
+                {headerTitle.toUpperCase()}
+              </Text>
+            ) : (
+              <Image 
+                source={require('../assets/favicon.png')} 
+                style={styles.headerLogo} 
+              />
+            )}
           </View>
           <View style={styles.headerPlaceholder} />
         </View>
@@ -496,30 +710,93 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
           </View>
         </View>
       )}
-      <WebView
-        ref={webViewRef}
-        source={source}
-        style={styles.webview}
-        userAgent={customUserAgent}
-        originWhitelist={['*']}
-        allowsBackForwardNavigationGestures={true}
-        onNavigationStateChange={(navState) => {
-          setCanGoBack(navState.canGoBack);
-        }}
-        javaScriptEnabled={true}
-        domStorageEnabled={true}
-        startInLoadingState={true}
-        showsHorizontalScrollIndicator={false}
-        showsVerticalScrollIndicator={false}
-        bounces={false}
-        injectedJavaScriptBeforeContentLoaded={beforeContentLoadedJS}
-        onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
-        onMessage={handleMessage}
-        onLoadStart={() => setIsLoading(true)}
-        onLoadEnd={() => setIsLoading(false)}
-        renderLoading={renderLoading}
-        androidLayerType="hardware"
+
+      {/* Safari-style dynamic gold progress loading bar */}
+      <Animated.View 
+        style={[
+          styles.progressBar, 
+          { 
+            width: progressWidth,
+            opacity: progressOpacity
+          }
+        ]} 
       />
+
+      {isOffline ? (
+        <OfflineScreen onRetry={() => webViewRef.current?.reload()} />
+      ) : (
+        <View style={{ flex: 1 }} {...panResponder.panHandlers}>
+          <WebView
+            ref={webViewRef}
+            source={source}
+            style={styles.webview}
+            userAgent={customUserAgent}
+            originWhitelist={['*']}
+            allowsBackForwardNavigationGestures={true}
+            onScroll={(event) => {
+              const yOffset = event.nativeEvent.contentOffset.y;
+              const atTop = yOffset <= 5;
+              isAtTopRef.current = atTop;
+              setIsAtTop(atTop);
+            }}
+            onNavigationStateChange={(navState) => {
+              setCanGoBack(navState.canGoBack);
+              if (navState.title) {
+                const cleaned = navState.title
+                  .replace('Chapuu | ', '')
+                  .replace(' | Chapuu', '')
+                  .trim();
+                if (!cleaned.startsWith('http://') && !cleaned.startsWith('https://')) {
+                  setHeaderTitle(cleaned);
+                }
+              }
+            }}
+            javaScriptEnabled={true}
+            domStorageEnabled={true}
+            startInLoadingState={false}
+            showsHorizontalScrollIndicator={false}
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+            injectedJavaScriptBeforeContentLoaded={beforeContentLoadedJS}
+            onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
+            onMessage={handleMessage}
+            onLoadStart={() => {
+              setIsLoading(true);
+              setIsOffline(false);
+            }}
+            onLoadEnd={() => {
+              setIsLoading(false);
+              isRefreshingRef.current = false;
+              // Force state sync on every reload so the web app is never out of sync
+              if (webViewRef.current) {
+                const cartStr = JSON.stringify(cart);
+                const locStr = JSON.stringify(userLocation);
+                const savedStr = JSON.stringify(savedStores);
+                lastSyncedCart.current = cartStr;
+                lastSyncedToken.current = token;
+                lastSyncedRole.current = userRole;
+                lastSyncedLocation.current = locStr;
+                lastSyncedSavedStores.current = savedStr;
+                webViewRef.current.postMessage(JSON.stringify({
+                  type: 'STATE_SYNC',
+                  payload: { state: { token, userRole, cart, userLocation, savedStores } }
+                }));
+              }
+            }}
+            onError={() => {
+              setIsOffline(true);
+              isRefreshingRef.current = false;
+            }}
+            onHttpError={() => {
+              setIsOffline(true);
+              isRefreshingRef.current = false;
+            }}
+            androidLayerType="hardware"
+          />
+        </View>
+      )}
+
+      {renderLoading()}
     </SafeAreaView>
   );
 }
@@ -536,14 +813,11 @@ const styles = StyleSheet.create({
     opacity: 0.99,
   },
   loadingContainer: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
-    right: 0,
+    ...StyleSheet.absoluteFill,
     backgroundColor: '#020617',
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 999,
   },
   header: {
     height: 56,
@@ -570,6 +844,21 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     resizeMode: 'contain',
+  },
+  headerText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 1,
+    textAlign: 'center',
+  },
+  progressBar: {
+    height: 2,
+    backgroundColor: '#eab308',
+    position: 'absolute',
+    top: 56, // aligned exactly under the header
+    left: 0,
+    zIndex: 10,
   },
   headerPlaceholder: {
     width: 40,

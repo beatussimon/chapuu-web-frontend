@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   StyleSheet, 
   View, 
@@ -9,14 +9,17 @@ import {
   Platform, 
   ScrollView,
   ActivityIndicator,
-  Alert
+  Animated
 } from 'react-native';
+import { CustomAlert } from '../components/CustomAlert';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, User, Lock } from 'lucide-react-native';
 import { useUser } from '../context/UserContext';
+import ScalePressable from '../components/ScalePressable';
+import { triggerLightHaptic, triggerSuccessHaptic, triggerErrorHaptic } from '../hooks/useHaptics';
 
-const DEFAULT_URL = 'https://pasifiq.store';
+const DEFAULT_URL = 'https://chapuu.com';
 const BASE_URL = process.env.EXPO_PUBLIC_WEB_URL || DEFAULT_URL;
 
 export default function LoginScreen() {
@@ -25,7 +28,44 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  // Animated tactile values
+  const formTranslateY = useRef(new Animated.Value(30)).current;
+  const formOpacity = useRef(new Animated.Value(0)).current;
+  const formShake = useRef(new Animated.Value(0)).current;
+
+  // Float upward & fade in on mount
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(formTranslateY, {
+        toValue: 0,
+        duration: 350,
+        useNativeDriver: true,
+      }),
+      Animated.timing(formOpacity, {
+        toValue: 1,
+        duration: 350,
+        useNativeDriver: true,
+      })
+    ]).start();
+  }, []);
+
+  // Premium horizontal error shake animation sequence
+  const triggerErrorShake = () => {
+    triggerErrorHaptic();
+    formShake.setValue(0);
+    Animated.sequence([
+      Animated.timing(formShake, { toValue: -10, duration: 40, useNativeDriver: true }),
+      Animated.timing(formShake, { toValue: 10, duration: 40, useNativeDriver: true }),
+      Animated.timing(formShake, { toValue: -8, duration: 45, useNativeDriver: true }),
+      Animated.timing(formShake, { toValue: 8, duration: 45, useNativeDriver: true }),
+      Animated.timing(formShake, { toValue: -5, duration: 50, useNativeDriver: true }),
+      Animated.timing(formShake, { toValue: 5, duration: 50, useNativeDriver: true }),
+      Animated.timing(formShake, { toValue: 0, duration: 50, useNativeDriver: true }),
+    ]).start();
+  };
+
   const handleBack = () => {
+    triggerLightHaptic();
     if (router.canGoBack()) {
       router.back();
     } else {
@@ -35,11 +75,13 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
-      Alert.alert('Error', 'Please fill in all fields.');
+      triggerErrorShake();
+      CustomAlert.alert('Error', 'Please fill in all fields.');
       return;
     }
 
     setIsLoading(true);
+    triggerLightHaptic();
 
     try {
       // 1. Get access & refresh tokens (bypassing Axios/interceptors like the web does)
@@ -63,10 +105,8 @@ export default function LoginScreen() {
 
       // 2. Fetch User Profile to get their role
       const profileResponse = await fetch(`${BASE_URL}/api/auth/users/me/`, {
-        method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${access}`,
+          Authorization: `Bearer ${access}`,
         },
       });
 
@@ -76,12 +116,59 @@ export default function LoginScreen() {
         role = profileData.role || 'CUSTOMER';
       }
 
-      // 3. Save tokens and role in global state and AsyncStorage
-      await updateUser(role, access);
+      // 3. Register Push Notification Token
+      try {
+        const Constants = require('expo-constants').default;
+        const Platform = require('react-native').Platform;
+        const isExpoGo = Constants.executionEnvironment === 'storeClient' || Constants.appOwnership === 'expo';
+        
+        if (Platform.OS === 'android' && isExpoGo) {
+          console.log('[Login] Skipping push token registration in Expo Go on Android');
+        } else {
+          const Notifications = require('expo-notifications');
+          const { status: existingStatus } = await Notifications.getPermissionsAsync();
+          let finalStatus = existingStatus;
+          if (existingStatus !== 'granted') {
+            const { status } = await Notifications.requestPermissionsAsync();
+            finalStatus = status;
+          }
+          
+          if (finalStatus === 'granted') {
+            const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+            const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
+            const pushToken = tokenData.data;
+            
+            await fetch(`${BASE_URL}/api/auth/devices/`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${access}`,
+              },
+              body: JSON.stringify({ push_token: pushToken, platform: Platform.OS }),
+            });
+            console.log('[Login] Push token registered:', pushToken);
+          }
+        }
+      } catch (e) {
+        console.warn('[Login] Failed to register push token:', e);
+      }
+
+      // Trigger success haptic before state change unmounts/redirects
+      triggerSuccessHaptic();
+
+      // 4. Save tokens and role in global state and secure storage
+      await updateUser(role, access, refresh);
 
       // Routing guard in _layout.tsx will auto-detect token and push to /(tabs)
-    } catch (e: any) {
-      Alert.alert('Login Failed', e.message || 'Something went wrong. Please try again.');
+    } catch (e: unknown) {
+      triggerErrorShake();
+      setIsLoading(false);
+      const errorMessage = e instanceof Error ? e.message : 'Login failed. Please check your network and try again.';
+      CustomAlert.alert(
+        'Login Error',
+        errorMessage,
+        [{ text: 'OK' }]
+      );
     } finally {
       setIsLoading(false);
     }
@@ -93,71 +180,85 @@ export default function LoginScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
         style={styles.keyboardView}
       >
-        <ScrollView contentContainerStyle={styles.scrollContainer}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBack} activeOpacity={0.7}>
-            <ArrowLeft size={24} color="#ffffff" />
-          </TouchableOpacity>
+        <ScrollView 
+          contentContainerStyle={styles.scrollContainer}
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
+        >
+          {router.canGoBack() ? (
+            <ScalePressable style={styles.backButton} onPress={handleBack}>
+              <ArrowLeft size={24} color="#ffffff" />
+            </ScalePressable>
+          ) : (
+            <View style={{ height: 44, marginBottom: 40 }} />
+          )}
 
-          <View style={styles.titleContainer}>
-            <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>Sign in to your Chapuu account</Text>
-          </View>
-
-          <View style={styles.form}>
-            {/* Username Input */}
-            <View style={styles.inputWrapper}>
-              <View style={styles.iconContainer}>
-                <User size={20} color="#94a3b8" />
-              </View>
-              <TextInput
-                style={styles.input}
-                placeholder="Username"
-                placeholderTextColor="#64748b"
-                value={username}
-                onChangeText={setUsername}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
+          <Animated.View style={{ opacity: formOpacity, transform: [{ translateY: formTranslateY }, { translateX: formShake }], flex: 1 }}>
+            <View style={styles.titleContainer}>
+              <Text style={styles.title}>Welcome Back</Text>
+              <Text style={styles.subtitle}>Sign in to your Chapuu account</Text>
             </View>
 
-            {/* Password Input */}
-            <View style={styles.inputWrapper}>
-              <View style={styles.iconContainer}>
-                <Lock size={20} color="#94a3b8" />
+            <View style={styles.form}>
+              {/* Username Input */}
+              <View style={styles.inputWrapper}>
+                <View style={styles.iconContainer}>
+                  <User size={20} color="#94a3b8" />
+                </View>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Username"
+                  placeholderTextColor="#64748b"
+                  value={username}
+                  onChangeText={setUsername}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
               </View>
-              <TextInput
-                style={styles.input}
-                placeholder="Password"
-                placeholderTextColor="#64748b"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={true}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
+
+              {/* Password Input */}
+              <View style={styles.inputWrapper}>
+                <View style={styles.iconContainer}>
+                  <Lock size={20} color="#94a3b8" />
+                </View>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Password"
+                  placeholderTextColor="#64748b"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={true}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+
+              {/* Login Button */}
+              <ScalePressable 
+                style={[styles.loginButton, isLoading && styles.disabledButton]} 
+                onPress={handleLogin}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <ActivityIndicator size="small" color="#020617" />
+                ) : (
+                  <Text style={styles.loginButtonText}>LOG IN</Text>
+                )}
+              </ScalePressable>
             </View>
 
-            {/* Login Button */}
-            <TouchableOpacity 
-              style={[styles.loginButton, isLoading && styles.disabledButton]} 
-              onPress={handleLogin}
-              disabled={isLoading}
-              activeOpacity={0.8}
-            >
-              {isLoading ? (
-                <ActivityIndicator size="small" color="#020617" />
-              ) : (
-                <Text style={styles.loginButtonText}>LOG IN</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>New to Chapuu? </Text>
-            <TouchableOpacity onPress={() => router.push('/signup')}>
-              <Text style={styles.signupLink}>Sign Up</Text>
-            </TouchableOpacity>
-          </View>
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>New to Chapuu? </Text>
+              <ScalePressable 
+                onPress={() => {
+                  triggerLightHaptic();
+                  router.push('/signup');
+                }}
+              >
+                <Text style={styles.signupLink}>Sign Up</Text>
+              </ScalePressable>
+            </View>
+          </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

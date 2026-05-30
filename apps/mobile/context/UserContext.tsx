@@ -1,4 +1,5 @@
 import React, { createContext, useContext } from 'react';
+import { CartItem } from '../types';
 
 export interface UserLocation {
   lat: number | null;
@@ -10,30 +11,36 @@ export interface UserLocation {
 export interface UserContextType {
   userRole: string | null;
   token: string | null;
-  cart: any[];
+  refreshToken: string | null;
+  cart: CartItem[];
   userLocation: UserLocation;
   savedStores: number[];
   activeOrderCount: number;
-  updateUser: (role: string | null, token: string | null) => void;
-  updateCart: (cart: any[]) => void;
+  pendingDeepLinkPath: string | null;
+  updateUser: (role: string | null, token: string | null, refreshToken?: string | null) => void;
+  updateCart: (cart: CartItem[]) => void;
   updateUserLocation: (loc: UserLocation) => void;
   updateSavedStores: (stores: number[]) => void;
   updateActiveOrderCount: (count: number) => void;
+  setPendingDeepLinkPath: (path: string | null) => void;
   requestLocationPermission: () => Promise<void>;
 }
 
 export const UserContext = createContext<UserContextType>({
   userRole: 'CUSTOMER',
   token: null,
+  refreshToken: null,
   cart: [],
   userLocation: { lat: null, lng: null, name: null, granted: false },
   savedStores: [],
   activeOrderCount: 0,
+  pendingDeepLinkPath: null,
   updateUser: () => {},
   updateCart: () => {},
   updateUserLocation: () => {},
   updateSavedStores: () => {},
   updateActiveOrderCount: () => {},
+  setPendingDeepLinkPath: () => {},
   requestLocationPermission: async () => {},
 });
 

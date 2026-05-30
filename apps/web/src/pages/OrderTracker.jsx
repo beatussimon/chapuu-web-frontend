@@ -154,6 +154,29 @@ export default function OrderTracker() {
         };
     }, [id, isTabFocused]);
 
+    // Track order status changes for notification emission
+    const prevOrderStateRef = useRef(null);
+    useEffect(() => {
+        if (!order || !order.id) return;
+
+        const prevState = prevOrderStateRef.current;
+        if (prevState && prevState !== order.state) {
+            if (window.ReactNativeWebView) {
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                    type: 'ORDER_STATUS_NOTIFICATION',
+                    payload: {
+                        orderId: order.id,
+                        state: order.state,
+                        storeName: order.store_name || `Store #${order.store}`,
+                        fulfillmentMode: order.fulfillment_mode
+                    }
+                }));
+            }
+        }
+
+        prevOrderStateRef.current = order.state;
+    }, [order]);
+
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     useEffect(() => {
         const handler = () => setIsMobile(window.innerWidth < 768);

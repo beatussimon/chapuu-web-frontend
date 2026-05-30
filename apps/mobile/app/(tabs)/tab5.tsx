@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import WebViewTab from '../../components/WebViewTab';
 import { useUser } from '../../context/UserContext';
+import { useWebViewStateUpdate } from '../../hooks/useWebViewStateUpdate';
+import { MenuItem } from '../../types';
 import { 
   Calendar, 
   Grid, 
@@ -13,31 +15,27 @@ import {
   Navigation,
   ChevronRight
 } from 'lucide-react-native';
-
-interface MenuItem {
-  title: string;
-  description: string;
-  path: string;
-  icon: any;
-  color: string;
-}
+import ScalePressable from '../../components/ScalePressable';
+import { triggerLightHaptic } from '../../hooks/useHaptics';
 
 export default function Tab5Screen() {
-  const { userRole, updateUser } = useUser();
+  const { userRole, updateUser, token, pendingDeepLinkPath, setPendingDeepLinkPath } = useUser();
+  const handleStateUpdate = useWebViewStateUpdate();
+  const [currentPath, setCurrentPath] = useState<string>('/reserve');
+
+  useEffect(() => {
+    if (pendingDeepLinkPath && pendingDeepLinkPath.startsWith('/reserve')) {
+      setCurrentPath(pendingDeepLinkPath);
+      setPendingDeepLinkPath(null);
+    } else {
+      setCurrentPath('/reserve');
+    }
+  }, [pendingDeepLinkPath, setPendingDeepLinkPath]);
 
   if (userRole === 'CUSTOMER') {
-    const handleStateUpdate = (state: any) => {
-      if (state) {
-        const { userRole: newRole, token: newToken } = state;
-        updateUser(newRole || 'CUSTOMER', newToken || null);
-      } else {
-        updateUser('CUSTOMER', null);
-      }
-    };
-
     return (
       <View style={styles.container}>
-        <WebViewTab path="/reserve" onStateUpdate={handleStateUpdate} />
+        <WebViewTab path={currentPath} onStateUpdate={handleStateUpdate} />
       </View>
     );
   }
@@ -108,6 +106,7 @@ export default function Tab5Screen() {
   };
 
   const handlePress = (item: MenuItem) => {
+    triggerLightHaptic();
     // Open the selected screen inside a native modal webview
     router.push({
       pathname: '/more',
@@ -115,8 +114,41 @@ export default function Tab5Screen() {
     });
   };
 
-  const handleLogout = () => {
-    updateUser('CUSTOMER', null);
+  const handleLogout = async () => {
+    triggerLightHaptic();
+    
+    // Deregister push notification token
+    try {
+      const Constants = require('expo-constants').default;
+      const Platform = require('react-native').Platform;
+      const isExpoGo = Constants.executionEnvironment === 'storeClient' || Constants.appOwnership === 'expo';
+      
+      if (Platform.OS === 'android' && isExpoGo) {
+        console.log('[Logout] Skipping push token deregistration in Expo Go on Android');
+      } else {
+        const Notifications = require('expo-notifications');
+        const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+        if (projectId) {
+          const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
+          const pushToken = tokenData.data;
+          
+          // We use process.env for BASE_URL here
+          const BASE_URL = process.env.EXPO_PUBLIC_WEB_URL || 'https://chapuu.com';
+          await fetch(`${BASE_URL}/api/auth/devices/`, {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({ push_token: pushToken }),
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('[Logout] Failed to deregister push token:', e);
+    }
+    
+    updateUser('CUSTOMER', null, null);
     router.replace('/');
   };
 
@@ -134,11 +166,10 @@ export default function Tab5Screen() {
           {menuItems.map((item, idx) => {
             const IconComp = item.icon;
             return (
-              <TouchableOpacity 
+              <ScalePressable 
                 key={idx} 
                 style={styles.card}
                 onPress={() => handlePress(item)}
-                activeOpacity={0.7}
               >
                 <View style={[styles.iconWrapper, { backgroundColor: `${item.color}15` }]}>
                   <IconComp size={24} color={item.color} />
@@ -148,18 +179,17 @@ export default function Tab5Screen() {
                   <Text style={styles.cardDescription}>{item.description}</Text>
                 </View>
                 <ChevronRight size={18} color="#475569" />
-              </TouchableOpacity>
+              </ScalePressable>
             );
           })}
         </View>
 
-        <TouchableOpacity 
+        <ScalePressable 
           style={styles.logoutButton} 
           onPress={handleLogout}
-          activeOpacity={0.7}
         >
           <Text style={styles.logoutText}>LOG OUT OF SELLER MODE</Text>
-        </TouchableOpacity>
+        </ScalePressable>
       </ScrollView>
     </SafeAreaView>
   );

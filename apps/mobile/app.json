@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Pasifiq Store",
-    "slug": "pasifiq-store",
+    "name": "Chapuu",
+    "slug": "chapuu",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,7 +13,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.pasifiq.store",
+      "bundleIdentifier": "com.chapuu.app",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Chapuu needs your location to display nearby restaurants and ensure accurate delivery mapping to your doorstep."
       }
@@ -23,7 +23,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#09090b"
       },
-      "package": "com.pasifiq.store",
+      "package": "com.chapuu.app",
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION"
@@ -32,7 +32,7 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "scheme": "pasifiq-store",
+    "scheme": "chapuu",
     "plugins": [
       "expo-router",
       "expo-status-bar"

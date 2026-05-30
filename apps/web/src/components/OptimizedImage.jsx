@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { Store, ChefHat, Leaf, User, Image } from 'lucide-react';
+import { resolveMediaUrl } from '../utils/imageUtils';
 
 /**
  * OptimizedImage — High-performance image component with:
  * - IntersectionObserver-based lazy loading (loads when ~200px from viewport)
+ * - Robust URL resolution via resolveMediaUrl
  * - Skeleton pulse placeholder while loading with category-aligned icons
  * - Smooth CSS fade-in on load via async decoding
  * - Eager mode for above-the-fold / modal images
@@ -15,6 +17,7 @@ import { Store, ChefHat, Leaf, User, Image } from 'lucide-react';
  *   wrapperClassName - Classes applied to the outer wrapper <div>
  *   eager           - If true, skips lazy loading (for hero / above-the-fold images)
  *   placeholderType - Category of the image to show a matching pulsing icon ('store', 'product', 'ingredient', 'avatar', 'default')
+ *   version         - Optional version for cache busting
  *   ...rest         - Any other props forwarded to the <img>
  */
 export default function OptimizedImage({
@@ -24,12 +27,17 @@ export default function OptimizedImage({
   wrapperClassName = '',
   eager = false,
   placeholderType = 'default',
+  version = null,
   ...rest
 }) {
   const [isInView, setIsInView] = useState(eager);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [hasError, setHasError] = useState(false);
   const imgRef = useRef(null);
   const wrapperRef = useRef(null);
+
+  // Robustly resolve the source URL
+  const resolvedSrc = resolveMediaUrl(src, version);
 
   // IntersectionObserver for lazy loading
   useEffect(() => {
@@ -52,8 +60,19 @@ export default function OptimizedImage({
     return () => observer.disconnect();
   }, [eager, isInView]);
 
+  // Reset states if src or version changes
+  useEffect(() => {
+    setIsLoaded(false);
+    setHasError(false);
+  }, [src, version]);
+
   const handleLoad = () => {
     setIsLoaded(true);
+  };
+
+  const handleError = () => {
+    setHasError(true);
+    setIsLoaded(true); // Stop skeleton animation
   };
 
   return (
@@ -62,7 +81,7 @@ export default function OptimizedImage({
       className={`${wrapperClassName} relative overflow-hidden`}
     >
       {/* Skeleton pulse placeholder */}
-      {!isLoaded && (
+      {!isLoaded && !hasError && (
         <div
           className="absolute inset-0 bg-white/5 animate-pulse flex items-center justify-center"
           style={{ borderRadius: 'inherit' }}
@@ -75,14 +94,22 @@ export default function OptimizedImage({
         </div>
       )}
 
+      {/* Error state */}
+      {hasError && (
+        <div className="absolute inset-0 bg-dark-950 flex items-center justify-center">
+          <Image size={24} className="text-red-500/50" />
+        </div>
+      )}
+
       {/* Actual image — only rendered once in viewport */}
-      {isInView && src && (
+      {isInView && resolvedSrc && !hasError && (
         <img
           ref={imgRef}
-          src={src}
+          src={resolvedSrc}
           alt={alt}
           decoding="async"
           onLoad={handleLoad}
+          onError={handleError}
           className={`${className} transition-opacity duration-300 ${
             isLoaded ? 'opacity-100' : 'opacity-0'
           }`}
@@ -92,4 +119,3 @@ export default function OptimizedImage({
     </div>
   );
 }
-

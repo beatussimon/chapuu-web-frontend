@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   StyleSheet, 
   View, 
@@ -9,8 +9,11 @@ import {
   Platform, 
   ScrollView,
   ActivityIndicator,
-  Alert
+  Animated
 } from 'react-native';
+import { CustomAlert } from '../components/CustomAlert';
+import ScalePressable from '../components/ScalePressable';
+import { triggerLightHaptic, triggerSuccessHaptic, triggerErrorHaptic } from '../hooks/useHaptics';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, User, Mail, Phone, Lock, ChevronRight, Check } from 'lucide-react-native';
@@ -33,6 +36,22 @@ export default function SignupScreen() {
   const [password, setPassword] = useState('');
   const [acceptedPolicy, setAcceptedPolicy] = useState(false);
 
+  // Animation Refs
+  const formShake = useRef(new Animated.Value(0)).current;
+
+  const triggerErrorShake = () => {
+    formShake.setValue(0);
+    Animated.sequence([
+      Animated.timing(formShake, { toValue: -10, duration: 40, useNativeDriver: true }),
+      Animated.timing(formShake, { toValue: 10, duration: 40, useNativeDriver: true }),
+      Animated.timing(formShake, { toValue: -8, duration: 45, useNativeDriver: true }),
+      Animated.timing(formShake, { toValue: 8, duration: 45, useNativeDriver: true }),
+      Animated.timing(formShake, { toValue: -5, duration: 50, useNativeDriver: true }),
+      Animated.timing(formShake, { toValue: 5, duration: 50, useNativeDriver: true }),
+      Animated.timing(formShake, { toValue: 0, duration: 50, useNativeDriver: true }),
+    ]).start();
+  };
+
   const handleBack = () => {
     if (step > 1) {
       setStep(step - 1);
@@ -44,22 +63,26 @@ export default function SignupScreen() {
   const handleNextStep = () => {
     if (step === 1) {
       if (!firstName.trim() || !lastName.trim() || !email.trim()) {
-        Alert.alert('Error', 'Please fill in all fields.');
+        triggerErrorShake();
+        triggerErrorHaptic(); triggerErrorShake(); CustomAlert.alert('Error', 'Please fill in all fields.');
         return;
       }
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email.trim())) {
-        Alert.alert('Error', 'Please enter a valid email address.');
+        triggerErrorShake();
+        triggerErrorHaptic(); triggerErrorShake(); CustomAlert.alert('Error', 'Please enter a valid email address.');
         return;
       }
       setStep(2);
     } else if (step === 2) {
       if (!phone.trim() || !username.trim() || !password.trim()) {
-        Alert.alert('Error', 'Please fill in all fields.');
+        triggerErrorShake();
+        triggerErrorHaptic(); triggerErrorShake(); CustomAlert.alert('Error', 'Please fill in all fields.');
         return;
       }
       if (password.length < 4) {
-        Alert.alert('Error', 'Password must be at least 4 characters long.');
+        triggerErrorShake();
+        triggerErrorHaptic(); triggerErrorShake(); CustomAlert.alert('Error', 'Password must be at least 4 characters long.');
         return;
       }
       setStep(3);
@@ -68,7 +91,8 @@ export default function SignupScreen() {
 
   const handleSignup = async () => {
     if (!acceptedPolicy) {
-      Alert.alert('Agreement Required', 'You must accept the Terms & Mutual Liability Policy.');
+      triggerErrorShake();
+      triggerErrorHaptic(); triggerErrorShake(); CustomAlert.alert('Agreement Required', 'You must accept the Terms & Mutual Liability Policy.');
       return;
     }
 
@@ -121,14 +145,12 @@ export default function SignupScreen() {
         throw new Error('Account created, but automatic login failed. Please sign in manually.');
       }
 
-      const { access } = await tokenResponse.json();
+      const { access, refresh } = await tokenResponse.json();
 
       // Get user profile to confirm role
       const profileResponse = await fetch(`${BASE_URL}/api/auth/users/me/`, {
-        method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${access}`,
+          Authorization: `Bearer ${access}`,
         },
       });
 
@@ -138,9 +160,49 @@ export default function SignupScreen() {
         role = profileData.role || 'CUSTOMER';
       }
 
-      await updateUser(role, access);
-    } catch (e: any) {
-      Alert.alert('Signup Failed', e.message || 'Something went wrong.');
+      // Register Push Notification Token
+      try {
+        const Constants = require('expo-constants').default;
+        const Platform = require('react-native').Platform;
+        const isExpoGo = Constants.executionEnvironment === 'storeClient' || Constants.appOwnership === 'expo';
+        
+        if (Platform.OS === 'android' && isExpoGo) {
+          console.log('[Signup] Skipping push token registration in Expo Go on Android');
+        } else {
+          const Notifications = require('expo-notifications');
+          const { status: existingStatus } = await Notifications.getPermissionsAsync();
+          let finalStatus = existingStatus;
+          if (existingStatus !== 'granted') {
+            const { status } = await Notifications.requestPermissionsAsync();
+            finalStatus = status;
+          }
+          
+          if (finalStatus === 'granted') {
+            const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+            const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
+            const pushToken = tokenData.data;
+            
+            await fetch(`${BASE_URL}/api/auth/devices/`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${access}`,
+              },
+              body: JSON.stringify({ push_token: pushToken, platform: Platform.OS }),
+            });
+            console.log('[Signup] Push token registered:', pushToken);
+          }
+        }
+      } catch (e) {
+        console.warn('[Signup] Failed to register push token:', e);
+      }
+
+      triggerSuccessHaptic();
+      await updateUser(role, access, refresh);
+    } catch (e: unknown) {
+      triggerErrorShake();
+      const errorMessage = e instanceof Error ? e.message : 'Something went wrong.';
+      
     } finally {
       setIsLoading(false);
     }
@@ -153,10 +215,11 @@ export default function SignupScreen() {
         style={styles.keyboardView}
       >
         <ScrollView contentContainerStyle={styles.scrollContainer}>
-          <View style={styles.navHeader}>
-            <TouchableOpacity style={styles.backButton} onPress={handleBack} activeOpacity={0.7}>
+          <Animated.View style={{ transform: [{ translateX: formShake }], flex: 1 }}>
+            <View style={styles.navHeader}>
+            <ScalePressable style={styles.backButton} onPress={() => { triggerLightHaptic(); handleBack(); }}>
               <ArrowLeft size={24} color="#ffffff" />
-            </TouchableOpacity>
+            </ScalePressable>
             
             {/* Step Indicators */}
             <View style={styles.stepIndicatorRow}>
@@ -301,36 +364,25 @@ export default function SignupScreen() {
                   </Text>
                 </ScrollView>
 
-                <TouchableOpacity 
-                  style={styles.checkboxRow} 
+                <ScalePressable style={styles.checkboxRow} 
                   onPress={() => setAcceptedPolicy(!acceptedPolicy)}
-                  activeOpacity={0.8}
                 >
                   <View style={[styles.checkbox, acceptedPolicy && styles.checkboxChecked]}>
                     {acceptedPolicy && <Check size={14} color="#020617" />}
                   </View>
                   <Text style={styles.checkboxLabel}>I read and accept the Liability Policy</Text>
-                </TouchableOpacity>
+                </ScalePressable>
               </View>
             )}
 
             {/* Action Buttons */}
             {step < 3 ? (
-              <TouchableOpacity 
-                style={styles.actionButton} 
-                onPress={handleNextStep}
-                activeOpacity={0.8}
-              >
+              <ScalePressable style={styles.actionButton} onPress={() => { triggerLightHaptic(); handleNextStep(); }}>
                 <Text style={styles.actionButtonText}>CONTINUE</Text>
                 <ChevronRight size={18} color="#020617" />
-              </TouchableOpacity>
+              </ScalePressable>
             ) : (
-              <TouchableOpacity 
-                style={[styles.actionButton, isLoading && styles.disabledButton]} 
-                onPress={handleSignup}
-                disabled={isLoading}
-                activeOpacity={0.8}
-              >
+              <ScalePressable style={[styles.actionButton, isLoading && styles.disabledButton]} onPress={handleSignup} disabled={isLoading}>
                 {isLoading ? (
                   <ActivityIndicator size="small" color="#020617" />
                 ) : (
@@ -339,16 +391,17 @@ export default function SignupScreen() {
                     <Check size={18} color="#020617" />
                   </>
                 )}
-              </TouchableOpacity>
+              </ScalePressable>
             )}
           </View>
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>Already have an account? </Text>
-            <TouchableOpacity onPress={() => router.push('/login')}>
+            <ScalePressable onPress={() => { triggerLightHaptic(); router.push('/login'); }}>
               <Text style={styles.loginLink}>Log In</Text>
-            </TouchableOpacity>
+            </ScalePressable>
           </View>
+          </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
