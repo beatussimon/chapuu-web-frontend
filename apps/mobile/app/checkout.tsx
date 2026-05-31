@@ -4,7 +4,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
-import { Audio } from 'expo-av';
 import { MapPin, Image as ImageIcon, CreditCard, ArrowLeft, Send } from 'lucide-react-native';
 
 import { useUser } from '../context/UserContext';
@@ -157,16 +156,6 @@ export default function CheckoutScreen() {
       }
 
       triggerSuccessHaptic();
-      
-      try {
-        const { sound } = await Audio.Sound.createAsync(
-          require('../../assets/chapuunotification.mp3') // Assume we have this or fallback gracefully
-        );
-        await sound.setVolumeAsync(0.25);
-        await sound.playAsync();
-      } catch (e) {
-        console.log('Audio playback failed', e);
-      }
 
       // Clear this store's items from cart
       updateCart(cart.filter(item => {
