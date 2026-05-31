@@ -54,7 +54,8 @@
           "photosPermission": "The app accesses your photos to let you upload payment receipts.",
           "cameraPermission": "The app accesses your camera to let you take photos of payment receipts."
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ]
   }
 }

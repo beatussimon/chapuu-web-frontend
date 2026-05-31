@@ -69,6 +69,7 @@ export default function RootLayout() {
   const [savedStores, setSavedStores] = useState<number[]>([]);
   const [activeOrderCount, setActiveOrderCount] = useState<number>(0);
   const [pendingDeepLinkPath, setPendingDeepLinkPath] = useState<string | null>(null);
+  const [activeReservation, setActiveReservation] = useState<number | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [canAskAgain, setCanAskAgain] = useState(true);
@@ -461,12 +462,14 @@ export default function RootLayout() {
       savedStores,
       activeOrderCount, 
       pendingDeepLinkPath,
+      activeReservation,
       updateUser, 
       updateCart, 
       updateUserLocation, 
       updateSavedStores,
       updateActiveOrderCount,
       setPendingDeepLinkPath,
+      setActiveReservation,
       requestLocationPermission
     }}>
       <StatusBar barStyle="light-content" translucent={true} backgroundColor="transparent" />

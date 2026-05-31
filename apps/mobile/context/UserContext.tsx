@@ -17,12 +17,14 @@ export interface UserContextType {
   savedStores: number[];
   activeOrderCount: number;
   pendingDeepLinkPath: string | null;
+  activeReservation: number | null;
   updateUser: (role: string | null, token: string | null, refreshToken?: string | null) => void;
   updateCart: (cart: CartItem[]) => void;
   updateUserLocation: (loc: UserLocation) => void;
   updateSavedStores: (stores: number[]) => void;
   updateActiveOrderCount: (count: number) => void;
   setPendingDeepLinkPath: (path: string | null) => void;
+  setActiveReservation: (reservationId: number | null) => void;
   requestLocationPermission: () => Promise<void>;
 }
 
@@ -35,12 +37,14 @@ export const UserContext = createContext<UserContextType>({
   savedStores: [],
   activeOrderCount: 0,
   pendingDeepLinkPath: null,
+  activeReservation: null,
   updateUser: () => {},
   updateCart: () => {},
   updateUserLocation: () => {},
   updateSavedStores: () => {},
   updateActiveOrderCount: () => {},
   setPendingDeepLinkPath: () => {},
+  setActiveReservation: () => {},
   requestLocationPermission: async () => {},
 });
 
