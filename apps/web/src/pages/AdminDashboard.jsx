@@ -738,7 +738,7 @@ export default function AdminDashboard() {
                         <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="p-6 bg-dark-900/60 rounded-2xl border border-white/5 relative overflow-hidden flex flex-col justify-between group hover:border-primary-500/40 transition-colors shadow-xl">
                             <div className="absolute top-0 right-0 w-24 h-24 bg-primary-500/10 rounded-full blur-2xl group-hover:bg-primary-500/20 transition-all pointer-events-none"></div>
                             <div className="flex items-center justify-between mb-4">
-                                <span className="text-xs font-black uppercase text-slate-500 tracking-wider">Platform Revenues (3% Cut)</span>
+                                <span className="text-xs font-black uppercase text-slate-500 tracking-wider">Platform Revenues (Platform Cut)</span>
                                 <DollarSign className="text-primary-400" size={18} />
                             </div>
                             <div>
@@ -795,7 +795,7 @@ export default function AdminDashboard() {
                                             <YAxis stroke="#64748b" fontSize={10} tickLine={false} />
                                             <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#ffffff10', borderRadius: '12px', fontSize: '12px', color: '#fff' }} />
                                             <Area type="monotone" dataKey="Volume" stroke="#eab308" strokeWidth={3} fillOpacity={1} fill="url(#colorVolume)" name="Sales Vol" />
-                                            <Area type="monotone" dataKey="Commission" stroke="#10B981" strokeWidth={2} fillOpacity={0} name="3% Comm." />
+                                            <Area type="monotone" dataKey="Commission" stroke="#10B981" strokeWidth={2} fillOpacity={0} name="Platform Comm." />
                                             <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
                                         </AreaChart>
                                     </ResponsiveContainer>
@@ -1675,7 +1675,7 @@ export default function AdminDashboard() {
                         <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="p-6 bg-dark-900/60 rounded-2xl border border-white/5 relative overflow-hidden flex flex-col justify-between group hover:border-primary-500/40 transition-colors shadow-xl">
                             <div className="absolute top-0 right-0 w-24 h-24 bg-primary-500/10 rounded-full blur-2xl group-hover:bg-primary-500/20 transition-all pointer-events-none"></div>
                             <div className="flex items-center justify-between mb-4">
-                                <span className="text-xs font-black uppercase text-slate-500 tracking-wider">Commissions Accrued (3%)</span>
+                                <span className="text-xs font-black uppercase text-slate-500 tracking-wider">Commissions Accrued</span>
                                 <Coins className="text-primary-400" size={18} />
                             </div>
                             <div>

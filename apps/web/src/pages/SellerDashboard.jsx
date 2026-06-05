@@ -496,7 +496,7 @@ export default function SellerDashboard() {
         setHandoffPinModal(prev => ({ ...prev, loading: true }));
         apiClient.post(`/orders/${orderId}/staff_manual_verify/`)
             .then(() => {
-                toast.success("Manual override completed! 3% commission collected.", { id: toastId });
+                toast.success("Manual override completed! Commission collected.", { id: toastId });
                 setHandoffPinModal({ open: false, orderId: null, pin: '', loading: false });
                 fetchDashboard(true);
             })
@@ -1437,11 +1437,11 @@ export default function SellerDashboard() {
                                             <div>
                                                 <span className="block text-[9px] font-black text-slate-500 uppercase tracking-widest">Est. Gross Sales</span>
                                                 <span className="block text-base font-bold text-slate-300 mt-1 font-mono">
-                                                    {formatPrice(currentMonthPreview.accrued_commission / 0.03)}
+                                                    {formatPrice(currentMonthPreview.accrued_commission / (store.store_type === 'RESTAURANT' ? 0.07 : 0.02))}
                                                 </span>
                                             </div>
                                             <div>
-                                                <span className="block text-[9px] font-black text-slate-500 uppercase tracking-widest">Commission (3%)</span>
+                                                <span className="block text-[9px] font-black text-slate-500 uppercase tracking-widest">Commission ({store.store_type === 'RESTAURANT' ? '7%' : '2%'})</span>
                                                 <span className="block text-base font-black text-primary-400 mt-1 font-mono">
                                                     {formatPrice(currentMonthPreview.accrued_commission)}
                                                 </span>
@@ -1526,7 +1526,7 @@ export default function SellerDashboard() {
                                                     <span className="block text-base font-bold text-slate-300 mt-1 font-mono">{formatPrice(inv.total_order_amount)}</span>
                                                 </div>
                                                 <div>
-                                                    <span className="block text-[9px] font-black text-slate-500 uppercase tracking-widest">Platform Cut (3%)</span>
+                                                    <span className="block text-[9px] font-black text-slate-500 uppercase tracking-widest">Platform Cut ({store.store_type === 'RESTAURANT' ? '7%' : '2%'})</span>
                                                     <span className="block text-base font-black text-primary-400 mt-1 font-mono">{formatPrice(inv.total_commission)}</span>
                                                 </div>
                                             </div>
@@ -1626,7 +1626,7 @@ export default function SellerDashboard() {
                                         <div>
                                             <h4 className="text-sm font-bold text-emerald-400">Active Free Trial Program</h4>
                                             <p className="text-xs text-slate-300 mt-1 leading-relaxed">
-                                                Congratulations! Your store is operating under the platform's promotional Free Trial. Platform commission cuts (3%) are <strong>100% waived</strong> on all completed transactions until <strong>{end.toLocaleString()}</strong>.
+                                                Congratulations! Your store is operating under the platform's promotional Free Trial. Platform commission cuts ({storeDetails.store_type === 'RESTAURANT' ? '7%' : '2%'}) are <strong>100% waived</strong> on all completed transactions until <strong>{end.toLocaleString()}</strong>.
                                             </p>
                                         </div>
                                     </div>

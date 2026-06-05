@@ -220,7 +220,7 @@ export default function SellerAnalytics() {
                             <p className="text-slate-400 text-sm font-medium mb-1">Platform Commission</p>
                             <h3 className="text-2xl md:text-3xl font-bold text-white">{formatPrice(kpi.total_commission)}</h3>
                             <div className="flex items-center gap-1 mt-2 text-xs text-slate-400 font-medium">
-                                <Percent size={14} /> 3% fee on sales
+                                <Percent size={14} /> {store.store_type === 'RESTAURANT' ? '7%' : '2%'} fee on sales
                             </div>
                         </motion.div>
 
