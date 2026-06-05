@@ -11,19 +11,22 @@ export default function Tab1Screen() {
   const handleStateUpdate = useWebViewStateUpdate();
   const [currentPath, setCurrentPath] = useState<string>('/');
 
+  // 1. Set default path when userRole changes
   useEffect(() => {
     let defaultPath = '/';
     if (userRole !== 'CUSTOMER') {
       defaultPath = '/seller';
     }
+    setCurrentPath(defaultPath);
+  }, [userRole]);
 
+  // 2. Consume pending deep link reactively without resetting on null
+  useEffect(() => {
     if (pendingDeepLinkPath && (pendingDeepLinkPath === '/' || pendingDeepLinkPath.startsWith('/menu'))) {
       setCurrentPath(pendingDeepLinkPath);
       setPendingDeepLinkPath(null);
-    } else {
-      setCurrentPath(defaultPath);
     }
-  }, [userRole, pendingDeepLinkPath, setPendingDeepLinkPath]);
+  }, [pendingDeepLinkPath, setPendingDeepLinkPath]);
 
   return (
     <View style={styles.container}>

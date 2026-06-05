@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Dimensions, ScrollView, Vibration, Platform, Animated, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
+import { StyleSheet, View, Text, Dimensions, ScrollView, Vibration, Platform, Animated, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
+import ScalePressable from '../components/ScalePressable';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Compass, Calendar, ShieldCheck } from 'lucide-react-native';
@@ -88,9 +89,9 @@ export default function OnboardingScreen() {
       <View style={styles.header}>
         <Text style={styles.logoText}>CHAPUU</Text>
         {activeSlide < slides.length - 1 ? (
-          <TouchableOpacity onPress={handleSkip} activeOpacity={0.7}>
+          <ScalePressable onPress={handleSkip}>
             <Text style={styles.skipText}>Skip</Text>
-          </TouchableOpacity>
+          </ScalePressable>
         ) : (
           <View style={{ width: 40 }} />
         )}
@@ -226,10 +227,9 @@ export default function OnboardingScreen() {
             });
 
             return (
-              <TouchableOpacity
+              <ScalePressable
                 key={index}
                 onPress={() => handleDotPress(index)}
-                activeOpacity={0.8}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
                 <Animated.View
@@ -242,34 +242,32 @@ export default function OnboardingScreen() {
                     }
                   ]}
                 />
-              </TouchableOpacity>
+              </ScalePressable>
             );
           })}
         </View>
 
         {/* Action Buttons */}
-        <TouchableOpacity 
+        <ScalePressable 
           style={[styles.primaryButton, { backgroundColor: slides[activeSlide].color }]} 
           onPress={handleNext}
-          activeOpacity={0.8}
         >
           <Text style={styles.primaryButtonText}>
             {activeSlide === slides.length - 1 ? 'GET STARTED' : 'CONTINUE'}
           </Text>
-        </TouchableOpacity>
+        </ScalePressable>
 
-        <TouchableOpacity 
+        <ScalePressable 
           style={styles.secondaryButton} 
           onPress={() => {
             Vibration.vibrate(10);
             router.push('/login');
           }}
-          activeOpacity={0.7}
         >
           <Text style={styles.secondaryButtonText}>
             I already have an account. <Text style={styles.loginHighlight}>Log In</Text>
           </Text>
-        </TouchableOpacity>
+        </ScalePressable>
       </View>
     </SafeAreaView>
   );

@@ -1,5 +1,9 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Platform, Dimensions, LayoutAnimation, UIManager } from 'react-native';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ShoppingCart, Store as StoreIcon, Trash2, ArrowRight } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
@@ -8,9 +12,10 @@ import { useUser } from '../context/UserContext';
 import { colors, spacing, borderRadius } from '../theme';
 import OptimizedImage from './OptimizedImage';
 import PriceDisplay from './PriceDisplay';
-import ScalePressable from './ScalePressable';
-import { triggerLightHaptic, triggerSelectionHaptic } from '../hooks/useHaptics';
+import ScalePressable, { ScaleIconButton } from './ScalePressable';
+import { triggerLightHaptic, triggerSelectionHaptic, triggerHeavyHaptic, triggerMediumHaptic } from '../hooks/useHaptics';
 import { CartItem } from '../types';
+import { normalizeStoreId, normalizeStoreName } from '../utils/cartNormalizer';
 
 export default function CartScreen() {
   const router = useRouter();
@@ -18,13 +23,15 @@ export default function CartScreen() {
 
   const groupedCart = useMemo(() => {
     return cart.reduce((acc: Record<string, { store: any, items: CartItem[], total: number }>, item) => {
-      // In the web app, the store object is attached to the item or accessible.
-      // We assume item.store exists based on GlobalCart.jsx.
       const store = (item as any).store || item.product?.store || null;
-      const storeId = store?.id || 'unknown';
+      // Resolve correct storeId string safely from flat IDs or nested objects
+      const storeId = normalizeStoreId(store);
+      
+      const resolvedStore = { id: storeId, name: normalizeStoreName(store) };
+
       if (!acc[storeId]) {
         acc[storeId] = {
-          store: store,
+          store: resolvedStore,
           items: [],
           total: 0
         };
@@ -36,7 +43,7 @@ export default function CartScreen() {
   }, [cart]);
 
   const removeFromCart = (productId: number) => {
-    triggerLightHaptic();
+    triggerHeavyHaptic();
     updateCart(cart.filter(item => item.product?.id !== productId));
   };
 
@@ -74,12 +81,12 @@ export default function CartScreen() {
       </View>
       
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {Object.values(groupedCart).map((group, idx) => {
+        {Object.entries(groupedCart).map(([storeId, group]) => {
           const store = group.store;
           const hasStore = !!store;
 
           return (
-            <View key={store?.id || `unknown-${idx}`} style={styles.storeCard}>
+            <View key={storeId} style={styles.storeCard}>
               {store?.image_url && (
                 <View style={[StyleSheet.absoluteFill, styles.storeImageBg]}>
                   <OptimizedImage src={store.image_url} wrapperStyle={StyleSheet.absoluteFill} style={StyleSheet.absoluteFill} />
@@ -115,9 +122,37 @@ export default function CartScreen() {
                     </View>
                     <View style={styles.itemRight}>
                       <PriceDisplay amount={(item.product?.price || 0) * item.quantity} style={styles.itemTotal} />
-                      <TouchableOpacity onPress={() => removeFromCart(item.product?.id || 0)} style={styles.trashBtn}>
+                      <View style={styles.qtyControls}>
+                        <ScalePressable 
+                          onPress={() => {
+                            triggerMediumHaptic();
+                            if (item.quantity <= 1) {
+                              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                              removeFromCart(item.product?.id || 0);
+                            } else {
+                              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                              updateCart(cart.map(c => c.product?.id === item.product?.id ? { ...c, quantity: c.quantity - 1 } : c));
+                            }
+                          }} 
+                          style={styles.qtyBtn}
+                        >
+                          <Text style={styles.qtyBtnText}>-</Text>
+                        </ScalePressable>
+                        <Text style={styles.qtyText}>{item.quantity}</Text>
+                        <ScalePressable 
+                          onPress={() => {
+                            triggerMediumHaptic();
+                            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                            updateCart(cart.map(c => c.product?.id === item.product?.id ? { ...c, quantity: c.quantity + 1 } : c));
+                          }} 
+                          style={styles.qtyBtn}
+                        >
+                          <Text style={styles.qtyBtnText}>+</Text>
+                        </ScalePressable>
+                      </View>
+                      <ScaleIconButton onPress={() => removeFromCart(item.product?.id || 0)} style={styles.trashBtn}>
                         <Trash2 size={16} color={colors.error} />
-                      </TouchableOpacity>
+                      </ScaleIconButton>
                     </View>
                   </View>
                 ))}
@@ -336,6 +371,28 @@ const styles = StyleSheet.create({
   checkoutBtnText: {
     color: colors.dark[950],
     fontSize: 16,
+    fontWeight: 'bold',
+  },
+  qtyControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: borderRadius.md,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    gap: 12,
+  },
+  qtyBtn: {
+    padding: 4,
+  },
+  qtyBtnText: {
+    color: colors.text.secondary,
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  qtyText: {
+    color: colors.text.primary,
+    fontSize: 14,
     fontWeight: 'bold',
   },
 });

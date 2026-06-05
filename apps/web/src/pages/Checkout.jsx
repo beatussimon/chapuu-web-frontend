@@ -208,9 +208,9 @@ export default function Checkout() {
             ...(fulfillmentMode === 'DELIVERY' && { 
                 customer_phone: `+255${customerPhone}`, 
                 delivery_location: deliveryLocation,
-                delivery_latitude: deliveryLatitude,
-                delivery_longitude: deliveryLongitude,
-                delivery_directions: deliveryDirections
+                ...(deliveryLatitude ? { delivery_latitude: deliveryLatitude } : {}),
+                ...(deliveryLongitude ? { delivery_longitude: deliveryLongitude } : {}),
+                ...(deliveryDirections ? { delivery_directions: deliveryDirections } : {})
             }),
             payment_message: isInstantPayment ? `Instant Payment (Walk-in)` : paymentMessage,
             is_instant_payment: isInstantPayment,

@@ -4,13 +4,12 @@ import {
   View, 
   Text, 
   TextInput, 
-  TouchableOpacity, 
-  KeyboardAvoidingView, 
   Platform, 
-  ScrollView,
   ActivityIndicator,
-  Animated
+  Animated,
+  ScrollView
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { CustomAlert } from '../components/CustomAlert';
 import ScalePressable from '../components/ScalePressable';
 import { triggerLightHaptic, triggerSuccessHaptic, triggerErrorHaptic } from '../hooks/useHaptics';
@@ -19,7 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, User, Mail, Phone, Lock, ChevronRight, Check } from 'lucide-react-native';
 import { useUser } from '../context/UserContext';
 
-const DEFAULT_URL = 'https://pasifiq.store';
+const DEFAULT_URL = 'https://chapuu.com';
 const BASE_URL = process.env.EXPO_PUBLIC_WEB_URL || DEFAULT_URL;
 
 export default function SignupScreen() {
@@ -210,12 +209,13 @@ export default function SignupScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
-        style={styles.keyboardView}
+      <KeyboardAwareScrollView 
+        bottomOffset={20}
+        contentContainerStyle={styles.scrollContainer}
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
       >
-        <ScrollView contentContainerStyle={styles.scrollContainer}>
-          <Animated.View style={{ transform: [{ translateX: formShake }], flex: 1 }}>
+        <Animated.View style={{ transform: [{ translateX: formShake }], flex: 1 }}>
             <View style={styles.navHeader}>
             <ScalePressable style={styles.backButton} onPress={() => { triggerLightHaptic(); handleBack(); }}>
               <ArrowLeft size={24} color="#ffffff" />
@@ -402,8 +402,7 @@ export default function SignupScreen() {
             </ScalePressable>
           </View>
           </Animated.View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }

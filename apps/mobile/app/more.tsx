@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import ScalePressable, { ScaleIconButton } from '../components/ScalePressable';
 import { useLocalSearchParams, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
@@ -18,9 +19,9 @@ export default function MoreModalScreen() {
         <Text style={styles.title} numberOfLines={1}>
           {title || 'Tool'}
         </Text>
-        <TouchableOpacity style={styles.closeButton} onPress={handleClose} activeOpacity={0.7}>
+        <ScaleIconButton style={styles.closeButton} onPress={handleClose}>
           <X size={20} color="#ffffff" />
-        </TouchableOpacity>
+        </ScaleIconButton>
       </View>
 
       <View style={styles.content}>

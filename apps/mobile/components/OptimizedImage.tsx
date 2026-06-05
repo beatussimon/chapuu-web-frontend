@@ -1,11 +1,10 @@
 import React from 'react';
-import { StyleSheet, View, ViewStyle, StyleProp } from 'react-native';
-import { Image, ImageProps } from 'expo-image';
-import { ChefHat, ShoppingBag, Utensils } from 'lucide-react-native';
+import { StyleSheet, View, ViewStyle, StyleProp, Image, ImageProps } from 'react-native';
+import { ChefHat, ShoppingBag, Utensils, User } from 'lucide-react-native';
 import { colors } from '../theme';
 
 interface OptimizedImageProps extends Omit<ImageProps, 'source'> {
-  src: string;
+  src?: string;
   placeholderType?: 'store' | 'product' | 'profile';
   storeType?: 'RESTAURANT' | 'SHOP';
   wrapperStyle?: StyleProp<ViewStyle>;
@@ -21,16 +20,28 @@ export default function OptimizedImage({
 }: OptimizedImageProps) {
   const [error, setError] = React.useState(false);
 
+  // Helper to ensure URL is absolute
+  const getFullUrl = (url: string) => {
+    if (!url) return '';
+    if (url.startsWith('http')) return url;
+    const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL || 'https://chapuu.com';
+    return `${WEB_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+  };
+
+  const imageUri = getFullUrl(src || '');
+
   // If no source or error loading, show placeholder
   if (!src || error) {
     return (
       <View style={[styles.placeholderContainer, wrapperStyle, style as ViewStyle]}>
         {placeholderType === 'product' ? (
-          <Utensils size={48} color={colors.border} />
+          <Utensils size={32} color={colors.text.tertiary} />
+        ) : placeholderType === 'profile' ? (
+          <User size={32} color={colors.text.tertiary} />
         ) : storeType === 'SHOP' ? (
-          <ShoppingBag size={48} color={colors.border} />
+          <ShoppingBag size={32} color={colors.text.tertiary} />
         ) : (
-          <ChefHat size={48} color={colors.border} />
+          <ChefHat size={32} color={colors.text.tertiary} />
         )}
       </View>
     );
@@ -39,12 +50,13 @@ export default function OptimizedImage({
   return (
     <View style={[styles.wrapper, wrapperStyle]}>
       <Image
-        source={{ uri: src }}
+        source={{ uri: imageUri }}
         style={[styles.image, style]}
-        contentFit="cover"
-        transition={300}
-        cachePolicy="disk"
-        onError={() => setError(true)}
+        resizeMode="cover"
+        onError={() => {
+          console.warn(`[OptimizedImage] Failed to load: ${imageUri}`);
+          setError(true);
+        }}
         {...props}
       />
     </View>
@@ -60,7 +72,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   placeholderContainer: {
-    backgroundColor: '#1e293b', // slate-800
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     justifyContent: 'center',
     alignItems: 'center',
     width: '100%',

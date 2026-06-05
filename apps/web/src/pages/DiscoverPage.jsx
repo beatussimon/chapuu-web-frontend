@@ -202,7 +202,7 @@ export default function DiscoverPage() {
 
     const handleSelectStore = (store) => {
         setSelectedStore(store);
-        navigate('/menu');
+        navigate(`/menu?store=${store.id}`);
     };
 
     const isSearching = searchQuery.trim().length > 0 || selectedCategory !== null;
@@ -620,7 +620,7 @@ export default function DiscoverPage() {
                             }
                             if (s) {
                                 setSelectedStore(s);
-                                navigate('/menu', { state: { highlightProductId: item.id } });
+                                navigate(`/menu?store=${s.id}`, { state: { highlightProductId: item.id } });
                             }
                         }}
                         onSelectCategory={setSelectedCategory}
@@ -659,7 +659,7 @@ export default function DiscoverPage() {
                                             }
                                             if (s) {
                                                 setSelectedStore(s);
-                                                navigate('/menu', { state: { highlightProductId: item.id } });
+                                                 navigate(`/menu?store=${s.id}`, { state: { highlightProductId: item.id } });
                                             }
                                         }}
                                         className="cursor-pointer glass-dark border border-white/5 rounded-3xl overflow-hidden hover:border-primary-500/50 transition-all flex flex-col group relative"

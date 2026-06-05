@@ -75,3 +75,66 @@ export type BridgeMessage =
     }
   | { type: 'FOCUS_CHANGE'; payload: { isFocused: boolean } }
   | { type: 'SCROLL_POSITION'; payload: { y: number } };
+
+export interface OrderItem {
+  product_name: string;
+  quantity: number;
+  unit_price: number;
+  [key: string]: any;
+}
+
+export interface Order {
+  id: string | number;
+  store: string | number;
+  store_id?: string | number;
+  store_name?: string;
+  store_image?: string;
+  store_phone?: string;
+  store_location?: string;
+  store_latitude?: number;
+  store_longitude?: number;
+  store_directions?: string;
+  state: string;
+  fulfillment_mode: 'DELIVERY' | 'PICKUP' | 'DINE_IN' | 'RESERVATION' | 'TAKEAWAY';
+  total_amount: number;
+  items: OrderItem[];
+  created_at: string;
+  scheduled_time?: string;
+  scheduled_start_time?: string;
+  delivery_location?: string;
+  delivery_directions?: string;
+  delivery_fee?: number;
+  delivery_fee_status?: string;
+  delivery_code?: string;
+  reservation_status?: string;
+  reservation_time?: string;
+  reservation_guest_count?: number;
+  table_number?: string;
+  reschedule_status?: string;
+  reschedule_rejection_reason?: string;
+  reschedule_count?: number;
+  reschedule_requests?: any[];
+  has_review?: boolean;
+  review_details?: any;
+}
+
+export interface Reservation {
+  id: string | number;
+  store?: string | number;
+  store_id?: string | number;
+  store_name?: string;
+  status: string;
+  reservation_time: string;
+  guest_count: number;
+  duration_minutes: number;
+  table_number?: string;
+  can_modify: boolean;
+  linked_order?: Order;
+}
+
+export interface Review {
+  id: string | number;
+  rating: number;
+  comment: string;
+  created_at: string;
+}

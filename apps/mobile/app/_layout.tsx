@@ -6,10 +6,9 @@ import * as Linking from 'expo-linking';
 import { 
   View, 
   ActivityIndicator, 
-  StatusBar, 
+  StatusBar,
   Modal, 
   Text, 
-  TouchableOpacity, 
   StyleSheet, 
   Platform,
   Image,
@@ -22,8 +21,11 @@ import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { UserContext, UserContextType, UserLocation } from '../context/UserContext';
 import { CartItem } from '../types';
 import CustomAlertModal from '../components/CustomAlert';
+import ScalePressable from '../components/ScalePressable';
 import { isTokenNearExpiry, silentlyRefreshToken } from '../services/tokenRefresh';
-
+import apiClient from '../services/api';
+import { authEmitter } from '../services/authEmitter';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 const isExpoGo = Constants.executionEnvironment === 'storeClient' || Constants.appOwnership === 'expo';
 let Notifications: any = null;
 
@@ -70,6 +72,8 @@ export default function RootLayout() {
   const [activeOrderCount, setActiveOrderCount] = useState<number>(0);
   const [pendingDeepLinkPath, setPendingDeepLinkPath] = useState<string | null>(null);
   const [activeReservation, setActiveReservation] = useState<number | null>(null);
+  const [profileData, setProfileData] = useState<any | null>(null);
+  const [loyaltyPoints, setLoyaltyPoints] = useState<number>(0);
   const [isReady, setIsReady] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [canAskAgain, setCanAskAgain] = useState(true);
@@ -151,6 +155,15 @@ export default function RootLayout() {
       }
     }
   }, [token, segments, isReady, hasLoggedIn]);
+
+  // Global Auth Emitter for 401 Unauthorized handling
+  useEffect(() => {
+    const unsubscribe = authEmitter.subscribe(() => {
+      console.log('[RootLayout] 401 Unauthorized detected. Purging session...');
+      updateUser('CUSTOMER', null, null);
+    });
+    return unsubscribe;
+  }, [updateUser]);
 
   // Handle push notification taps
   useEffect(() => {
@@ -335,11 +348,32 @@ export default function RootLayout() {
       subscription.remove();
     };
   }, [token, refreshToken, userRole]);
-  const updateUser = async (role: string | null, tokenVal: string | null, refreshVal?: string | null) => {
+  const fetchUserProfile = async () => {
+    if (!token) return;
+    try {
+      const res = await apiClient.get('/auth/users/me/');
+      if (res.data) {
+        setProfileData(res.data);
+        setLoyaltyPoints(res.data.loyalty_points || 0);
+      }
+    } catch (e) {
+      console.warn('[RootLayout] Failed to fetch profile:', e);
+    }
+  };
+
+  useEffect(() => {
+    if (token) fetchUserProfile();
+  }, [token]);
+
+  async function updateUser(role: string | null, tokenVal: string | null, refreshVal?: string | null) {
     setUserRole(role);
     setToken(tokenVal);
     if (refreshVal !== undefined) {
       setRefreshToken(refreshVal);
+    }
+    if (!tokenVal) {
+      setProfileData(null);
+      setLoyaltyPoints(0);
     }
     try {
       if (role) {
@@ -453,10 +487,13 @@ export default function RootLayout() {
   };
 
   return (
-    <UserContext.Provider value={{ 
-      userRole, 
+    <KeyboardProvider>
+      <UserContext.Provider value={{ 
+        userRole, 
       token, 
       refreshToken,
+      profileData,
+      loyaltyPoints,
       cart, 
       userLocation, 
       savedStores,
@@ -470,7 +507,8 @@ export default function RootLayout() {
       updateActiveOrderCount,
       setPendingDeepLinkPath,
       setActiveReservation,
-      requestLocationPermission
+      requestLocationPermission,
+      fetchUserProfile
     }}>
       <StatusBar barStyle="light-content" translucent={true} backgroundColor="transparent" />
       <Stack
@@ -535,27 +573,26 @@ export default function RootLayout() {
               </Text>
             )}
 
-            <TouchableOpacity 
+            <ScalePressable 
               style={styles.primaryButton}
               onPress={requestLocationPermission}
-              activeOpacity={0.8}
             >
               <Text style={styles.primaryButtonText}>
                 {!canAskAgain ? 'Open System Settings' : 'Allow Location Access'}
               </Text>
-            </TouchableOpacity>
+            </ScalePressable>
 
-            <TouchableOpacity 
+            <ScalePressable 
               style={styles.secondaryButton}
               onPress={() => setShowLocationModal(false)}
-              activeOpacity={0.8}
             >
               <Text style={styles.secondaryButtonText}>Not Now</Text>
-            </TouchableOpacity>
+            </ScalePressable>
           </View>
         </View>
       </Modal>
     </UserContext.Provider>
+    </KeyboardProvider>
   );
 }
 

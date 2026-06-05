@@ -19,12 +19,16 @@ export default function PriceDisplay({
     const num = typeof val === 'string' ? parseFloat(val) : val;
     if (isNaN(num)) return '0';
     
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency,
-      minimumFractionDigits: currency === 'TZS' ? 0 : 2,
-      maximumFractionDigits: currency === 'TZS' ? 0 : 2,
-    }).format(num);
+    // TZS has no decimals, others have 2
+    const isTzs = currency === 'TZS';
+    const decimals = isTzs ? 0 : 2;
+    const parts = num.toFixed(decimals).split('.');
+    
+    // Insert commas as thousand separators
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    const formatted = parts.join('.');
+    
+    return isTzs ? `TZS ${formatted}` : `${currency} ${formatted}`;
   };
 
   const formattedStr = formatPrice(amount);

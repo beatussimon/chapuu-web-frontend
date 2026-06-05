@@ -7,7 +7,7 @@ import {
     Store, Plus, Edit2, Trash2, X, ShoppingBag, ShoppingCart, Users, 
     UserPlus, Key, Power, Search, BarChart3, Settings, Save, Phone, Mail, 
     TerminalSquare, Shield, RefreshCw, AlertTriangle, Image, Upload, LayoutGrid, Printer,
-    MapPin
+    MapPin, Package
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAppStore } from '../store/useStore';
@@ -987,7 +987,8 @@ export default function SellerDashboard() {
                         {/* Operational Tabs */}
                         {(userRole === 'SELLER' || userRole === 'ADMIN' || userRole === 'SUPERUSER' || userRole === 'CHEF') && (
                             <button onClick={() => setActiveView('KITCHEN')} className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all relative ${activeView === 'KITCHEN' ? 'bg-primary-500 text-dark-950 shadow-lg shadow-primary-500/20' : 'text-slate-400 hover:text-white'}`}>
-                                <Utensils size={14} /> Kitchen
+                                {storeDetails?.store_type === 'SHOP' ? <Package size={14} /> : <Utensils size={14} />} 
+                                {storeDetails?.store_type === 'SHOP' ? 'Preparing Orders' : 'Kitchen'}
                                 {kitchenCount > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full border-2 border-dark-900 animate-bounce font-black">{kitchenCount}</span>}
                             </button>
                         )}
@@ -1062,11 +1063,14 @@ export default function SellerDashboard() {
                         </div>
                         <div className="h-8 w-px bg-white/10"></div>
                         <div className="flex gap-2">
-                            {activeView === 'KITCHEN' && (
+                            {activeView === 'KITCHEN' && storeDetails?.store_type !== 'SHOP' && (
                                 <>
                                     <button onClick={() => handleBulkAdvance('PREPARING')} className="px-4 py-2 bg-dark-800 hover:bg-dark-700 text-white rounded-xl text-xs font-bold transition-all">Start Prep</button>
                                     <button onClick={() => handleBulkAdvance('READY')} className="px-4 py-2 bg-primary-500 hover:bg-primary-400 text-dark-900 rounded-xl text-xs font-bold transition-all">Mark Ready</button>
                                 </>
+                            )}
+                            {activeView === 'KITCHEN' && storeDetails?.store_type === 'SHOP' && (
+                                <button onClick={() => handleBulkAdvance('READY')} className="px-4 py-2 bg-primary-500 hover:bg-primary-400 text-dark-900 rounded-xl text-xs font-bold transition-all">Mark Ready</button>
                             )}
                             {activeView === 'DELIVERY' && (
                                 <button onClick={() => handleBulkAdvance('OUT_FOR_DELIVERY')} className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold transition-all">Dispatch All</button>
@@ -1117,32 +1121,34 @@ export default function SellerDashboard() {
                                 </button>
 
                                 {/* Pause Kitchen Toggle */}
-                                <button
-                                    onClick={async () => {
-                                        const toastId = toast.loading(storeDetails.kitchen_settings?.is_kitchen_paused ? 'Resuming kitchen...' : 'Pausing kitchen...');
-                                        try {
-                                            const res = await apiClient.patch(`/stores/${storeDetails.id}/toggle_kitchen_pause/`);
-                                            setStoreDetails(prev => ({
-                                                ...prev,
-                                                kitchen_settings: {
-                                                    ...prev.kitchen_settings,
-                                                    is_kitchen_paused: res.data.paused
-                                                }
-                                            }));
-                                            toast.success(res.data.paused ? 'Kitchen PAUSED!' : 'Kitchen ACTIVE.', { id: toastId });
-                                        } catch (err) {
-                                            toast.error('Failed to toggle kitchen pause.', { id: toastId });
-                                        }
-                                    }}
-                                    className={`px-4 py-2.5 rounded-xl font-bold text-xs md:text-sm flex items-center gap-2 transition-all cursor-pointer ${
-                                        storeDetails.kitchen_settings?.is_kitchen_paused 
-                                            ? 'bg-orange-500/10 border border-orange-500/30 text-orange-400 hover:bg-orange-500/20' 
-                                            : 'bg-primary-500/10 border border-primary-500/30 text-primary-400 hover:bg-primary-500/20'
-                                    }`}
-                                >
-                                    <Clock size={14} />
-                                    {storeDetails.kitchen_settings?.is_kitchen_paused ? 'Kitchen: PAUSED' : 'Kitchen: ACTIVE'}
-                                </button>
+                                {storeDetails?.store_type !== 'SHOP' && (
+                                    <button
+                                        onClick={async () => {
+                                            const toastId = toast.loading(storeDetails.kitchen_settings?.is_kitchen_paused ? 'Resuming kitchen...' : 'Pausing kitchen...');
+                                            try {
+                                                const res = await apiClient.patch(`/stores/${storeDetails.id}/toggle_kitchen_pause/`);
+                                                setStoreDetails(prev => ({
+                                                    ...prev,
+                                                    kitchen_settings: {
+                                                        ...prev.kitchen_settings,
+                                                        is_kitchen_paused: res.data.paused
+                                                    }
+                                                }));
+                                                toast.success(res.data.paused ? 'Kitchen PAUSED!' : 'Kitchen ACTIVE.', { id: toastId });
+                                            } catch (err) {
+                                                toast.error('Failed to toggle kitchen pause.', { id: toastId });
+                                            }
+                                        }}
+                                        className={`px-4 py-2.5 rounded-xl font-bold text-xs md:text-sm flex items-center gap-2 transition-all cursor-pointer ${
+                                            storeDetails.kitchen_settings?.is_kitchen_paused 
+                                                ? 'bg-orange-500/10 border border-orange-500/30 text-orange-400 hover:bg-orange-500/20' 
+                                                : 'bg-primary-500/10 border border-primary-500/30 text-primary-400 hover:bg-primary-500/20'
+                                        }`}
+                                    >
+                                        <Clock size={14} />
+                                        {storeDetails.kitchen_settings?.is_kitchen_paused ? 'Kitchen: PAUSED' : 'Kitchen: ACTIVE'}
+                                    </button>
+                                )}
                             </div>
                         </div>
                     )}

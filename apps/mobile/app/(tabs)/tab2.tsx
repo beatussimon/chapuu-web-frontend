@@ -3,6 +3,7 @@ import { View, StyleSheet } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import WebViewTab from '../../components/WebViewTab';
 import StoreMenuScreen from '../../components/StoreMenuScreen';
+import StoresListScreen from '../../components/StoresListScreen';
 import { useUser } from '../../context/UserContext';
 import { useWebViewStateUpdate } from '../../hooks/useWebViewStateUpdate';
 
@@ -12,6 +13,7 @@ export default function Tab2Screen() {
   const { store } = useLocalSearchParams();
   const [currentPath, setCurrentPath] = useState<string>('/stores?type=RESTAURANT');
 
+  // 1. Set default path when userRole changes
   useEffect(() => {
     let defaultPath = '/';
     switch (userRole) {
@@ -30,19 +32,21 @@ export default function Tab2Screen() {
       default:
         defaultPath = '/stores?type=RESTAURANT';
     }
+    setCurrentPath(defaultPath);
+  }, [userRole]);
 
+  // 2. Consume pending deep link reactively without resetting on null
+  useEffect(() => {
     if (pendingDeepLinkPath && (pendingDeepLinkPath.startsWith('/stores') || pendingDeepLinkPath.startsWith('/menu'))) {
       setCurrentPath(pendingDeepLinkPath);
       setPendingDeepLinkPath(null);
-    } else {
-      setCurrentPath(defaultPath);
     }
-  }, [userRole, pendingDeepLinkPath, setPendingDeepLinkPath]);
+  }, [pendingDeepLinkPath, setPendingDeepLinkPath]);
 
   return (
     <View style={styles.container}>
-      {userRole === 'CUSTOMER' && store ? (
-        <StoreMenuScreen storeId={store as string} />
+      {userRole === 'CUSTOMER' ? (
+        store ? <StoreMenuScreen storeId={store as string} /> : <StoresListScreen />
       ) : (
         <WebViewTab path={currentPath} onStateUpdate={handleStateUpdate} />
       )}

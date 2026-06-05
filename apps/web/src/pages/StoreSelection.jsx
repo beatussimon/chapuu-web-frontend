@@ -72,7 +72,7 @@ export default function StoreSelection() {
 
     const handleSelectStore = (store) => {
         setSelectedStore(store);
-        navigate('/menu');
+        navigate(`/menu?store=${store.id}`);
     };
 
     const safeSavedStores = Array.isArray(savedStores) ? savedStores : [];

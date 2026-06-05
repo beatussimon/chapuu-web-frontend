@@ -2203,67 +2203,69 @@ export default function AdminDashboard() {
                                     </label>
                                 </div>
 
-                                <div className="border-t border-white/5 pt-4 space-y-4">
-                                    <div className="flex items-center gap-1.5">
-                                        <span className="text-sm font-bold text-white flex items-center gap-1.5">
-                                            🎁 Promotional Free Trial Program
-                                        </span>
+                                {userRole === 'SUPERUSER' && (
+                                    <div className="border-t border-white/5 pt-4 space-y-4">
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="text-sm font-bold text-white flex items-center gap-1.5">
+                                                🎁 Promotional Free Trial Program
+                                            </span>
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                            <div>
+                                                <label className="block text-xs text-slate-400 mb-1">Quick Grant Preset</label>
+                                                <select
+                                                    onChange={(e) => {
+                                                        const val = e.target.value;
+                                                        if (val === 'none') {
+                                                            setEditStoreData(prev => ({ ...prev, free_trial_start: '', free_trial_end: '' }));
+                                                        } else if (val !== 'custom') {
+                                                            const days = parseInt(val);
+                                                            const start = new Date();
+                                                            const end = new Date();
+                                                            end.setDate(end.getDate() + days);
+                                                            setEditStoreData(prev => ({
+                                                                ...prev,
+                                                                free_trial_start: formatDateTimeLocal(start.toISOString()),
+                                                                free_trial_end: formatDateTimeLocal(end.toISOString())
+                                                            }));
+                                                        }
+                                                    }}
+                                                    defaultValue="custom"
+                                                    className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none text-white transition-all cursor-pointer"
+                                                >
+                                                    <option value="custom">Custom Date Range</option>
+                                                    <option value="none">None (Clear Promotion)</option>
+                                                    <option value="7">7 Days Trial</option>
+                                                    <option value="14">14 Days Trial</option>
+                                                    <option value="30">30 Days Trial</option>
+                                                    <option value="60">60 Days Trial</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs text-slate-400 mb-1">Start Date & Time</label>
+                                                <input 
+                                                    type="datetime-local" 
+                                                    value={editStoreData.free_trial_start}
+                                                    onChange={e => setEditStoreData({ ...editStoreData, free_trial_start: e.target.value })}
+                                                    className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none text-white font-sans transition-all" 
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs text-slate-400 mb-1">End Date & Time</label>
+                                                <input 
+                                                    type="datetime-local" 
+                                                    value={editStoreData.free_trial_end}
+                                                    onChange={e => setEditStoreData({ ...editStoreData, free_trial_end: e.target.value })}
+                                                    className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none text-white font-sans transition-all" 
+                                                />
+                                            </div>
+                                        </div>
+                                        <p className="text-[11px] text-slate-500 leading-normal">
+                                            Stores under an active free trial are 100% exempt from platform billing commissions. The completion ledger will record 0.00 platform shares, acting as a clear promotion waiver.
+                                        </p>
                                     </div>
-                                    
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                        <div>
-                                            <label className="block text-xs text-slate-400 mb-1">Quick Grant Preset</label>
-                                            <select
-                                                onChange={(e) => {
-                                                    const val = e.target.value;
-                                                    if (val === 'none') {
-                                                        setEditStoreData(prev => ({ ...prev, free_trial_start: '', free_trial_end: '' }));
-                                                    } else if (val !== 'custom') {
-                                                        const days = parseInt(val);
-                                                        const start = new Date();
-                                                        const end = new Date();
-                                                        end.setDate(end.getDate() + days);
-                                                        setEditStoreData(prev => ({
-                                                            ...prev,
-                                                            free_trial_start: formatDateTimeLocal(start.toISOString()),
-                                                            free_trial_end: formatDateTimeLocal(end.toISOString())
-                                                        }));
-                                                    }
-                                                }}
-                                                defaultValue="custom"
-                                                className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none text-white transition-all cursor-pointer"
-                                            >
-                                                <option value="custom">Custom Date Range</option>
-                                                <option value="none">None (Clear Promotion)</option>
-                                                <option value="7">7 Days Trial</option>
-                                                <option value="14">14 Days Trial</option>
-                                                <option value="30">30 Days Trial</option>
-                                                <option value="60">60 Days Trial</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs text-slate-400 mb-1">Start Date & Time</label>
-                                            <input 
-                                                type="datetime-local" 
-                                                value={editStoreData.free_trial_start}
-                                                onChange={e => setEditStoreData({ ...editStoreData, free_trial_start: e.target.value })}
-                                                className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none text-white font-sans transition-all" 
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs text-slate-400 mb-1">End Date & Time</label>
-                                            <input 
-                                                type="datetime-local" 
-                                                value={editStoreData.free_trial_end}
-                                                onChange={e => setEditStoreData({ ...editStoreData, free_trial_end: e.target.value })}
-                                                className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary-500 outline-none text-white font-sans transition-all" 
-                                            />
-                                        </div>
-                                    </div>
-                                    <p className="text-[11px] text-slate-500 leading-normal">
-                                        Stores under an active free trial are 100% exempt from platform billing commissions. The completion ledger will record 0.00 platform shares, acting as a clear promotion waiver.
-                                    </p>
-                                </div>
+                                )}
  
                                 <div className="flex justify-end gap-2 pt-4">
                                     <button type="button" onClick={() => setEditingStore(null)} className="px-4 py-2 border border-white/10 hover:bg-white/5 rounded-lg text-sm font-bold text-slate-400 hover:text-white cursor-pointer transition-all">Cancel</button>

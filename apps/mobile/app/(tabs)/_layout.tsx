@@ -2,6 +2,7 @@ import React from 'react';
 import { Tabs } from 'expo-router';
 import { useUser } from '../../context/UserContext';
 import { CartItem } from '../../types';
+import { hasPermission } from '../../config/permissions';
 import { 
   Compass, 
   Utensils, 
@@ -12,7 +13,8 @@ import {
   BarChart3, 
   Package, 
   Navigation, 
-  LayoutGrid 
+  LayoutGrid,
+  User
 } from 'lucide-react-native';
 
 export default function TabLayout() {
@@ -21,46 +23,25 @@ export default function TabLayout() {
   // Calculate cart items count
   const cartCount = cart.reduce((sum: number, item: CartItem) => sum + (item.quantity || 1), 0);
 
-  // Helper to determine tab options based on role
   const getTabConfig = (tabId: string) => {
-    switch (userRole) {
-      case 'SELLER':
-      case 'ADMIN':
-      case 'SUPERUSER':
-        if (tabId === 'index') return { label: 'Dashboard', icon: Terminal, href: '/' };
-        if (tabId === 'tab2') return { label: 'Menu', icon: Utensils, href: '/tab2' };
-        if (tabId === 'tab3') return { label: 'Analytics', icon: BarChart3, href: '/tab3' };
-        if (tabId === 'tab4') return { label: 'Stock', icon: Package, href: '/tab4' };
-        if (tabId === 'tab5') return { label: 'More', icon: LayoutGrid, href: '/tab5' };
-        break;
-
-      case 'CHEF':
-        if (tabId === 'index') return { label: 'Dashboard', icon: Terminal, href: '/' };
-        if (tabId === 'tab2') return { label: 'Menu', icon: Utensils, href: '/tab2' };
-        if (tabId === 'tab5') return { label: 'More', icon: LayoutGrid, href: '/tab5' };
-        break;
-
-      case 'ACCOUNTANT':
-        if (tabId === 'index') return { label: 'Dashboard', icon: Terminal, href: '/' };
-        if (tabId === 'tab5') return { label: 'More', icon: LayoutGrid, href: '/tab5' };
-        break;
-
-      case 'DELIVERY':
-        if (tabId === 'index') return { label: 'Dashboard', icon: Terminal, href: '/' };
-        if (tabId === 'tab2') return { label: 'Deliveries', icon: Navigation, href: '/tab2' };
-        if (tabId === 'tab5') return { label: 'More', icon: LayoutGrid, href: '/tab5' };
-        break;
-
-      case 'CUSTOMER':
-      default:
+    // Customers have a static layout
+    if (!userRole || userRole === 'CUSTOMER') {
         if (tabId === 'index') return { label: 'Discover', icon: Compass, href: '/' };
         if (tabId === 'tab2') return { label: 'Restaurants', icon: Utensils, href: '/tab2' };
         if (tabId === 'tab3') return { label: 'Cart', icon: ShoppingCart, href: '/tab3' };
         if (tabId === 'tab4') return { label: 'Orders', icon: ShoppingBag, href: '/tab4' };
-        if (tabId === 'tab5') return { label: 'Reserve', icon: Calendar, href: '/tab5' };
-        break;
+        if (tabId === 'tab5') return { label: 'Profile', icon: User, href: '/tab5' };
+        return null;
     }
-    return null; // Hide the tab if it doesn't match the role config
+
+    // Staff layouts are driven by dynamic permissions
+    if (tabId === 'index' && hasPermission(userRole, 'STAFF_FEATURES')) return { label: 'Dashboard', icon: Terminal, href: '/' };
+    if (tabId === 'tab2' && hasPermission(userRole, 'MANAGE_MENU')) return { label: 'Menu', icon: Utensils, href: '/tab2' };
+    if (tabId === 'tab3' && hasPermission(userRole, 'VIEW_ANALYTICS')) return { label: 'Analytics', icon: BarChart3, href: '/tab3' };
+    if (tabId === 'tab4' && hasPermission(userRole, 'MANAGE_INVENTORY')) return { label: 'Stock', icon: Package, href: '/tab4' };
+    if (tabId === 'tab5') return { label: 'Profile', icon: User, href: '/tab5' }; // Everyone gets a profile tab
+    
+    return null; // Hide the tab if they lack permission
   };
 
   const getScreenOptions = (tabId: string): object => {

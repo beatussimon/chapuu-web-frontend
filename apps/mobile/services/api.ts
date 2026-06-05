@@ -1,8 +1,10 @@
 import * as SecureStore from 'expo-secure-store';
 import { silentlyRefreshToken, isTokenNearExpiry } from './tokenRefresh';
+import { authEmitter } from './authEmitter';
 
 const DEFAULT_URL = 'https://chapuu.com';
-const BASE_URL = process.env.EXPO_PUBLIC_WEB_URL || DEFAULT_URL;
+const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL || DEFAULT_URL;
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || `${WEB_URL}/api`;
 
 interface ApiOptions extends RequestInit {
   params?: Record<string, any>;
@@ -15,26 +17,24 @@ export const apiClient = {
   },
 
   async post(endpoint: string, body: any, options: ApiOptions = {}) {
+    const isFormData = body instanceof FormData;
+    const headers = isFormData ? options.headers : { 'Content-Type': 'application/json', ...options.headers };
     return this.request(endpoint, {
       ...options,
       method: 'POST',
-      body: JSON.stringify(body),
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
+      body: isFormData ? body : JSON.stringify(body),
+      headers,
     });
   },
 
   async put(endpoint: string, body: any, options: ApiOptions = {}) {
+    const isFormData = body instanceof FormData;
+    const headers = isFormData ? options.headers : { 'Content-Type': 'application/json', ...options.headers };
     return this.request(endpoint, {
       ...options,
       method: 'PUT',
-      body: JSON.stringify(body),
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
+      body: isFormData ? body : JSON.stringify(body),
+      headers,
     });
   },
 
@@ -74,51 +74,64 @@ export const apiClient = {
     const headers = new Headers(options.headers || {});
     const requiresAuth = options.requiresAuth !== false;
 
+    // If the body is FormData, delete Content-Type to let fetch generate the boundary
+    if (options.body instanceof FormData) {
+      headers.delete('Content-Type');
+      headers.delete('content-type');
+    }
+
     if (requiresAuth) {
       let token = await SecureStore.getItemAsync('chapuu_access_token');
-      
-      if (isTokenNearExpiry(token)) {
-        console.log('[apiClient] Token near expiry, refreshing...');
-        const refreshToken = await SecureStore.getItemAsync('chapuu_refresh_token');
-        const newToken = await silentlyRefreshToken(refreshToken);
-        
-        if (newToken) {
-          await SecureStore.setItemAsync('chapuu_access_token', newToken);
-          token = newToken;
-          
-          // Also broadcast the new token to WebViews if needed, though native screens won't need it.
-          // This ensures if we switch back to a WebView tab, the new token is available.
-        } else {
-          // If refresh fails, we might want to log out the user. 
-          // For now, we'll let the request fail with 401.
-          console.warn('[apiClient] Token refresh failed');
-        }
-      }
-
       if (token) {
         headers.set('Authorization', `Bearer ${token}`);
       }
     }
 
     try {
-      const response = await fetch(url, {
+      let response = await fetch(url, {
         ...options,
         headers,
       });
 
-      if (!response.ok) {
-        // If it's a 401, we could potentially trigger a global logout event here.
-        if (response.status === 401) {
-          console.warn(`[apiClient] 401 Unauthorized for ${endpoint}`);
+      if (response.status === 401 && requiresAuth) {
+        console.warn(`[apiClient] 401 for ${endpoint}, attempting refresh...`);
+        const refreshToken = await SecureStore.getItemAsync('chapuu_refresh_token');
+        const newToken = await silentlyRefreshToken(refreshToken);
+
+        if (newToken) {
+          await SecureStore.setItemAsync('chapuu_access_token', newToken);
+          headers.set('Authorization', `Bearer ${newToken}`);
+          // Retry request
+          response = await fetch(url, { ...options, headers });
         }
-        
-        let errorData;
+      }
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          console.warn(`[apiClient] 401 Unauthorized for ${endpoint} after refresh attempt`);
+          authEmitter.emitLogout();
+        }
+        let errorData: any;
         try {
           errorData = await response.json();
         } catch {
           errorData = { detail: response.statusText };
         }
-        throw new Error(errorData.detail || `HTTP Error ${response.status}`);
+        
+        let errorMessage = '';
+        if (errorData && typeof errorData === 'object') {
+          if (errorData.detail) {
+            errorMessage = errorData.detail;
+          } else {
+            errorMessage = Object.entries(errorData)
+              .map(([key, val]) => {
+                const msgs = Array.isArray(val) ? val.join(', ') : String(val);
+                return `${key}: ${msgs}`;
+              })
+              .join('\n');
+          }
+        }
+        throw new Error(errorMessage || `HTTP Error ${response.status}`);
       }
 
       const contentType = response.headers.get('content-type');
@@ -134,6 +147,24 @@ export const apiClient = {
       throw error;
     }
   }
+};
+
+export const getWebSocketURL = async (endpoint: string) => {
+  const cleanWebUrl = WEB_URL.replace(/\/+$/, '');
+  const wsProto = cleanWebUrl.startsWith('https') ? 'wss' : 'ws';
+  const host = cleanWebUrl.replace(/^https?:\/\//, '');
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  let wsUrl = `${wsProto}://${host}${cleanEndpoint}`;
+
+  try {
+    const token = await SecureStore.getItemAsync('chapuu_access_token');
+    if (token) {
+      wsUrl += (wsUrl.includes('?') ? '&' : '?') + `token=${token}`;
+    }
+  } catch (err) {
+    console.warn('[apiClient] getWebSocketURL: SecureStore error', err);
+  }
+  return wsUrl;
 };
 
 export default apiClient;

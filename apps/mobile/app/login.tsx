@@ -4,13 +4,11 @@ import {
   View, 
   Text, 
   TextInput, 
-  TouchableOpacity, 
-  KeyboardAvoidingView, 
   Platform, 
-  ScrollView,
   ActivityIndicator,
   Animated
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { CustomAlert } from '../components/CustomAlert';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -176,15 +174,12 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
-        style={styles.keyboardView}
+      <KeyboardAwareScrollView 
+        bottomOffset={20}
+        contentContainerStyle={styles.scrollContainer}
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
       >
-        <ScrollView 
-          contentContainerStyle={styles.scrollContainer}
-          keyboardDismissMode="on-drag"
-          keyboardShouldPersistTaps="handled"
-        >
           {router.canGoBack() ? (
             <ScalePressable style={styles.backButton} onPress={handleBack}>
               <ArrowLeft size={24} color="#ffffff" />
@@ -259,8 +254,7 @@ export default function LoginScreen() {
               </ScalePressable>
             </View>
           </Animated.View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }

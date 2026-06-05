@@ -7,9 +7,11 @@ import {
   Platform,
   StyleProp,
   ViewStyle,
-  TextStyle
+  TextStyle,
+  TouchableWithoutFeedback
 } from 'react-native';
-import ScalePressable from './ScalePressable';
+import { X } from 'lucide-react-native';
+import ScalePressable, { ScaleIconButton } from './ScalePressable';
 import { triggerLightHaptic, triggerSuccessHaptic, triggerErrorHaptic } from '../hooks/useHaptics';
 
 export type AlertButton = {
@@ -109,64 +111,60 @@ export default function CustomAlertModal() {
       animationType="fade"
       onRequestClose={() => setVisible(false)}
     >
-      <View style={styles.backdrop}>
-        <View style={styles.container}>
-          <View style={[
-            styles.iconWrapper,
-            config.title.toLowerCase().includes('error') || config.title.toLowerCase().includes('fail')
-              ? styles.iconWrapperError
-              : config.title.toLowerCase().includes('success')
-              ? styles.iconWrapperSuccess
-              : styles.iconWrapperDefault
-          ]}>
-            <Text style={styles.icon}>{getIcon()}</Text>
-          </View>
+      <TouchableWithoutFeedback onPress={() => setVisible(false)}>
+        <View style={styles.backdrop}>
+          <TouchableWithoutFeedback onPress={(e) => {}}>
+            <View style={styles.container}>
+              <View style={styles.closeIconBtn}>
+                <ScaleIconButton onPress={() => setVisible(false)}>
+                  <X size={18} color="rgba(255,255,255,0.4)" />
+                </ScaleIconButton>
+              </View>
 
-          <Text style={styles.title}>{config.title}</Text>
-          <Text style={styles.message}>{config.message}</Text>
+              <View style={[
+                styles.iconWrapper,
+                config.title.toLowerCase().includes('error') || config.title.toLowerCase().includes('fail')
+                  ? styles.iconWrapperError
+                  : config.title.toLowerCase().includes('success')
+                  ? styles.iconWrapperSuccess
+                  : styles.iconWrapperDefault
+              ]}>
+                <Text style={styles.icon}>{getIcon()}</Text>
+              </View>
 
-          <View style={[
-            styles.buttonContainer,
-            alertButtons.length > 2 ? styles.buttonContainerVertical : styles.buttonContainerHorizontal
-          ]}>
-            {alertButtons.map((btn, index) => {
-              const isDestructive = btn.style === 'destructive';
-              const isCancel = btn.style === 'cancel';
-              
-              // Determine styles
-              let btnStyle: StyleProp<ViewStyle> = styles.defaultButton;
-              let txtStyle: StyleProp<TextStyle> = styles.defaultButtonText;
+              <Text style={styles.title}>{config.title}</Text>
+              <Text style={styles.message}>{config.message}</Text>
 
-              if (isDestructive) {
-                btnStyle = styles.destructiveButton;
-                txtStyle = styles.destructiveButtonText;
-              } else if (isCancel) {
-                btnStyle = styles.cancelButton;
-                txtStyle = styles.cancelButtonText;
-              } else {
-                // Primary action styles
-                if (alertButtons.length === 2 && index === 1) {
-                  btnStyle = styles.primaryButton;
-                  txtStyle = styles.primaryButtonText;
-                } else if (alertButtons.length === 1) {
-                  btnStyle = styles.primaryButton;
-                  txtStyle = styles.primaryButtonText;
-                }
-              }
-
-              return (
-                <ScalePressable
-                  key={index}
-                  style={[styles.button, btnStyle]}
-                  onPress={() => handleButtonPress(btn)}
-                >
-                  <Text style={[styles.buttonText, txtStyle]}>{btn.text}</Text>
-                </ScalePressable>
-              );
-            })}
-          </View>
+              <View style={[
+                styles.buttonContainer,
+                alertButtons.length > 2 ? styles.buttonContainerVertical : styles.buttonContainerHorizontal
+              ]}>
+                {alertButtons.map((btn, index) => (
+                  <ScalePressable
+                    key={index}
+                    style={[
+                      styles.button,
+                      alertButtons.length > 2 ? styles.buttonVertical : styles.buttonHorizontal,
+                      btn.style === 'cancel' && styles.buttonCancel,
+                      btn.style === 'destructive' && styles.buttonDestructive,
+                      index === alertButtons.length - 1 && !btn.style && styles.buttonPrimary
+                    ]}
+                    onPress={() => handleButtonPress(btn)}
+                  >
+                    <Text style={[
+                      styles.buttonText,
+                      btn.style === 'cancel' && styles.buttonTextCancel,
+                      index === alertButtons.length - 1 && !btn.style && styles.buttonTextPrimary
+                    ]}>
+                      {btn.text}
+                    </Text>
+                  </ScalePressable>
+                ))}
+              </View>
+            </View>
+          </TouchableWithoutFeedback>
         </View>
-      </View>
+      </TouchableWithoutFeedback>
     </Modal>
   );
 }
@@ -193,6 +191,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 20,
     elevation: 10,
+    position: 'relative',
+  },
+  closeIconBtn: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    zIndex: 10,
+    padding: 4,
   },
   iconWrapper: {
     width: 56,
@@ -224,62 +230,54 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   message: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#94a3b8', // slate-400
     textAlign: 'center',
-    lineHeight: 18,
+    lineHeight: 20,
     marginBottom: 24,
   },
   buttonContainer: {
     width: '100%',
-    gap: 10,
+    gap: 12,
   },
   buttonContainerHorizontal: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
   },
   buttonContainerVertical: {
     flexDirection: 'column',
   },
   button: {
-    flex: 1,
-    height: 48,
-    borderRadius: 14,
-    justifyContent: 'center',
+    borderRadius: 12,
+    paddingVertical: 12,
     alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 100,
   },
-  buttonText: {
-    fontSize: 13,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+  buttonHorizontal: {
+    flex: 1,
   },
-  primaryButton: {
+  buttonVertical: {
+    width: '100%',
+  },
+  buttonPrimary: {
     backgroundColor: '#eab308', // Gold primary
   },
-  primaryButtonText: {
-    color: '#020617', // Dark slate text
+  buttonCancel: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
   },
-  destructiveButton: {
-    backgroundColor: '#ef4444', // Warning red solid
+  buttonDestructive: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
   },
-  destructiveButtonText: {
+  buttonText: {
+    fontSize: 14,
+    fontWeight: '700',
     color: '#ffffff',
   },
-  cancelButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+  buttonTextPrimary: {
+    color: '#020617', // dark-950
   },
-  cancelButtonText: {
-    color: '#64748b', // Slate gray cancel text
-  },
-  defaultButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  defaultButtonText: {
-    color: '#ffffff',
+  buttonTextCancel: {
+    color: '#94a3b8', // slate-400
   },
 });

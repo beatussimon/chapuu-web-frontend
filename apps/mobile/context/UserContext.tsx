@@ -12,6 +12,8 @@ export interface UserContextType {
   userRole: string | null;
   token: string | null;
   refreshToken: string | null;
+  profileData: any | null;
+  loyaltyPoints: number;
   cart: CartItem[];
   userLocation: UserLocation;
   savedStores: number[];
@@ -26,12 +28,15 @@ export interface UserContextType {
   setPendingDeepLinkPath: (path: string | null) => void;
   setActiveReservation: (reservationId: number | null) => void;
   requestLocationPermission: () => Promise<void>;
+  fetchUserProfile: () => Promise<void>;
 }
 
 export const UserContext = createContext<UserContextType>({
   userRole: 'CUSTOMER',
   token: null,
   refreshToken: null,
+  profileData: null,
+  loyaltyPoints: 0,
   cart: [],
   userLocation: { lat: null, lng: null, name: null, granted: false },
   savedStores: [],
@@ -46,6 +51,7 @@ export const UserContext = createContext<UserContextType>({
   setPendingDeepLinkPath: () => {},
   setActiveReservation: () => {},
   requestLocationPermission: async () => {},
+  fetchUserProfile: async () => {},
 });
 
 export const useUser = () => useContext(UserContext);
