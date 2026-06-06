@@ -35,7 +35,7 @@ const StoreBrandingPrint = lazy(() => import('./pages/admin/StoreBrandingPrint')
 const PrintReceipt = lazy(() => import('./pages/seller/PrintReceipt'));
 const StaffPortal = lazy(() => import('./pages/StaffPortal'));
 
-import { Utensils, LayoutDashboard, LogOut, ShoppingBag, TerminalSquare, QrCode, Calendar, Package, Shield, Store, Menu, X, Navigation, Tv, BarChart3, Compass, UtensilsCrossed, HelpCircle, ListOrdered, ShoppingCart, TrendingUp, LayoutGrid, User, ChevronDown, ClipboardList } from 'lucide-react';
+import { Utensils, LayoutDashboard, LogOut, ShoppingBag, TerminalSquare, QrCode, Calendar, Package, Shield, Store, Menu, X, Navigation, Tv, BarChart3, Compass, UtensilsCrossed, HelpCircle, ListOrdered, ShoppingCart, TrendingUp, LayoutGrid, User, ChevronDown, ClipboardList, Sparkles, Moon } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import apiClient, { setStoreResetFn } from './api/client';
 
@@ -49,7 +49,7 @@ function ProtectedRoute({ children, role }) {
   return children;
 }
 
-function TopNavigation({ storeId }) {
+function TopNavigation({ storeId, theme, toggleTheme }) {
   const { token, userRole, clearAuth, cart } = useAppStore();
   const navigate = useNavigate();
   const location = useLocation();
@@ -207,6 +207,13 @@ function TopNavigation({ storeId }) {
 
       {/* Right: Actions */}
       <div className="flex-none flex items-center gap-2 sm:gap-4">
+        <button
+          onClick={toggleTheme}
+          className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white transition-all flex items-center justify-center cursor-pointer"
+          title={theme === 'default' ? 'Switch to Dark theme' : 'Switch to Original theme'}
+        >
+          {theme === 'default' ? <Sparkles size={18} className="text-amber-400" /> : <Moon size={18} className="text-amber-400" />}
+        </button>
         {!token ? (
           <>
             <Link to="/faq" className="px-3 py-1.5 md:px-5 md:py-2 text-slate-300 hover:text-white text-xs md:text-sm font-medium transition-colors">FAQ</Link>
@@ -370,7 +377,7 @@ const getDrawerLinks = (userRole, storeId) => {
   return links.filter(link => !bottomNavPaths.includes(link.path));
 };
 
-function BottomNav({ moreMenuOpen, onToggleMore }) {
+function BottomNav({ moreMenuOpen, onToggleMore, theme, toggleTheme }) {
   const { userRole, cart } = useAppStore();
   const location = useLocation();
   if (!userRole) return null;
@@ -437,7 +444,7 @@ function BottomNav({ moreMenuOpen, onToggleMore }) {
   );
 }
 
-function BottomDrawer({ isOpen, onClose, storeId }) {
+function BottomDrawer({ isOpen, onClose, storeId, theme, toggleTheme }) {
   const { userRole, clearAuth } = useAppStore();
   const navigate = useNavigate();
   const location = useLocation();
@@ -485,12 +492,21 @@ function BottomDrawer({ isOpen, onClose, storeId }) {
               {['ADMIN', 'SUPERUSER'].includes(userRole) ? 'All tools authorized for your role' : 'Manage all your tools in one place'}
             </p>
           </div>
-          <button 
-            onClick={onClose} 
-            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
-          >
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggleTheme}
+              className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-300 hover:text-white transition-all cursor-pointer"
+              title={theme === 'default' ? 'Switch to Dark theme' : 'Switch to Original theme'}
+            >
+              {theme === 'default' ? <Sparkles size={16} className="text-amber-400" /> : <Moon size={16} className="text-amber-400" />}
+            </button>
+            <button 
+              onClick={onClose} 
+              className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors cursor-pointer"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         {/* 2-Column Grid Directory */}
@@ -544,7 +560,17 @@ function AppLayout() {
   const refreshUserRole = useAppStore(state => state.refreshUserRole);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [storeId, setStoreId] = useState(null);
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'default');
   const location = useLocation();
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'default' ? 'dark' : 'default');
+  };
 
   useEffect(() => {
     refreshUserRole();
@@ -697,7 +723,7 @@ function AppLayout() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      {!hideNavigation && <TopNavigation storeId={storeId} />}
+      {!hideNavigation && <TopNavigation storeId={storeId} theme={theme} toggleTheme={toggleTheme} />}
       <Toaster position="bottom-right" toastOptions={{
         style: { background: '#1e293b', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' },
         success: { iconTheme: { primary: '#22c55e', secondary: '#fff' } }
@@ -754,8 +780,8 @@ function AppLayout() {
           </Routes>
         </Suspense>
       </main>
-      {!hideNavigation && <BottomNav moreMenuOpen={moreMenuOpen} onToggleMore={() => setMoreMenuOpen(!moreMenuOpen)} />}
-      {!hideNavigation && <BottomDrawer isOpen={moreMenuOpen} onClose={() => setMoreMenuOpen(false)} storeId={storeId} />}
+      {!hideNavigation && <BottomNav moreMenuOpen={moreMenuOpen} onToggleMore={() => setMoreMenuOpen(!moreMenuOpen)} theme={theme} toggleTheme={toggleTheme} />}
+      {!hideNavigation && <BottomDrawer isOpen={moreMenuOpen} onClose={() => setMoreMenuOpen(false)} storeId={storeId} theme={theme} toggleTheme={toggleTheme} />}
     </div>
   );
 }

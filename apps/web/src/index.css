@@ -148,3 +148,60 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 .is-webview main {
   padding-bottom: 0 !important;
 }
+
+/* Monochrome Dark Mode theme overrides */
+[data-theme="dark"] {
+  /* Overrides for background and panel dark colors */
+  --color-dark-950: #000000 !important; /* Pure solid black background */
+  --color-dark-900: #121212 !important; /* Deep flat dark panel surface */
+  --color-dark-800: #1C1C1E !important; /* Hover surface */
+  --color-dark-50: #FFFFFF !important;  /* High contrast text */
+
+  /* Overrides for yellow primary colors (force solid yellow gold) */
+  --color-primary-50: rgba(234, 179, 8, 0.1) !important;
+  --color-primary-100: rgba(234, 179, 8, 0.1) !important;
+  --color-primary-200: #EAB308 !important;
+  --color-primary-300: #EAB308 !important;
+  --color-primary-400: #EAB308 !important;
+  --color-primary-500: #EAB308 !important;
+  --color-primary-600: #EAB308 !important;
+  --color-primary-700: #EAB308 !important;
+  --color-primary-800: #EAB308 !important;
+  --color-primary-900: #EAB308 !important;
+  --color-primary-950: #EAB308 !important;
+
+  /* Overrides for body backgrounds */
+  background-image: none !important;
+}
+
+/* Force pure black background on html, body, and root under dark mode */
+[data-theme="dark"],
+[data-theme="dark"] body,
+[data-theme="dark"] #root {
+  background-color: #000000 !important;
+  background-image: none !important;
+}
+
+/* Override glass-dark utility under dark mode to be solid and clean dark panel */
+[data-theme="dark"] .glass-dark,
+[data-theme="dark"] [class*="glass-dark"] {
+  background: #121212 !important;
+  border-color: rgba(255, 255, 255, 0.16) !important; /* Increased line opacity */
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Update borders for clean visual line separation with increased opacity */
+[data-theme="dark"] nav {
+  border-color: rgba(255, 255, 255, 0.18) !important; /* Increased line opacity */
+}
+
+[data-theme="dark"] .border-white\/5 {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+[data-theme="dark"] .border-white\/10 {
+  border-color: rgba(255, 255, 255, 0.18) !important;
+}
+[data-theme="dark"] .border-white\/20 {
+  border-color: rgba(255, 255, 255, 0.25) !important;
+}
