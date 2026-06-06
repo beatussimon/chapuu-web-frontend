@@ -88,6 +88,7 @@ export default function AdminDashboard() {
     const [newLastName, setNewLastName] = useState('');
     const [newEmail, setNewEmail] = useState('');
     const [newPhone, setNewPhone] = useState('');
+    const [newRole, setNewRole] = useState('SELLER');
 
     // New Store Form State
     const [newStoreName, setNewStoreName] = useState('');
@@ -431,17 +432,22 @@ export default function AdminDashboard() {
         apiClient.post('/users/', {
             username: newUsername,
             password: newPassword,
-            role: 'SELLER',
-            first_name: newUsername.charAt(0).toUpperCase() + newUsername.slice(1),
-            last_name: 'Merchant',
-            email: `${newUsername.toLowerCase()}@chapuu.co.tz`,
-            phone_number: '+255 700 000 000',
+            role: newRole,
+            first_name: newFirstName,
+            last_name: newLastName,
+            email: newEmail,
+            phone_number: newPhone,
             accepted_liability_policy: true
         })
             .then(res => {
                 toast.success(`User ${newUsername} created successfully!`);
                 setNewUsername('');
                 setNewPassword('');
+                setNewFirstName('');
+                setNewLastName('');
+                setNewEmail('');
+                setNewPhone('');
+                setNewRole('SELLER');
                 fetchData();
             })
             .catch(err => {
@@ -1077,6 +1083,21 @@ export default function AdminDashboard() {
                                         <input type="password" required placeholder="Password" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary-500 placeholder-slate-600 transition-all text-white" />
                                     </div>
                                 </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs text-slate-400 mb-1">Assigned Role</label>
+                                        <select required value={newRole} onChange={e => setNewRole(e.target.value)} className="w-full bg-dark-950 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary-500 transition-all text-white">
+                                            <option value="CUSTOMER">Customer</option>
+                                            <option value="SELLER">Seller</option>
+                                            {userRole === 'SUPERUSER' && <option value="ADMIN">Admin</option>}
+                                            {userRole === 'SUPERUSER' && <option value="SUPERUSER">Superuser</option>}
+                                            <option value="CHEF">Chef</option>
+                                            <option value="DELIVERY">Driver</option>
+                                            <option value="ACCOUNTANT">Accountant</option>
+                                            <option value="CHAPUUSTAFF">Chapuu Staff</option>
+                                        </select>
+                                    </div>
+                                </div>
                                 <button type="submit" className="w-full bg-primary-500 hover:bg-primary-400 text-dark-950 font-bold py-2.5 px-4 rounded-lg text-sm transition-all shadow-lg shadow-primary-500/10 active:scale-98 cursor-pointer mt-4">Create User</button>
                             </form>
                         </motion.div>
@@ -1428,6 +1449,7 @@ export default function AdminDashboard() {
                                                         <option value="CHEF">Chef</option>
                                                         <option value="DELIVERY">Driver</option>
                                                         <option value="ACCOUNTANT">Accountant</option>
+                                                        <option value="CHAPUUSTAFF">Chapuu Staff</option>
                                                     </select>
                                                 )}
                                             </td>
