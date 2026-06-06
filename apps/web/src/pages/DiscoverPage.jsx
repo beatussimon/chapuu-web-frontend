@@ -98,6 +98,15 @@ export default function DiscoverPage() {
     const [mapOpen, setMapOpen] = useState(false);
     const [showFiltersPanel, setShowFiltersPanel] = useState(false);
 
+    // Auto-prompt location on first visit
+    useEffect(() => {
+        if (!hasLocation && !sessionStorage.getItem('chapuu_loc_prompt')) {
+            sessionStorage.setItem('chapuu_loc_prompt', 'true');
+            // Silent is true to avoid throwing an error toast if they ignore/deny
+            requestLocation(true).catch(() => {});
+        }
+    }, [hasLocation, requestLocation]);
+
     // Memoize store parameters to prevent infinite loops / refetches in hook
     const storeParams = React.useMemo(() => {
         const p = {};
@@ -445,21 +454,6 @@ export default function DiscoverPage() {
                         </button>
                     </div>
 
-                    {/* Geolocation Authorization Prompt Banner */}
-                    {!hasLocation && (
-                        <div className="bg-primary-500/10 border border-primary-500/20 p-3 rounded-2xl flex items-center justify-between gap-3 text-left">
-                            <div className="text-[10px] font-bold text-slate-300 flex items-center gap-1.5">
-                                <MapPin size={12} className="text-primary-400 shrink-0" />
-                                Enable location to get nearby food & delivery rates!
-                            </div>
-                            <button
-                                onClick={() => requestLocation()}
-                                className="bg-primary-500 text-dark-900 font-black text-[10px] px-3 py-1.5 rounded-lg cursor-pointer hover:bg-primary-400 transition-colors"
-                            >
-                                Turn On
-                            </button>
-                        </div>
-                    )}
                 </div>
             </div>
 
