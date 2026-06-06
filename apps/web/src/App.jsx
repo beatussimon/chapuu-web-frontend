@@ -29,8 +29,10 @@ const ReservationManager = lazy(() => import('./pages/ReservationManager'));
 const TableQRCodes = lazy(() => import('./pages/TableQRCodes'));
 const PublicDisplay = lazy(() => import('./pages/PublicDisplay'));
 const CustomerProfile = lazy(() => import('./pages/CustomerProfile'));
+const PointOfSale = lazy(() => import('./pages/seller/PointOfSale'));
 const OrderVerification = lazy(() => import('./pages/OrderVerification'));
 const StoreBrandingPrint = lazy(() => import('./pages/admin/StoreBrandingPrint'));
+const PrintReceipt = lazy(() => import('./pages/seller/PrintReceipt'));
 const StaffPortal = lazy(() => import('./pages/StaffPortal'));
 
 import { Utensils, LayoutDashboard, LogOut, ShoppingBag, TerminalSquare, QrCode, Calendar, Package, Shield, Store, Menu, X, Navigation, Tv, BarChart3, Compass, UtensilsCrossed, HelpCircle, ListOrdered, ShoppingCart, TrendingUp, LayoutGrid, User, ChevronDown, ClipboardList } from 'lucide-react';
@@ -690,7 +692,8 @@ function AppLayout() {
   }, [token, userRole]);
 
   const isPrintBrandingPage = location.pathname.startsWith('/admin/print-branding/');
-  const hideNavigation = isPrintBrandingPage || isWebView;
+  const isPOSPage = location.pathname.startsWith('/seller/pos');
+  const hideNavigation = isPrintBrandingPage || isWebView || isPOSPage;
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -700,7 +703,13 @@ function AppLayout() {
         success: { iconTheme: { primary: '#22c55e', secondary: '#fff' } }
       }} />
 
-      <main className={isPrintBrandingPage ? "flex-1 w-full" : `flex-1 w-full max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8 ${isWebView ? '' : 'pb-20 lg:pb-8'}`}>
+      <main className={
+        isPrintBrandingPage 
+          ? "flex-1 w-full" 
+          : isPOSPage
+            ? "flex-1 w-full bg-dark-950 overflow-hidden" 
+            : `flex-1 w-full max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8 ${isWebView ? '' : 'pb-20 lg:pb-8'}`
+      }>
         <Suspense fallback={
           <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
             <div className="w-10 h-10 border-3 border-primary-500/30 border-t-primary-500 rounded-full animate-spin" />
@@ -732,8 +741,10 @@ function AppLayout() {
             <Route path="/seller/menu" element={<ProtectedRoute role="SELLER"><MenuBuilder /></ProtectedRoute>} />
             <Route path="/seller/reservations" element={<ProtectedRoute role="SELLER"><ReservationManager /></ProtectedRoute>} />
             <Route path="/seller/inventory" element={<ProtectedRoute role="SELLER"><InventoryDashboard /></ProtectedRoute>} />
+            <Route path="/seller/pos" element={<ProtectedRoute role="SELLER"><PointOfSale /></ProtectedRoute>} />
             <Route path="/seller/analytics" element={<ProtectedRoute role="SELLER"><SellerAnalytics /></ProtectedRoute>} />
             <Route path="/seller/qrcodes" element={<ProtectedRoute role="SELLER"><TableQRCodes /></ProtectedRoute>} />
+            <Route path="/seller/print-receipt/:orderId" element={<ProtectedRoute role="SELLER"><PrintReceipt /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute role="ADMIN"><AdminDashboard /></ProtectedRoute>} />
             <Route path="/admin/print-branding/:id" element={<ProtectedRoute role="ADMIN"><StoreBrandingPrint /></ProtectedRoute>} />
             <Route path="/staff-portal" element={<ProtectedRoute role="CHAPUUSTAFF"><StaffPortal /></ProtectedRoute>} />

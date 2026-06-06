@@ -729,6 +729,15 @@ export default function OrderTracker() {
                             <span className="text-white font-bold">{formatPrice(item.unit_price * item.quantity)}</span>
                         </div>
                     ))}
+                    {(Array.isArray(order.pos_custom_items) ? order.pos_custom_items : []).map((item, idx) => (
+                        <div key={`custom-${idx}`} className="flex justify-between items-center text-xs md:text-sm text-amber-400/90 bg-amber-500/5 p-3 rounded-xl border border-amber-500/20">
+                            <div className="flex items-center gap-2">
+                                <span className="font-black text-amber-500 w-6">{item.quantity}x</span>
+                                <span className="font-medium text-amber-200/90">{item.name}</span>
+                            </div>
+                            <span className="text-white font-bold">{formatPrice(item.price * item.quantity)}</span>
+                        </div>
+                    ))}
                 </div>
 
                 {order.delivery_fee > 0 && (

@@ -1053,9 +1053,9 @@ export default function SellerDashboard() {
 
                     <div className="flex gap-2 shrink-0">
                         {canSeeAdminStuff && (
-                            <button onClick={() => { setShowPOSModal(true); setPosActiveTab('products'); }} className="flex-1 sm:flex-none bg-primary-500 hover:bg-primary-400 text-dark-950 font-bold px-4 h-10 rounded-xl flex items-center justify-center gap-2 text-sm shrink-0">
-                                <ListOrdered size={18} /> POS
-                            </button>
+                            <a href="/seller/pos" className="flex-1 sm:flex-none bg-primary-500 hover:bg-primary-400 text-dark-950 font-bold px-4 h-10 rounded-xl flex items-center justify-center gap-2 text-sm shrink-0">
+                                <ListOrdered size={18} /> Launch POS
+                            </a>
                         )}
                         <button onClick={() => fetchDashboard()} className="w-10 h-10 bg-white/5 hover:bg-white/10 rounded-xl transition-colors text-slate-400 flex items-center justify-center shrink-0">
                             <Clock size={18} />
@@ -2439,6 +2439,12 @@ export default function SellerDashboard() {
                                     <span className="text-white font-bold">{formatPriceStatic(item.unit_price * item.quantity)}</span>
                                 </div>
                             ))}
+                            {verifyModal.order.pos_custom_items?.map((item, idx) => (
+                                <div key={`custom-${idx}`} className="flex justify-between text-sm text-amber-300/80 py-1">
+                                    <span>{item.quantity}x {item.name} <span className="text-[9px] uppercase tracking-wider text-amber-500/50">(POS)</span></span>
+                                    <span className="text-white font-bold">{formatPriceStatic(item.price * item.quantity)}</span>
+                                </div>
+                            ))}
                         </div>
                         {/* Customer info */}
                         <div className="flex gap-4 text-sm text-slate-400 mb-4">
@@ -2818,6 +2824,7 @@ const OrderCard = ({ order, markItemReadyFn, advanceOrderStateFn, onVerifyPaymen
     const isOutForDelivery = order.state === 'OUT_FOR_DELIVERY';
 
     const requiresPinToComplete = (o) => {
+        if (o.is_instant_payment) return false;
         return ['DELIVERY', 'PICKUP', 'TAKEAWAY'].includes(o.fulfillment_mode) &&
                (['OUT_FOR_DELIVERY', 'READY'].includes(o.state));
     };
@@ -2919,6 +2926,11 @@ const OrderCard = ({ order, markItemReadyFn, advanceOrderStateFn, onVerifyPaymen
                         {markItemReadyFn && isPreparing && !item.is_ready && (
                             <button onClick={() => markItemReadyFn(order.id, item.id)} className="bg-primary-500 text-dark-900 text-xs font-bold px-2 py-1 rounded">Ready</button>
                         )}
+                    </div>
+                ))}
+                {order.pos_custom_items?.map((item, idx) => (
+                    <div key={`custom-${idx}`} className="flex justify-between items-center bg-dark-800/50 rounded-lg p-2 border border-amber-500/20">
+                        <span className="text-sm text-amber-200/90">{item.quantity}x {item.name} <span className="text-[10px] text-amber-500/50 uppercase tracking-widest">(POS Misc)</span></span>
                     </div>
                 ))}
             </div>
@@ -3074,6 +3086,11 @@ const ScheduledOrderCard = ({ order, onStartNow, onRespondReschedule }) => {
                     {order.items?.map(item => (
                         <div key={item.id} className="text-xs text-slate-400 flex justify-between">
                             <span>{item.quantity}x {item.product.name}</span>
+                        </div>
+                    ))}
+                    {order.pos_custom_items?.map((item, idx) => (
+                        <div key={`custom-${idx}`} className="text-xs text-amber-400/80 flex justify-between">
+                            <span>{item.quantity}x {item.name}</span>
                         </div>
                     ))}
                 </div>

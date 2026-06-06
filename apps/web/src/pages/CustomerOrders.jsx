@@ -216,8 +216,13 @@ export default function CustomerOrders() {
                                                 </p>
                                                 <div className="mt-3 flex gap-2 overflow-x-auto pb-2 scrollbar-none no-scrollbar">
                                                     {(Array.isArray(order.items) ? order.items : []).map((item, idx) => (
-                                                        <span key={idx} className="whitespace-nowrap text-[10px] bg-dark-900 border border-white/5 text-slate-300 px-2 py-1 rounded-md">
-                                                            {item.quantity}x {item.product?.name || 'Item'}
+                                                        <span key={`cat-${idx}`} className="whitespace-nowrap text-[10px] bg-dark-900 border border-white/5 text-slate-300 px-2 py-1 rounded-md">
+                                                            {item.quantity}x {item.product?.name || item.product_name || 'Item'}
+                                                        </span>
+                                                    ))}
+                                                    {(Array.isArray(order.pos_custom_items) ? order.pos_custom_items : []).map((item, idx) => (
+                                                        <span key={`cust-${idx}`} className="whitespace-nowrap text-[10px] bg-amber-500/10 border border-amber-500/20 text-amber-400/90 px-2 py-1 rounded-md">
+                                                            {item.quantity}x {item.name}
                                                         </span>
                                                     ))}
                                                 </div>
@@ -308,9 +313,15 @@ export default function CustomerOrders() {
                                                         </div>
                                                         <div className="space-y-1.5 mb-2">
                                                             {(res.linked_order.items || []).map((item, idx) => (
-                                                                <div key={idx} className="flex justify-between text-xs text-slate-300">
-                                                                    <span>{item.quantity}x {item.product_name}</span>
+                                                                <div key={`cat-${idx}`} className="flex justify-between text-xs text-slate-300">
+                                                                    <span>{item.quantity}x {item.product_name || item.product?.name}</span>
                                                                     <span className="text-slate-400 font-semibold">{formatPrice(item.unit_price * item.quantity)}</span>
+                                                                </div>
+                                                            ))}
+                                                            {(res.linked_order.pos_custom_items || []).map((item, idx) => (
+                                                                <div key={`cust-${idx}`} className="flex justify-between text-xs text-amber-400/80">
+                                                                    <span>{item.quantity}x {item.name}</span>
+                                                                    <span className="text-slate-400 font-semibold">{formatPrice(item.price * item.quantity)}</span>
                                                                 </div>
                                                             ))}
                                                         </div>
