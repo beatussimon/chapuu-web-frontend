@@ -82,16 +82,18 @@ export const useAppStore = create(
                 localStorage.setItem('access_token', access);
                 localStorage.setItem('refresh_token', refresh);
 
-                // 3. Fetch role (using main client is safe now)
+                // 3. Fetch role and profile (using main client is safe now)
                 let role = 'CUSTOMER';
+                let favorites = [];
                 try {
                     const meRes = await apiClient.get('/auth/users/me/');
                     role = meRes.data.role || 'CUSTOMER';
+                    favorites = meRes.data.favorite_stores || [];
                 } catch (meErr) {
                     console.error("Profile fetch failed, defaulting to CUSTOMER", meErr);
                 }
 
-                set({ token: access, userRole: role });
+                set({ token: access, userRole: role, savedStores: favorites });
                 return role;
             },
 
@@ -110,7 +112,10 @@ export const useAppStore = create(
                     });
                     if (res.ok) {
                         const data = await res.json();
-                        set({ userRole: data.role || 'CUSTOMER' });
+                        set({ 
+                            userRole: data.role || 'CUSTOMER',
+                            savedStores: data.favorite_stores || []
+                        });
                     }
                 } catch (e) {
                     console.error("Failed to refresh user role", e);
@@ -139,13 +144,24 @@ export const useAppStore = create(
 
             // Favorites Slice
             savedStores: [],
-            toggleSaveStore: (storeId) => set((state) => {
-                const safeSaved = Array.isArray(state.savedStores) ? state.savedStores : [];
-                if (safeSaved.includes(storeId)) {
-                    return { savedStores: safeSaved.filter(id => id !== storeId) };
+            toggleSaveStore: (storeId) => {
+                // Optimistic UI update
+                set((state) => {
+                    const safeSaved = Array.isArray(state.savedStores) ? state.savedStores : [];
+                    if (safeSaved.includes(storeId)) {
+                        return { savedStores: safeSaved.filter(id => id !== storeId) };
+                    }
+                    return { savedStores: [...safeSaved, storeId] };
+                });
+                
+                // Background API Sync
+                const token = localStorage.getItem('access_token');
+                if (token) {
+                    apiClient.post(`/stores/${storeId}/toggle_favorite/`).catch(err => {
+                        console.error("Failed to sync favorite to backend", err);
+                    });
                 }
-                return { savedStores: [...safeSaved, storeId] };
-            })
+            }
         }),
         {
             name: 'chapuu-storage',
