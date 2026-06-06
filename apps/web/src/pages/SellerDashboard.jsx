@@ -1437,11 +1437,11 @@ export default function SellerDashboard() {
                                             <div>
                                                 <span className="block text-[9px] font-black text-slate-500 uppercase tracking-widest">Est. Gross Sales</span>
                                                 <span className="block text-base font-bold text-slate-300 mt-1 font-mono">
-                                                    {formatPrice(currentMonthPreview.accrued_commission / (store.store_type === 'RESTAURANT' ? 0.07 : 0.02))}
+                                                    {formatPrice(currentMonthPreview.accrued_commission / (storeDetails?.store_type === 'RESTAURANT' ? 0.07 : 0.02))}
                                                 </span>
                                             </div>
                                             <div>
-                                                <span className="block text-[9px] font-black text-slate-500 uppercase tracking-widest">Commission ({store.store_type === 'RESTAURANT' ? '7%' : '2%'})</span>
+                                                <span className="block text-[9px] font-black text-slate-500 uppercase tracking-widest">Commission ({storeDetails?.store_type === 'RESTAURANT' ? '7%' : '2%'})</span>
                                                 <span className="block text-base font-black text-primary-400 mt-1 font-mono">
                                                     {formatPrice(currentMonthPreview.accrued_commission)}
                                                 </span>
@@ -1526,7 +1526,7 @@ export default function SellerDashboard() {
                                                     <span className="block text-base font-bold text-slate-300 mt-1 font-mono">{formatPrice(inv.total_order_amount)}</span>
                                                 </div>
                                                 <div>
-                                                    <span className="block text-[9px] font-black text-slate-500 uppercase tracking-widest">Platform Cut ({store.store_type === 'RESTAURANT' ? '7%' : '2%'})</span>
+                                                    <span className="block text-[9px] font-black text-slate-500 uppercase tracking-widest">Platform Cut ({storeDetails?.store_type === 'RESTAURANT' ? '7%' : '2%'})</span>
                                                     <span className="block text-base font-black text-primary-400 mt-1 font-mono">{formatPrice(inv.total_commission)}</span>
                                                 </div>
                                             </div>
