@@ -403,9 +403,12 @@ export default function DiscoverPage() {
                             </button>
                         </div>
                     ) : (
-                        <p className="text-sm md:text-base text-slate-400">
-                            {stats.metrics?.total_stores ?? '...'} spots delivering {stats.metrics?.total_meals_served ?? '...'} meals.
-                        </p>
+                        <div className="flex items-center justify-center md:justify-start gap-3 text-sm md:text-base text-slate-400">
+                            <span>{stats.metrics?.total_stores ?? '...'} spots delivering {stats.metrics?.total_meals_served ?? '...'} meals.</span>
+                            <button onClick={() => requestLocation()} className="text-[10px] font-bold bg-primary-500/10 text-primary-400 hover:bg-primary-500/20 px-2 py-1 rounded-lg border border-primary-500/20 transition-colors flex items-center gap-1 cursor-pointer">
+                                <MapPin size={10} /> Find Nearby
+                            </button>
+                        </div>
                     )}
 
                     {!isAuthenticated && (
@@ -715,17 +718,24 @@ export default function DiscoverPage() {
 
                     {/* Main Directory / Grid */}
                     <div className="px-2">
-                        <div className="flex items-center justify-between mb-4">
+                        <div className="flex flex-wrap items-center justify-between mb-4 gap-3">
                             <h2 className="text-lg font-bold text-white flex items-center gap-2">
                                 <Store className="text-primary-500" size={20} /> 
                                 {hasLocation ? "Closest spots to you" : "Discover spots"}
                             </h2>
-                            <button
-                                onClick={() => setMapOpen(true)}
-                                className="flex items-center gap-1.5 text-xs text-primary-500 font-black hover:text-primary-400 bg-white/5 border border-white/10 px-3.5 py-2 rounded-xl cursor-pointer hover:bg-white/10 transition-all shadow-md"
-                            >
-                                <MapIcon size={12} /> View Map
-                            </button>
+                            <div className="flex items-center gap-2">
+                                {!hasLocation && (
+                                    <button onClick={() => requestLocation()} className="flex items-center gap-1.5 text-xs text-primary-400 font-bold hover:text-white bg-primary-500/10 border border-primary-500/20 px-3.5 py-2 rounded-xl cursor-pointer hover:bg-primary-500/20 transition-all shadow-md">
+                                        <MapPin size={12} /> Find Nearest Spots
+                                    </button>
+                                )}
+                                <button
+                                    onClick={() => setMapOpen(true)}
+                                    className="flex items-center gap-1.5 text-xs text-primary-500 font-black hover:text-primary-400 bg-white/5 border border-white/10 px-3.5 py-2 rounded-xl cursor-pointer hover:bg-white/10 transition-all shadow-md"
+                                >
+                                    <MapIcon size={12} /> View Map
+                                </button>
+                            </div>
                         </div>
                         
                         {stores.length === 0 ? (
