@@ -6,7 +6,7 @@ import {
     DollarSign, Bell, Plus, Edit2, Trash2, Check, X, Ban, Power, 
     Phone, Mail, MessageSquare, AlertTriangle, RefreshCw, Search,
     Award, Zap, Coins, Star, LayoutGrid, MapPin, Navigation, Compass, Gift, Printer,
-    Lightbulb
+    Lightbulb, ClipboardList
 } from 'lucide-react';
 import { 
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, 
@@ -50,8 +50,14 @@ export default function AdminDashboard() {
     const [platformAnalytics, setPlatformAnalytics] = useState(null);
     const [analyticsLoading, setAnalyticsLoading] = useState(true);
 
-    // Dashboard View State (MANAGEMENT, ANALYTICS, PAYMENTS, USERS, NOTICES, SUPPORT_SETTINGS, COMMISSIONS)
+    // Dashboard View State (MANAGEMENT, ANALYTICS, PAYMENTS, USERS, NOTICES, SUPPORT_SETTINGS, COMMISSIONS, APPLICATIONS)
     const [activeTab, setActiveTab] = useState('ANALYTICS'); 
+
+    // Applications State
+    const [applications, setApplications] = useState([]);
+    const [appsLoading, setAppsLoading] = useState(false);
+    const [actionReason, setActionReason] = useState('');
+    const [previewApp, setPreviewApp] = useState(null); 
 
     // Platform Billing & Commissions State
     const [billingData, setBillingData] = useState([]);
@@ -216,6 +222,17 @@ export default function AdminDashboard() {
             .finally(() => setStoresLoading(false));
     }, [storesPage]);
 
+    const fetchApplications = useCallback(() => {
+        setAppsLoading(true);
+        apiClient.get('/seller-applications/')
+            .then(res => {
+                const appsData = res.data?.results || res.data;
+                setApplications(Array.isArray(appsData) ? appsData : []);
+            })
+            .catch(err => console.error("Failed to load applications", err))
+            .finally(() => setAppsLoading(false));
+    }, []);
+
     const fetchUsers = useCallback(() => {
         setUsersLoading(true);
         apiClient.get(`/users/?page=${usersPage}&search=${searchUser}`)
@@ -320,6 +337,10 @@ export default function AdminDashboard() {
     useEffect(() => {
         fetchUsers();
     }, [fetchUsers]);
+
+    useEffect(() => {
+        fetchApplications();
+    }, [fetchApplications]);
 
     useEffect(() => {
         fetchOrders();
@@ -700,6 +721,9 @@ export default function AdminDashboard() {
                     </button>
                     <button onClick={() => setActiveTab('USERS')} className={`px-4 py-2 rounded-xl text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${activeTab === 'USERS' ? 'bg-primary-500 text-dark-950 shadow-lg shadow-primary-500/20' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
                         <Users size={16} /> Roles
+                    </button>
+                    <button onClick={() => setActiveTab('APPLICATIONS')} className={`px-4 py-2 rounded-xl text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${activeTab === 'APPLICATIONS' ? 'bg-primary-500 text-dark-950 shadow-lg shadow-primary-500/20' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
+                        <ClipboardList size={16} /> Applications
                     </button>
                     <button onClick={() => setActiveTab('NOTICES')} className={`px-4 py-2 rounded-xl text-xs md:text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${activeTab === 'NOTICES' ? 'bg-primary-500 text-dark-950 shadow-lg shadow-primary-500/20' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
                         <Bell size={16} /> Notices
@@ -1481,6 +1505,87 @@ export default function AdminDashboard() {
                 </div>
             )}
  
+            {/* TAB CONTENT: APPLICATIONS */}
+            {activeTab === 'APPLICATIONS' && (
+                <div className="space-y-6 animate-fadeIn">
+                    <div className="flex justify-between items-center bg-dark-900 border border-white/5 rounded-3xl p-6">
+                        <div>
+                            <h2 className="text-xl md:text-2xl font-bold text-white flex items-center gap-2.5">
+                                <ClipboardList className="text-primary-400" /> Seller Applications
+                            </h2>
+                            <p className="text-sm text-slate-400 mt-1">Review and manage pending seller applications.</p>
+                        </div>
+                    </div>
+
+                    <div className="bg-dark-900 border border-white/5 rounded-3xl overflow-hidden shadow-xl">
+                        {appsLoading ? (
+                            <div className="p-8 text-center text-slate-400 flex flex-col items-center gap-4">
+                                <div className="w-8 h-8 border-2 border-primary-500/30 border-t-primary-500 rounded-full animate-spin" />
+                                Loading applications...
+                            </div>
+                        ) : applications.length === 0 ? (
+                            <div className="p-12 text-center text-slate-400">
+                                <ClipboardList size={48} className="mx-auto mb-4 opacity-50" />
+                                <p>No applications found.</p>
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto w-full pb-4">
+                                <table className="w-full text-left border-collapse min-w-[800px]">
+                                    <thead>
+                                        <tr className="bg-dark-950/50 text-xs uppercase tracking-wider text-slate-400 border-b border-white/10">
+                                            <th className="p-4 font-semibold whitespace-nowrap">Store Name</th>
+                                            <th className="p-4 font-semibold whitespace-nowrap">Applicant</th>
+                                            <th className="p-4 font-semibold whitespace-nowrap">Type</th>
+                                            <th className="p-4 font-semibold whitespace-nowrap">Status</th>
+                                            <th className="p-4 font-semibold whitespace-nowrap">Date</th>
+                                            <th className="p-4 font-semibold whitespace-nowrap">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-white/5">
+                                        {applications.map(app => (
+                                            <tr key={app.id} className="hover:bg-white/5 transition-colors group">
+                                                <td className="p-4">
+                                                    <div className="font-bold text-sm text-white">{app.store_name}</div>
+                                                    <div className="text-xs text-slate-400">{app.location}</div>
+                                                </td>
+                                                <td className="p-4">
+                                                    <div className="text-sm text-white font-medium">{app.applicant_name}</div>
+                                                    <div className="text-xs text-slate-400">{app.contact_phone}</div>
+                                                </td>
+                                                <td className="p-4 text-sm font-medium">
+                                                    {app.store_type}
+                                                </td>
+                                                <td className="p-4">
+                                                    <span className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full border ${
+                                                        app.status === 'APPROVED' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
+                                                        app.status === 'REJECTED' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                                                        app.status === 'AWAITING_SIGNATURE' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
+                                                        'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                                                    }`}>
+                                                        {app.status}
+                                                    </span>
+                                                </td>
+                                                <td className="p-4 text-xs text-slate-400 font-mono">
+                                                    {new Date(app.created_at).toLocaleDateString()}
+                                                </td>
+                                                <td className="p-4">
+                                                    <button 
+                                                        onClick={() => setPreviewApp(app)}
+                                                        className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-xs font-bold rounded-lg transition-colors border border-white/10"
+                                                    >
+                                                        Review
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
             {/* TAB CONTENT: SUPPORT_SETTINGS */}
             {activeTab === 'SUPPORT_SETTINGS' && (
                 <div className="space-y-6 max-w-4xl mx-auto animate-fadeIn text-left">
@@ -2277,6 +2382,132 @@ export default function AdminDashboard() {
                 )}
             </AnimatePresence>
 
+            {/* Application Preview Modal */}
+            <AnimatePresence>
+                {previewApp && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-dark-950/90 backdrop-blur-sm">
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className="bg-dark-900 border border-white/10 rounded-3xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl"
+                        >
+                            <div className="flex items-center justify-between p-6 border-b border-white/10 bg-dark-950/50">
+                                <div>
+                                    <h2 className="text-xl font-black uppercase tracking-wider text-white">Review Application</h2>
+                                    <p className="text-xs text-slate-400 mt-1">Store: {previewApp.store_name}</p>
+                                </div>
+                                <button onClick={() => setPreviewApp(null)} className="text-slate-400 hover:text-white p-2 bg-white/5 hover:bg-white/10 rounded-xl transition-colors">
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <div className="p-6 overflow-y-auto flex-1 space-y-6 custom-scrollbar">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="bg-dark-950 p-4 rounded-2xl border border-white/5">
+                                        <p className="text-[10px] uppercase text-slate-500 font-bold mb-1">Applicant</p>
+                                        <p className="text-sm text-white font-medium">{previewApp.applicant_name}</p>
+                                        <p className="text-xs text-slate-400">{previewApp.contact_phone}</p>
+                                        <p className="text-xs text-slate-400">{previewApp.contact_email}</p>
+                                    </div>
+                                    <div className="bg-dark-950 p-4 rounded-2xl border border-white/5">
+                                        <p className="text-[10px] uppercase text-slate-500 font-bold mb-1">Store Details</p>
+                                        <p className="text-sm text-white font-medium">{previewApp.store_name} ({previewApp.store_type})</p>
+                                        <p className="text-xs text-slate-400">{previewApp.location}</p>
+                                    </div>
+                                </div>
+
+                                <div className="bg-dark-950 p-4 rounded-2xl border border-white/5">
+                                    <p className="text-[10px] uppercase text-primary-500 font-bold mb-2 border-b border-white/5 pb-2">Staff Evaluation Checklist</p>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Est. Customer Base</p>
+                                            <p className="text-sm text-white font-medium">{previewApp.estimated_customer_base || 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Service Quality</p>
+                                            <p className="text-sm text-white font-medium">{previewApp.service_quality_rating || 'N/A'}</p>
+                                        </div>
+                                        <div className="col-span-2">
+                                            <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Staff Notes</p>
+                                            <p className="text-sm text-slate-300 bg-dark-900/50 p-3 rounded-xl border border-white/5">{previewApp.staff_notes || 'No notes provided.'}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {previewApp.digital_signature && (
+                                    <div className="bg-dark-950 p-4 rounded-2xl border border-white/5">
+                                        <p className="text-[10px] uppercase text-slate-500 font-bold mb-2">Digital Signature</p>
+                                        <div className="bg-white rounded-xl overflow-hidden p-2">
+                                            <img src={previewApp.digital_signature} alt="Signature" className="h-24 object-contain mx-auto mix-blend-multiply" />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {previewApp.venue_photos?.length > 0 && (
+                                    <div className="bg-dark-950 p-4 rounded-2xl border border-white/5">
+                                        <p className="text-[10px] uppercase text-slate-500 font-bold mb-2">Venue Photos</p>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {previewApp.venue_photos.map(p => (
+                                                <img key={p.id} src={p.image} alt="Venue" className="w-full h-32 object-cover rounded-xl" />
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {previewApp.status === 'PENDING_REVIEW' && (
+                                    <div className="bg-dark-950 p-4 rounded-2xl border border-amber-500/20">
+                                        <label className="text-[10px] uppercase text-amber-500 font-bold mb-2 block">Rejection Reason (If rejecting)</label>
+                                        <textarea
+                                            value={actionReason}
+                                            onChange={e => setActionReason(e.target.value)}
+                                            placeholder="Explain why the application needs to be rejected..."
+                                            className="w-full bg-dark-900 border border-white/10 rounded-xl p-3 text-sm text-white focus:border-amber-500 transition-colors resize-none h-24"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="p-6 border-t border-white/10 bg-dark-950/50 flex gap-4">
+                                {previewApp.status === 'PENDING_REVIEW' && (
+                                    <>
+                                        <button 
+                                            onClick={() => {
+                                                if (!actionReason.trim()) { toast.error('Reason required'); return; }
+                                                apiClient.post(`/seller-applications/${previewApp.id}/reject/`, { rejection_reason: actionReason })
+                                                    .then(() => { toast.success('Rejected'); setPreviewApp(null); fetchApplications(); })
+                                                    .catch(() => toast.error('Failed to reject'));
+                                            }}
+                                            className="flex-1 px-4 py-3 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white font-bold rounded-xl transition-colors border border-red-500/20"
+                                        >
+                                            Reject
+                                        </button>
+                                        <button 
+                                            onClick={() => {
+                                                apiClient.post(`/seller-applications/${previewApp.id}/approve/`)
+                                                    .then(() => { toast.success('Approved'); setPreviewApp(null); fetchApplications(); })
+                                                    .catch(err => toast.error(err.response?.data?.error || 'Failed to approve'));
+                                            }}
+                                            className="flex-1 px-4 py-3 bg-green-500 text-dark-950 font-bold rounded-xl hover:bg-green-400 transition-colors shadow-lg shadow-green-500/20"
+                                        >
+                                            Approve
+                                        </button>
+                                    </>
+                                )}
+                                {previewApp.status !== 'PENDING_REVIEW' && (
+                                    <button 
+                                        onClick={() => setPreviewApp(null)}
+                                        className="flex-1 px-4 py-3 bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl transition-colors"
+                                    >
+                                        Close
+                                    </button>
+                                )}
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
             {/* Local Dashboard Tab Swapping Grid Drawer */}
             <AnimatePresence>
                 {showGridModal && (
@@ -2369,6 +2600,14 @@ export default function AdminDashboard() {
                                 >
                                     <Bell size={24} className="mb-2" />
                                     <span className="text-xs font-bold uppercase tracking-wider">Notices</span>
+                                </button>
+
+                                <button
+                                    onClick={() => { setActiveTab('APPLICATIONS'); setShowGridModal(false); }}
+                                    className={`flex flex-col items-center justify-center p-5 rounded-2xl border transition-all text-center ${activeTab === 'APPLICATIONS' ? 'bg-primary-500/10 border-primary-500/30 text-primary-400' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
+                                >
+                                    <ClipboardList size={24} className="mb-2" />
+                                    <span className="text-xs font-bold uppercase tracking-wider">Apps</span>
                                 </button>
 
                                 <button

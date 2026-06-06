@@ -101,6 +101,22 @@ export const useAppStore = create(
                 set({ token: null, userRole: null });
             },
 
+            refreshUserRole: async () => {
+                const token = localStorage.getItem('access_token');
+                if (!token) return;
+                try {
+                    const res = await fetch(`${BACKEND_URL}/api/auth/users/me/`, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        set({ userRole: data.role || 'CUSTOMER' });
+                    }
+                } catch (e) {
+                    console.error("Failed to refresh user role", e);
+                }
+            },
+
             // Multi-Vendor
             selectedStore: null,
             setSelectedStore: (store) => set((state) => ({

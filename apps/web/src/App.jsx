@@ -31,8 +31,9 @@ const PublicDisplay = lazy(() => import('./pages/PublicDisplay'));
 const CustomerProfile = lazy(() => import('./pages/CustomerProfile'));
 const OrderVerification = lazy(() => import('./pages/OrderVerification'));
 const StoreBrandingPrint = lazy(() => import('./pages/admin/StoreBrandingPrint'));
+const StaffPortal = lazy(() => import('./pages/StaffPortal'));
 
-import { Utensils, LayoutDashboard, LogOut, ShoppingBag, TerminalSquare, QrCode, Calendar, Package, Shield, Store, Menu, X, Navigation, Tv, BarChart3, Compass, UtensilsCrossed, HelpCircle, ListOrdered, ShoppingCart, TrendingUp, LayoutGrid, User, ChevronDown } from 'lucide-react';
+import { Utensils, LayoutDashboard, LogOut, ShoppingBag, TerminalSquare, QrCode, Calendar, Package, Shield, Store, Menu, X, Navigation, Tv, BarChart3, Compass, UtensilsCrossed, HelpCircle, ListOrdered, ShoppingCart, TrendingUp, LayoutGrid, User, ChevronDown, ClipboardList } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import apiClient, { setStoreResetFn } from './api/client';
 
@@ -146,6 +147,13 @@ function TopNavigation({ storeId }) {
               </>
             ) : null}
 
+            {userRole === 'CHAPUUSTAFF' && (
+              <Link to="/staff-portal" className="flex items-center gap-2 px-3 py-2 text-primary-400 hover:text-primary-300 transition-colors flex-shrink-0">
+                <ClipboardList size={16} />
+                <span className="text-sm font-medium">Staff Portal</span>
+              </Link>
+            )}
+
             {userRole === 'CUSTOMER' ? (
               <>
                 <Link to="/stores?type=RESTAURANT" className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors flex-shrink-0">
@@ -245,6 +253,9 @@ const getBottomNavPaths = (role) => {
   }
   if (role === 'DELIVERY') {
     return ['/seller', '/delivery'];
+  }
+  if (role === 'CHAPUUSTAFF') {
+    return ['/', '/staff-portal'];
   }
   return [];
 };
@@ -413,6 +424,13 @@ function BottomNav({ moreMenuOpen, onToggleMore }) {
           )}
         </>
       )}
+      {userRole === 'CHAPUUSTAFF' && (
+        <>
+          <Link to="/" className={`flex flex-col items-center p-2 ${isActive('/') ? 'text-primary-500' : 'text-slate-400'}`}><Compass size={20} /><span className="text-[10px] mt-1">Discover</span></Link>
+          <Link to="/staff-portal" className={`flex flex-col items-center p-2 ${isActive('/staff-portal') ? 'text-primary-500' : 'text-slate-400'}`}><ClipboardList size={20} /><span className="text-[10px] mt-1">Staff Portal</span></Link>
+          <Link to="/profile" className={`flex flex-col items-center p-2 ${isActive('/profile') ? 'text-primary-500' : 'text-slate-400'}`}><User size={20} /><span className="text-[10px] mt-1">Profile</span></Link>
+        </>
+      )}
     </nav>
   );
 }
@@ -521,9 +539,14 @@ function AppLayout() {
   const clearAuth = useAppStore(state => state.clearAuth);
   const token = useAppStore(state => state.token);
   const userRole = useAppStore(state => state.userRole);
+  const refreshUserRole = useAppStore(state => state.refreshUserRole);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [storeId, setStoreId] = useState(null);
   const location = useLocation();
+
+  useEffect(() => {
+    refreshUserRole();
+  }, [refreshUserRole]);
 
   useEffect(() => {
     setStoreResetFn(clearAuth);
@@ -713,6 +736,7 @@ function AppLayout() {
             <Route path="/seller/qrcodes" element={<ProtectedRoute role="SELLER"><TableQRCodes /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute role="ADMIN"><AdminDashboard /></ProtectedRoute>} />
             <Route path="/admin/print-branding/:id" element={<ProtectedRoute role="ADMIN"><StoreBrandingPrint /></ProtectedRoute>} />
+            <Route path="/staff-portal" element={<ProtectedRoute role="CHAPUUSTAFF"><StaffPortal /></ProtectedRoute>} />
 
             {/* Delivery Routes */}
             <Route path="/delivery" element={<ProtectedRoute role="DELIVERY"><DeliveryDashboard /></ProtectedRoute>} />

@@ -226,6 +226,20 @@ export default function SellerDashboard() {
             .catch(e => console.error("Failed to mark notice as read", e));
     };
 
+    const handleDeleteNotice = (noticeId) => {
+        if (!window.confirm("Are you sure you want to delete this notice?")) return;
+        const toastId = toast.loading("Deleting notice...");
+        apiClient.delete(`/notices/${noticeId}/`)
+            .then(() => {
+                setNotices(prev => prev.filter(n => n.id !== noticeId));
+                toast.success("Notice deleted", { id: toastId });
+            })
+            .catch(e => {
+                console.error("Failed to delete notice", e);
+                toast.error("Failed to delete notice", { id: toastId });
+            });
+    };
+
     const toggleOrderSelection = (orderId) => {
         setSelectedOrders(prev => 
             prev.includes(orderId) ? prev.filter(id => id !== orderId) : [...prev, orderId]
@@ -2193,14 +2207,22 @@ export default function SellerDashboard() {
                                 <p className="text-slate-300 mt-2 whitespace-pre-wrap">{n.message}</p>
                                 <div className="flex justify-between items-center mt-4">
                                     <span className="text-xs text-slate-500">From: Admin | {new Date(n.created_at).toLocaleString()}</span>
-                                    {!n.is_read && (
+                                    <div className="flex items-center gap-4">
+                                        {!n.is_read && (
+                                            <button 
+                                                onClick={() => handleMarkAsRead(n.id)}
+                                                className="text-[10px] font-black uppercase text-primary-400 hover:text-white transition-colors flex items-center gap-1 cursor-pointer"
+                                            >
+                                                <CheckCircle2 size={12} /> Mark as Read
+                                            </button>
+                                        )}
                                         <button 
-                                            onClick={() => handleMarkAsRead(n.id)}
-                                            className="text-[10px] font-black uppercase text-primary-400 hover:text-white transition-colors flex items-center gap-1"
+                                            onClick={() => handleDeleteNotice(n.id)}
+                                            className="text-[10px] font-black uppercase text-red-500 hover:text-red-400 transition-colors flex items-center gap-1 cursor-pointer"
                                         >
-                                            <CheckCircle2 size={12} /> Mark as Read
+                                            <Trash2 size={12} /> Delete
                                         </button>
-                                    )}
+                                    </div>
                                 </div>
                             </div>
                         ))}
