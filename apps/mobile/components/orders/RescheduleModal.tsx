@@ -6,6 +6,7 @@ import { X, Clock, AlertCircle } from 'lucide-react-native';
 import apiClient from '../../services/api';
 import { CustomAlert } from '../CustomAlert';
 import { colors, spacing, borderRadius } from '../../theme';
+import { useUser } from '../../context/UserContext';
 
 interface RescheduleModalProps {
   visible: boolean;
@@ -16,6 +17,14 @@ interface RescheduleModalProps {
 }
 
 export function RescheduleModal({ visible, orderId, currentScheduledTime, onClose, onSuccess }: RescheduleModalProps) {
+  const { theme } = useUser();
+  const activeColors = {
+    overlayBg: theme === 'legacy' ? 'rgba(2, 6, 23, 0.85)' : 'rgba(0, 0, 0, 0.9)',
+    card: theme === 'legacy' ? colors.dark[900] : '#121212',
+    border: theme === 'legacy' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.16)',
+    inputBg: theme === 'legacy' ? 'rgba(255,255,255,0.05)' : '#000000',
+  };
+
   const [newTime, setNewTime] = useState(new Date());
   const [showPicker, setShowPicker] = useState(Platform.OS === 'ios');
   const [loading, setLoading] = useState(false);
@@ -40,9 +49,9 @@ export function RescheduleModal({ visible, orderId, currentScheduledTime, onClos
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <TouchableWithoutFeedback onPress={onClose}>
-        <View style={styles.overlay}>
+        <View style={[styles.overlay, { backgroundColor: activeColors.overlayBg }]}>
           <TouchableWithoutFeedback onPress={(e) => {}}>
-            <View style={styles.container}>
+            <View style={[styles.container, { backgroundColor: activeColors.card, borderColor: activeColors.border }]}>
               <View style={styles.header}>
                 <Text style={styles.title}>Reschedule Order</Text>
                 <ScaleIconButton onPress={onClose} style={styles.closeBtn}>
@@ -50,7 +59,7 @@ export function RescheduleModal({ visible, orderId, currentScheduledTime, onClos
                 </ScaleIconButton>
               </View>
 
-              <View style={styles.currentBox}>
+              <View style={[styles.currentBox, { borderColor: activeColors.border }]}>
                 <Text style={styles.label}>Current Time</Text>
                 <Text style={styles.value}>{new Date(currentScheduledTime).toLocaleString()}</Text>
               </View>
@@ -71,7 +80,7 @@ export function RescheduleModal({ visible, orderId, currentScheduledTime, onClos
               )}
 
               {!showPicker && Platform.OS !== 'ios' && (
-                <ScalePressable style={styles.timeBtn} onPress={() => setShowPicker(true)}>
+                <ScalePressable style={[styles.timeBtn, { backgroundColor: activeColors.inputBg, borderColor: activeColors.border }]} onPress={() => setShowPicker(true)}>
                   <Clock size={16} color={colors.text.secondary} />
                   <Text style={styles.timeBtnText}>{newTime.toLocaleString()}</Text>
                 </ScalePressable>

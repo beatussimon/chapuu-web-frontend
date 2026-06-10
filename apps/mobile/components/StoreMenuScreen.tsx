@@ -17,6 +17,7 @@ import PriceDisplay from './PriceDisplay';
 import LoadingSkeleton from './LoadingSkeleton';
 import ScalePressable, { ScaleIconButton } from './ScalePressable';
 import { triggerLightHaptic, triggerSelectionHaptic, triggerMediumHaptic } from '../hooks/useHaptics';
+import { CustomAlert } from './CustomAlert';
 
 interface Product {
   id: number;
@@ -52,7 +53,13 @@ interface StoreMenuScreenProps {
 
 export default function StoreMenuScreen({ storeId }: StoreMenuScreenProps) {
   const router = useRouter();
-  const { cart, updateCart, savedStores, updateSavedStores } = useUser();
+  const { cart, updateCart, savedStores, updateSavedStores, theme, token } = useUser();
+  const activeColors = {
+    bg: theme === 'legacy' ? '#020617' : '#000000',
+    card: theme === 'legacy' ? colors.surfaceHighlight : '#121212',
+    border: theme === 'legacy' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.16)',
+    inputBg: theme === 'legacy' ? '#020617' : '#000000',
+  };
 
   // Calculate dynamic card width for two-column grid
   const { width: screenWidth } = Dimensions.get('window');
@@ -76,14 +83,6 @@ export default function StoreMenuScreen({ storeId }: StoreMenuScreenProps) {
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   
   const scrollViewRef = useRef<ScrollView>(null);
-
-  const toggleSaveStore = (id: number) => {
-    if (savedStores.includes(id)) {
-      updateSavedStores(savedStores.filter(s => s !== id));
-    } else {
-      updateSavedStores([...savedStores, id]);
-    }
-  };
 
   const addToCart = (product: Product, quantity: number) => {
     if (!store) return;
@@ -168,10 +167,28 @@ export default function StoreMenuScreen({ storeId }: StoreMenuScreenProps) {
     router.back();
   };
 
-  const handleToggleSaved = () => {
+  const handleToggleSaved = async () => {
     if (!store) return;
+    if (!token) {
+      CustomAlert.alert("Authentication Required", "Please sign in to save your favorite spots.");
+      return;
+    }
     triggerSelectionHaptic();
-    toggleSaveStore(store.id);
+    
+    const isSaved = savedStores.includes(store.id);
+    const newStores = isSaved
+      ? savedStores.filter((s) => s !== store.id)
+      : [...savedStores, store.id];
+
+    updateSavedStores(newStores);
+
+    try {
+      await apiClient.patch('/auth/users/me/', { favorite_stores: newStores });
+    } catch (err) {
+      console.warn('[StoreMenu] Favorite sync failed, reverting...', err);
+      updateSavedStores(savedStores);
+      CustomAlert.alert("Sync Error", "Could not update favorites. Please try again.");
+    }
   };
 
   const handleShare = async () => {
@@ -310,10 +327,10 @@ export default function StoreMenuScreen({ storeId }: StoreMenuScreenProps) {
     return (
       <ScalePressable
         key={p.id}
-        style={[styles.productCard, !isAvailable && styles.productCardDisabled]}
+        style={[styles.productCard, !isAvailable && styles.productCardDisabled, { backgroundColor: activeColors.card, borderColor: activeColors.border }]}
         onPress={() => setLightboxProduct(p)}
       >
-        <View style={styles.productImageContainer}>
+        <View style={[styles.productImageContainer, { backgroundColor: activeColors.inputBg }]}>
           {p.image_url ? (
             <OptimizedImage src={p.image_url} wrapperStyle={styles.productImage} placeholderType="product" />
           ) : (
@@ -372,7 +389,7 @@ export default function StoreMenuScreen({ storeId }: StoreMenuScreenProps) {
 
   const renderMenuContent = () => (
     <View style={styles.menuContent}>
-      <View style={styles.searchWrapper}>
+      <View style={[styles.searchWrapper, { backgroundColor: activeColors.inputBg, borderColor: activeColors.border }]}>
         <Search size={18} color={colors.text.tertiary} style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
@@ -391,7 +408,7 @@ export default function StoreMenuScreen({ storeId }: StoreMenuScreenProps) {
       {categories.length > 1 && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryChips}>
           <ScalePressable
-            style={[styles.chip, !activeCategory && styles.chipActive]}
+            style={[styles.chip, !activeCategory && styles.chipActive, { backgroundColor: theme === 'legacy' ? 'rgba(255, 255, 255, 0.05)' : '#121212', borderColor: activeColors.border }]}
             onPress={() => { setActiveCategory(null); }}
           >
             <Text style={[styles.chipText, !activeCategory && styles.chipTextActive]}>All</Text>
@@ -399,7 +416,7 @@ export default function StoreMenuScreen({ storeId }: StoreMenuScreenProps) {
           {categories.map(cat => (
             <ScalePressable
               key={cat}
-              style={[styles.chip, activeCategory === cat && styles.chipActive]}
+              style={[styles.chip, activeCategory === cat && styles.chipActive, { backgroundColor: theme === 'legacy' ? 'rgba(255, 255, 255, 0.05)' : '#121212', borderColor: activeColors.border }]}
               onPress={() => { triggerLightHaptic(); setActiveCategory(cat); }}
             >
               <Text style={[styles.chipText, activeCategory === cat && styles.chipTextActive]}>{cat}</Text>
@@ -435,7 +452,7 @@ export default function StoreMenuScreen({ storeId }: StoreMenuScreenProps) {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: activeColors.bg }]} edges={['top']}>
       <ScrollView
         ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
@@ -467,7 +484,7 @@ export default function StoreMenuScreen({ storeId }: StoreMenuScreenProps) {
                   <Text style={styles.reviewsCountText}>Based on {reviewsCount} reviews</Text>
                 </View>
                 {reviews.map((rev, idx) => (
-                  <View key={idx} style={styles.reviewCard}>
+                  <View key={idx} style={[styles.reviewCard, { backgroundColor: activeColors.card }]}>
                     <View style={styles.reviewHeaderRow}>
                       <View style={styles.reviewAvatar}>
                         <Text style={styles.reviewAvatarText}>{rev.customer_name?.charAt(0) || 'A'}</Text>
@@ -496,7 +513,7 @@ export default function StoreMenuScreen({ storeId }: StoreMenuScreenProps) {
         {activeTab === 'info' && (
           <View style={styles.tabSectionContent}>
             
-            <View style={styles.infoCard}>
+            <View style={[styles.infoCard, { backgroundColor: activeColors.card, borderColor: activeColors.border }]}>
               <View style={styles.infoCardHeader}>
                 <Clock size={16} color={colors.primary[500]} />
                 <Text style={styles.infoCardTitle}>Operational Hours</Text>
@@ -516,7 +533,7 @@ export default function StoreMenuScreen({ storeId }: StoreMenuScreenProps) {
               </View>
             </View>
 
-            <View style={styles.infoCard}>
+            <View style={[styles.infoCard, { backgroundColor: activeColors.card, borderColor: activeColors.border }]}>
               <View style={styles.infoCardHeader}>
                 <MapPin size={16} color={colors.primary[500]} />
                 <Text style={styles.infoCardTitle}>Contact & Location</Text>
@@ -642,7 +659,7 @@ export default function StoreMenuScreen({ storeId }: StoreMenuScreenProps) {
                     return (
                       <>
                         <Text style={styles.lightboxCaptionEmpty}>No description available</Text>
-                        <Text style={{ fontSize: 10, color: colors.text.tertiary, marginTop: 4 }}>👈 Swipe Left or Right to Browse 👉</Text>
+                        <Text style={{ fontSize: 10, color: colors.text.tertiary, marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Swipe Left or Right to Browse</Text>
                       </>
                     );
                   })()}
@@ -659,7 +676,7 @@ export default function StoreMenuScreen({ storeId }: StoreMenuScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.dark[950],
+    backgroundColor: 'transparent',
   },
   scrollContent: {
     paddingBottom: spacing['2xl'],

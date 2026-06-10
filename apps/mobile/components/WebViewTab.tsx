@@ -25,7 +25,7 @@ interface WebViewTabProps {
 }
 
 export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
-  const { updateUser, setPendingDeepLinkPath, userRole, token, cart, userLocation, savedStores, profileData } = useUser();
+  const { updateUser, setPendingDeepLinkPath, userRole, token, cart, userLocation, savedStores, profileData, theme } = useUser();
   const router = useRouter();
   const navigation = useNavigation();
 
@@ -72,6 +72,17 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
       }, 100);
     }
   }, [targetUrl, isFocused]);
+
+  // Inject theme changes reactively
+  useEffect(() => {
+    if (webViewRef.current) {
+      webViewRef.current.injectJavaScript(`
+        localStorage.setItem('theme', '${theme}');
+        document.documentElement.setAttribute('data-theme', '${theme}');
+        true;
+      `);
+    }
+  }, [theme]);
 
   // Loader Animation
   useEffect(() => {
@@ -203,6 +214,10 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
     return `
       (function() {
         try {
+          const activeTheme = '${theme}';
+          localStorage.setItem('theme', activeTheme);
+          document.documentElement.setAttribute('data-theme', activeTheme);
+          
           const nativeToken = ${nativeToken};
           if (nativeToken) {
             localStorage.setItem('access_token', nativeToken);
@@ -242,7 +257,7 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
       })();
       true;
     `;
-  }, [token, userRole, cart, userLocation, savedStores]);
+  }, [token, userRole, cart, userLocation, savedStores, theme]);
 
   useEffect(() => {
     if (webViewRef.current) {
@@ -256,10 +271,14 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
     extrapolate: 'clamp',
   });
 
+  const activeBg = theme === 'legacy' ? '#020617' : '#000000';
+  const activeHeaderBg = theme === 'legacy' ? '#020617' : '#121212';
+  const activeBorder = theme === 'legacy' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.16)';
+
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: activeBg }]} edges={['top']}>
       {showBackHeader ? (
-        <View style={styles.header}>
+        <View style={[styles.header, { backgroundColor: activeHeaderBg, borderBottomColor: activeBorder }]}>
           <ScaleIconButton 
             style={styles.backButton} 
             onPress={handleNativeBack}
@@ -279,7 +298,7 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
           <View style={styles.headerPlaceholder} />
         </View>
       ) : (
-        <View style={styles.header}>
+        <View style={[styles.header, { backgroundColor: activeHeaderBg, borderBottomColor: activeBorder }]}>
           <View style={styles.headerLeft}>
             <Text style={styles.brandText}>CHAPUU</Text>
           </View>
@@ -300,7 +319,7 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
               onPress={handleLogoutPress}
               hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
             >
-              <LogOut size={20} color="#94a3b8" />
+              <LogOut size={20} color="#eab308" />
             </ScaleIconButton>
           </View>
         </View>
@@ -315,7 +334,7 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
           <WebView
             ref={webViewRef}
             source={source}
-            style={styles.webview}
+            style={[styles.webview, { backgroundColor: activeBg }]}
             userAgent={customUserAgent}
             originWhitelist={['*']}
             allowsBackForwardNavigationGestures={true}
@@ -360,7 +379,7 @@ export default function WebViewTab({ path, onStateUpdate }: WebViewTabProps) {
             }}
           />
           {showLoader && (
-            <Animated.View pointerEvents="none" style={[styles.loadingContainer, { opacity: overlayOpacity }]}>
+            <Animated.View pointerEvents="none" style={[styles.loadingContainer, { opacity: overlayOpacity, backgroundColor: activeBg }]}>
               <Image source={require('../assets/favicon.png')} style={{ width: 80, height: 80, resizeMode: 'contain' }} />
               <ActivityIndicator size="small" color="#eab308" style={{ marginTop: 24 }} />
             </Animated.View>

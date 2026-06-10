@@ -7,7 +7,7 @@ import { useWebViewStateUpdate } from '../../hooks/useWebViewStateUpdate';
 import DiscoverScreen from '../../components/DiscoverScreen';
 
 export default function Tab1Screen() {
-  const { userRole, pendingDeepLinkPath, setPendingDeepLinkPath } = useUser();
+  const { userRole, pendingDeepLinkPath, setPendingDeepLinkPath, theme } = useUser();
   const handleStateUpdate = useWebViewStateUpdate();
   const [currentPath, setCurrentPath] = useState<string>('/');
 
@@ -29,7 +29,7 @@ export default function Tab1Screen() {
   }, [pendingDeepLinkPath, setPendingDeepLinkPath]);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme === 'legacy' ? '#020617' : '#000000' }]}>
       {userRole === 'CUSTOMER' && currentPath === '/' ? (
         <DiscoverScreen />
       ) : (

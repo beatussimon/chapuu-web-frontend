@@ -3,19 +3,23 @@ import { View, Text, StyleSheet } from 'react-native';
 import { WifiOff } from 'lucide-react-native';
 import ScalePressable from './ScalePressable';
 import { triggerLightHaptic } from '../hooks/useHaptics';
+import { useUser } from '../context/UserContext';
 
 interface OfflineScreenProps {
   onRetry: () => void;
 }
 
 export default function OfflineScreen({ onRetry }: OfflineScreenProps) {
+  const { theme } = useUser();
+  const activeBg = theme === 'legacy' ? '#020617' : '#000000';
+
   const handleRetryPress = () => {
     triggerLightHaptic();
     onRetry();
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: activeBg }]}>
       <View style={styles.iconWrapper}>
         <WifiOff size={48} color="#eab308" />
       </View>

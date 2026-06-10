@@ -10,7 +10,7 @@ NGROK_BIN=/usr/local/bin/ngrok
 
 echo "🚀 Starting manual ngrok tunnel on $LOCAL_IP:8081..."
 # Start ngrok on Metro's port with host-header rewrite to prevent "Invalid Host" errors
-$NGROK_BIN http 8081 --log=stdout --host-header=localhost > ngrok.log &
+$NGROK_BIN http 127.0.0.1:8081 --log=stdout --host-header=localhost > ngrok.log &
 
 # Wait for the URL
 sleep 3

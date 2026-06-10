@@ -29,7 +29,12 @@ interface Store {
 
 export default function FavoritesScreen() {
   const router = useRouter();
-  const { savedStores, updateSavedStores, userLocation, token } = useUser();
+  const { savedStores, updateSavedStores, userLocation, token, theme } = useUser();
+  const activeColors = {
+    bg: theme === 'legacy' ? '#020617' : '#000000',
+    card: theme === 'legacy' ? colors.surfaceHighlight : '#121212',
+    border: theme === 'legacy' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.16)',
+  };
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -42,14 +47,25 @@ export default function FavoritesScreen() {
         params.lng = userLocation.lng;
       }
       
-      // Hit the official favorites endpoint for 1:1 parity with web
-      const res = await apiClient.get('/auth/users/me/favorites/', { params });
-      const data = res.data?.results || res.data || [];
-      setStores(data);
+      // Hit the user profile endpoint since favorite_stores is attached to the user model
+      const res = await apiClient.get('/auth/users/me/');
+      const rawFavorites = res.data?.favorite_stores || [];
       
       // Keep local IDs in sync
-      const ids = data.map((s: Store) => s.id);
+      const ids = rawFavorites.map((s: any) => typeof s === 'object' ? s.id : s);
       updateSavedStores(ids);
+      
+      if (ids.length === 0) {
+        setStores([]);
+        return;
+      }
+      
+      // Fetch all stores and filter locally
+      const storesRes = await apiClient.get('/stores/', { params });
+      const allStores = storesRes.data?.results || storesRes.data || [];
+      
+      const favoriteStoresData = allStores.filter((store: any) => ids.includes(store.id));
+      setStores(favoriteStoresData);
     } catch (err) {
       console.warn("[Favorites] Failed to fetch:", err);
     } finally {
@@ -95,10 +111,9 @@ export default function FavoritesScreen() {
     }
 
     try {
-      if (isCurrentlySaved) {
-        await apiClient.delete(`/auth/users/me/favorites/?store_id=${storeId}`);
-      } else {
-        await apiClient.post('/auth/users/me/favorites/', { store_id: storeId });
+      // We update favorites by patching the user's favorite_stores array
+      await apiClient.patch('/auth/users/me/', { favorite_stores: newSavedStores });
+      if (!isCurrentlySaved) {
         fetchFavorites(); // Refresh to get full store object if added from elsewhere
       }
     } catch (err) {
@@ -109,7 +124,7 @@ export default function FavoritesScreen() {
 
   const renderStoreCard = ({ item: store, index }: { item: Store, index: number }) => (
     <Animated.View entering={FadeInDown.delay(index * 100).springify()}>
-    <ScalePressable style={styles.storeCard} onPress={() => handleStorePress(store.id)}>
+    <ScalePressable style={[styles.storeCard, { backgroundColor: activeColors.card, borderColor: activeColors.border }]} onPress={() => handleStorePress(store.id)}>
       <View style={styles.storeImageContainer}>
         {store.image_url ? (
           <OptimizedImage src={store.image_url} style={StyleSheet.absoluteFill} wrapperStyle={StyleSheet.absoluteFill} />
@@ -138,7 +153,7 @@ export default function FavoritesScreen() {
           <MapPin size={12} color={colors.text.tertiary} />
           <Text style={styles.storeSubtitle} numberOfLines={1}>{store.location || 'Online'}</Text>
         </View>
-        <View style={styles.storeFooter}>
+        <View style={[styles.storeFooter, { borderTopColor: activeColors.border }]}>
           <View style={styles.ratingContainer}>
             <Star size={12} color={colors.primary[500]} fill={colors.primary[500]} />
             <Text style={styles.ratingText}>{Number(store.avg_rating || 4.5).toFixed(1)}</Text>
@@ -158,7 +173,7 @@ export default function FavoritesScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: activeColors.bg }]} edges={['top']}>
       <View style={styles.header}>
         <ScalePressable style={styles.backButton} onPress={() => router.back()}>
           <ArrowLeft size={20} color={colors.text.secondary} />
@@ -199,7 +214,7 @@ export default function FavoritesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.dark[950],
+    backgroundColor: 'transparent',
   },
   header: {
     flexDirection: 'row',

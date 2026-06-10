@@ -210,9 +210,9 @@ function TopNavigation({ storeId, theme, toggleTheme }) {
         <button
           onClick={toggleTheme}
           className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white transition-all flex items-center justify-center cursor-pointer"
-          title={theme === 'default' ? 'Switch to Dark theme' : 'Switch to Original theme'}
+          title={theme === 'legacy' ? 'Switch to Dark theme' : 'Switch to Legacy theme'}
         >
-          {theme === 'default' ? <Sparkles size={18} className="text-amber-400" /> : <Moon size={18} className="text-amber-400" />}
+          {theme === 'legacy' ? <Sparkles size={18} className="text-amber-400" /> : <Moon size={18} className="text-amber-400" />}
         </button>
         {!token ? (
           <>
@@ -496,9 +496,9 @@ function BottomDrawer({ isOpen, onClose, storeId, theme, toggleTheme }) {
             <button
               onClick={toggleTheme}
               className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-300 hover:text-white transition-all cursor-pointer"
-              title={theme === 'default' ? 'Switch to Dark theme' : 'Switch to Original theme'}
+              title={theme === 'legacy' ? 'Switch to Dark theme' : 'Switch to Legacy theme'}
             >
-              {theme === 'default' ? <Sparkles size={16} className="text-amber-400" /> : <Moon size={16} className="text-amber-400" />}
+              {theme === 'legacy' ? <Sparkles size={16} className="text-amber-400" /> : <Moon size={16} className="text-amber-400" />}
             </button>
             <button 
               onClick={onClose} 
@@ -560,7 +560,11 @@ function AppLayout() {
   const refreshUserRole = useAppStore(state => state.refreshUserRole);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [storeId, setStoreId] = useState(null);
-  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'default');
+  const [theme, setTheme] = useState(() => {
+    const cached = localStorage.getItem('theme');
+    if (cached === 'default') return 'legacy';
+    return cached || 'dark';
+  });
   const location = useLocation();
 
   useEffect(() => {
@@ -569,7 +573,7 @@ function AppLayout() {
   }, [theme]);
 
   const toggleTheme = () => {
-    setTheme(prev => prev === 'default' ? 'dark' : 'default');
+    setTheme(prev => prev === 'dark' ? 'legacy' : 'dark');
   };
 
   useEffect(() => {

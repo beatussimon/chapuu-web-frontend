@@ -17,6 +17,7 @@ import { ReviewModal } from '../../components/orders/ReviewModal';
 import { CustomAlert } from '../../components/CustomAlert';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import { ScaleIconButton } from '../../components/ScalePressable';
+import { useUser } from '../../context/UserContext';
 
 // Pulse Animation for active status
 const PulseDot = () => {
@@ -86,6 +87,15 @@ const CountdownTimer = ({ targetTime, prefix = "Expected in: " }: { targetTime: 
 export default function OrderTrackerScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
+  const { theme } = useUser();
+  const activeColors = {
+    bg: theme === 'legacy' ? '#020617' : '#000000',
+    card: theme === 'legacy' ? colors.dark[900] : '#121212',
+    sectionCard: theme === 'legacy' ? colors.surfaceHighlight : '#121212',
+    border: theme === 'legacy' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.16)',
+    inputBg: theme === 'legacy' ? colors.dark[950] : '#000000',
+  };
+
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -257,7 +267,7 @@ export default function OrderTrackerScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: activeColors.bg }]}>
         <View style={{ padding: spacing.xl, gap: spacing.lg }}>
           <LoadingSkeleton style={{ width: '50%', height: 22 }} />
           <LoadingSkeleton style={{ width: '100%', height: 200, borderRadius: 24 }} />
@@ -270,7 +280,7 @@ export default function OrderTrackerScreen() {
 
   if (!order) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: activeColors.bg }]}>
         <View style={styles.centerBox}>
           <Text style={styles.errorText}>Order not found.</Text>
           <ScalePressable style={styles.backBtn} onPress={() => router.back()}>
@@ -285,7 +295,7 @@ export default function OrderTrackerScreen() {
 
   if (isCancelled) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: activeColors.bg }]}>
         <View style={styles.centerBox}>
           <Text style={styles.cancelledText}>Order {order.state}</Text>
           <Text style={styles.errorText}>This order is no longer active.</Text>
@@ -344,10 +354,10 @@ export default function OrderTrackerScreen() {
   const resColors = getReservationColors(order.reservation_status || '');
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: activeColors.bg }]} edges={['top']}>
       {/* Premium Gradient Header */}
       <View style={styles.header}>
-        <ScalePressable style={styles.headerIconBtn} onPress={() => router.back()}>
+        <ScalePressable style={[styles.headerIconBtn, { backgroundColor: activeColors.border }]} onPress={() => router.back()}>
           <ArrowLeft size={20} color={colors.text.secondary} />
         </ScalePressable>
         <View style={styles.headerTitles}>
@@ -355,10 +365,10 @@ export default function OrderTrackerScreen() {
           <Text style={styles.headerSubtitle}>{order.store_name || `Store #${order.store}`}</Text>
         </View>
         <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-          <ScalePressable style={styles.headerIconBtn} onPress={handleShareOrder}>
+          <ScalePressable style={[styles.headerIconBtn, { backgroundColor: activeColors.border }]} onPress={handleShareOrder}>
             <Share2 size={18} color={colors.text.secondary} />
           </ScalePressable>
-          <ScalePressable style={styles.headerIconBtn} onPress={fetchOrder}>
+          <ScalePressable style={[styles.headerIconBtn, { backgroundColor: activeColors.border }]} onPress={fetchOrder}>
             <RefreshCw size={18} color={colors.text.secondary} />
           </ScalePressable>
         </View>
@@ -367,7 +377,7 @@ export default function OrderTrackerScreen() {
       <ScrollView style={styles.scrollArea} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         
         {/* Modern Live Status Card */}
-        <View style={styles.statusHeroCard}>
+        <View style={[styles.statusHeroCard, { backgroundColor: activeColors.card, borderColor: activeColors.border }]}>
           <View style={styles.heroInfo}>
             <View style={styles.heroLabelGroup}>
               <PulseDot />
@@ -383,7 +393,7 @@ export default function OrderTrackerScreen() {
           </View>
           
           <View style={styles.timelineContainer}>
-            <View style={styles.timelineTrackBg} />
+            <View style={[styles.timelineTrackBg, { backgroundColor: activeColors.border }]} />
             <Animated.View style={[styles.timelineTrackFill, animatedProgressStyle]} />
 
             {displayStates.map((state) => {
@@ -398,8 +408,10 @@ export default function OrderTrackerScreen() {
                 <View key={state} style={[styles.timelineItem, (isCurrent || isPast) ? { opacity: 1 } : { opacity: 0.4 }]}>
                   <View style={[
                     styles.timelineIconWrapper,
-                    isFinished && styles.timelineIconFinished,
-                    isCurrent && !isFinished && styles.timelineIconCurrent,
+                    { 
+                      backgroundColor: isFinished ? colors.primary[500] : isCurrent ? activeColors.bg : activeColors.card,
+                      borderColor: isFinished ? colors.primary[600] : isCurrent ? colors.primary[500] : activeColors.border
+                    }
                   ]}>
                     {isFinished ? <CheckCircle2 size={20} color={iconColor} /> : getIcon(state, iconColor)}
                   </View>
@@ -415,7 +427,7 @@ export default function OrderTrackerScreen() {
         </View>
 
         {/* Store Quick Info */}
-        <View style={styles.storeMiniCard}>
+        <View style={[styles.storeMiniCard, { borderColor: activeColors.border }]}>
           <OptimizedImage src={order.store_image || ''} wrapperStyle={styles.storeMiniLogo} placeholderType="store" />
           <View style={styles.storeMiniInfo}>
             <Text style={styles.storeMiniName}>{order.store_name}</Text>
@@ -487,7 +499,7 @@ export default function OrderTrackerScreen() {
 
         {/* Delivery Details & Navigation */}
         {order.fulfillment_mode === 'DELIVERY' && (
-          <View style={styles.card}>
+          <View style={[styles.card, { backgroundColor: activeColors.sectionCard, borderColor: activeColors.border }]}>
             <View style={styles.flexRowBetween}>
               <Text style={styles.sectionTitle}>Delivery Details</Text>
               <ScalePressable style={styles.mapLink} onPress={handleNavigate}>
@@ -497,7 +509,7 @@ export default function OrderTrackerScreen() {
             </View>
             
             <View style={styles.addressRow}>
-              <View style={styles.addressIconWrapper}>
+              <View style={[styles.addressIconWrapper, { backgroundColor: activeColors.border }]}>
                 <MapPin size={18} color={colors.primary[500]} />
               </View>
               <View style={{ flex: 1 }}>
@@ -508,7 +520,7 @@ export default function OrderTrackerScreen() {
               </View>
             </View>
 
-            <View style={styles.feeCard}>
+            <View style={[styles.feeCard, { borderColor: activeColors.border }]}>
               <View style={styles.flexRowBetween}>
                 <Text style={styles.invoiceLabel}>Delivery Fee (Pay Rider)</Text>
                 <PriceDisplay amount={order.delivery_fee || 0} style={styles.deliveryFeeValue} />
@@ -538,7 +550,7 @@ export default function OrderTrackerScreen() {
         {/* Handoff Code for Pickups/Deliveries */}
         {((order.fulfillment_mode === 'DELIVERY' && order.state === 'OUT_FOR_DELIVERY') ||
           (['PICKUP', 'TAKEAWAY'].includes(order.fulfillment_mode) && order.state === 'READY')) && (
-          <View style={[styles.card, styles.highlightCard]}>
+          <View style={[styles.card, styles.highlightCard, { borderColor: activeColors.border }]}>
             <Text style={styles.highlightCardTitle}>Handoff Verification Code</Text>
             <Text style={styles.highlightCardDesc}>Give this code to the driver or cashier.</Text>
             <View style={styles.codeWrapper}>
@@ -548,7 +560,7 @@ export default function OrderTrackerScreen() {
         )}
 
         {/* Invoice / Order Items Details */}
-        <View style={styles.card}>
+        <View style={[styles.card, { backgroundColor: activeColors.sectionCard, borderColor: activeColors.border }]}>
           <Text style={styles.sectionTitle}>Order Items</Text>
           <View style={styles.itemList}>
             {(Array.isArray(order.items) ? order.items : []).map((item: any) => (
@@ -562,9 +574,20 @@ export default function OrderTrackerScreen() {
                 <PriceDisplay amount={item.unit_price * item.quantity} style={styles.itemPrice} />
               </View>
             ))}
+            {(Array.isArray(order.pos_custom_items) ? order.pos_custom_items : []).map((item: any, idx: number) => (
+              <View key={`custom-${idx}`} style={[styles.itemRow, { backgroundColor: 'rgba(234, 179, 8, 0.03)', borderColor: 'rgba(234, 179, 8, 0.1)', borderWidth: 1 }]}>
+                <View style={[styles.flexRow, { flex: 1, paddingRight: spacing.md }]}>
+                  <View style={[styles.qtyBadge, { backgroundColor: 'rgba(234, 179, 8, 0.2)' }]}>
+                    <Text style={styles.itemQty}>{item.quantity}</Text>
+                  </View>
+                  <Text style={[styles.itemName, { color: '#fef08a' }]} numberOfLines={1}>{item.name}</Text>
+                </View>
+                <PriceDisplay amount={item.price * item.quantity} style={styles.itemPrice} />
+              </View>
+            ))}
           </View>
 
-          <View style={styles.totalBreakdown}>
+          <View style={[styles.totalBreakdown, { borderTopColor: activeColors.border }]}>
             <View style={styles.flexRowBetween}>
               <Text style={styles.invoiceLabel}>Subtotal</Text>
               <PriceDisplay amount={Number(order.total_amount || 0) - Number(order.delivery_fee || 0)} style={styles.invoiceValue} />
@@ -626,7 +649,7 @@ export default function OrderTrackerScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.dark[950] },
+  container: { flex: 1, backgroundColor: 'transparent' },
   centerBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.xl, paddingTop: spacing.md, paddingBottom: spacing.sm },
   headerIconBtn: { padding: spacing.sm, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: borderRadius.xl },

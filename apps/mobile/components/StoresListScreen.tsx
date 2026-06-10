@@ -30,7 +30,14 @@ interface Store {
 
 export default function StoresListScreen() {
   const router = useRouter();
-  const { userLocation, savedStores, updateSavedStores, token } = useUser();
+  const { userLocation, savedStores, updateSavedStores, token, theme } = useUser();
+  const activeColors = {
+    bg: theme === 'legacy' ? '#020617' : '#000000',
+    card: theme === 'legacy' ? colors.surfaceHighlight : '#121212',
+    border: theme === 'legacy' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.16)',
+    inputBg: theme === 'legacy' ? '#020617' : '#000000',
+    chipBg: theme === 'legacy' ? 'rgba(255, 255, 255, 0.05)' : '#121212',
+  };
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -116,11 +123,7 @@ export default function StoresListScreen() {
     updateSavedStores(newSavedStores);
 
     try {
-      if (isCurrentlySaved) {
-        await apiClient.delete(`/auth/users/me/favorites/?store_id=${storeId}`);
-      } else {
-        await apiClient.post('/auth/users/me/favorites/', { store_id: storeId });
-      }
+      await apiClient.patch('/auth/users/me/', { favorite_stores: newSavedStores });
     } catch (err) {
       updateSavedStores(savedStores);
       CustomAlert.alert("Sync Error", "Could not update favorites.");
@@ -133,8 +136,8 @@ export default function StoresListScreen() {
 
   const renderStoreCard = ({ item: store, index }: { item: Store, index: number }) => (
     <Animated.View entering={FadeInDown.delay(index * 100).springify()}>
-    <ScalePressable style={styles.storeCard} onPress={() => handleStorePress(store.id)}>
-      <View style={styles.storeImageContainer}>
+    <ScalePressable style={[styles.storeCard, { backgroundColor: activeColors.card, borderColor: activeColors.border }]} onPress={() => handleStorePress(store.id)}>
+      <View style={[styles.storeImageContainer, { backgroundColor: activeColors.inputBg }]}>
         {store.image_url ? (
           <OptimizedImage src={store.image_url} style={StyleSheet.absoluteFill} wrapperStyle={StyleSheet.absoluteFill} />
         ) : (
@@ -173,7 +176,7 @@ export default function StoresListScreen() {
           <MapPin size={12} color={colors.text.tertiary} />
           <Text style={styles.storeSubtitle} numberOfLines={1}>{store.location || 'Online'}</Text>
         </View>
-        <View style={styles.storeFooter}>
+        <View style={[styles.storeFooter, { borderTopColor: activeColors.border }]}>
           <View style={styles.ratingContainer}>
             <Star size={12} color={colors.primary[500]} fill={colors.primary[500]} />
             <Text style={styles.ratingText}>{Number(store.avg_rating || 4.5).toFixed(1)}</Text>
@@ -190,7 +193,7 @@ export default function StoresListScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: activeColors.bg }]} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>
           {filters.storeType === 'RESTAURANT' ? 'Restaurants' : filters.storeType === 'SHOP' ? 'Shops' : 'Discovery'}
@@ -198,33 +201,40 @@ export default function StoresListScreen() {
         
         <View style={styles.searchRow}>
           <ScalePressable 
-            style={styles.searchContainer}
+            style={[styles.searchContainer, { backgroundColor: activeColors.inputBg, borderColor: activeColors.border }]}
             onPress={() => { triggerLightHaptic(); router.push('/search'); }}
           >
             <Search size={18} color={colors.text.secondary} style={styles.searchIcon} />
             <Text style={styles.searchPlaceholder}>Search {filters.storeType.toLowerCase()}s...</Text>
           </ScalePressable>
           <ScaleIconButton 
-            style={[styles.filterButton, !!(filters.sortBy !== 'popular' || filters.openNow || filters.minRating) && styles.filterButtonActive]} 
+            style={[styles.filterButton, !!(filters.sortBy !== 'popular' || filters.openNow || filters.minRating) && styles.filterButtonActive, { backgroundColor: activeColors.inputBg, borderColor: activeColors.border }]} 
             onPress={() => { triggerLightHaptic(); setIsFilterModalVisible(true); }}
           >
             <SlidersHorizontal size={18} color={filters.sortBy !== 'popular' || filters.openNow || filters.minRating ? colors.dark[950] : colors.text.primary} />
           </ScaleIconButton>
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipContainer}>
-          {(['ALL', 'RESTAURANT', 'SHOP'] as const).map(type => (
-            <ScalePressable
-              key={type}
-              style={[styles.chip, filters.storeType === type && styles.chipActive]}
-              onPress={() => { triggerLightHaptic(); setFilters({ ...filters, storeType: type }); }}
-            >
-              <Text style={[styles.chipText, filters.storeType === type && styles.chipTextActive]}>
-                {type === 'ALL' ? 'All' : type === 'RESTAURANT' ? 'Restaurants' : 'Shops'}
-              </Text>
-            </ScalePressable>
-          ))}
-        </ScrollView>
+        <View style={styles.segmentedControl}>
+          {(['ALL', 'RESTAURANT', 'SHOP'] as const).map(type => {
+            const isActive = filters.storeType === type;
+            return (
+              <ScalePressable
+                key={type}
+                style={[
+                  styles.segmentButton, 
+                  isActive && styles.segmentButtonActive, 
+                  { backgroundColor: isActive ? colors.primary[500] : 'transparent' }
+                ]}
+                onPress={() => { triggerLightHaptic(); setFilters({ ...filters, storeType: type }); }}
+              >
+                <Text style={[styles.segmentButtonText, isActive && styles.segmentButtonTextActive]}>
+                  {type === 'ALL' ? 'All' : type === 'RESTAURANT' ? 'Restaurants' : 'Shops'}
+                </Text>
+              </ScalePressable>
+            );
+          })}
+        </View>
       </View>
 
       <FilterModal 
@@ -314,26 +324,35 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary[500],
     borderColor: colors.primary[500],
   },
-  chipContainer: {
-    gap: spacing.sm,
-  },
-  chip: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.full,
+  segmentedControl: {
+    flexDirection: 'row',
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: borderRadius.lg,
+    padding: 4,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
   },
-  chipActive: {
-    backgroundColor: colors.primary[500],
-    borderColor: colors.primary[500],
+  segmentButton: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  chipText: {
+  segmentButtonActive: {
+    backgroundColor: colors.primary[500],
+    shadowColor: colors.primary[500],
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  segmentButtonText: {
     color: colors.text.secondary,
     fontWeight: 'bold',
+    fontSize: 12,
   },
-  chipTextActive: {
+  segmentButtonTextActive: {
     color: colors.dark[950],
   },
   listContent: {

@@ -48,8 +48,16 @@ interface TrendingItem {
 
 export default function DiscoverScreen() {
   const router = useRouter();
-  const { token, userLocation, requestLocationPermission, savedStores, updateSavedStores } = useUser();
+  const { token, userLocation, requestLocationPermission, savedStores, updateSavedStores, theme } = useUser();
   const isAuthenticated = !!token;
+
+  const activeColors = {
+    bg: theme === 'legacy' ? '#020617' : '#000000',
+    card: theme === 'legacy' ? colors.surfaceHighlight : '#121212',
+    border: theme === 'legacy' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.16)',
+    headerBg: theme === 'legacy' ? colors.surfaceHighlight : '#121212',
+    inputBg: theme === 'legacy' ? '#020617' : '#000000',
+  };
 
   // Calculate dynamic card width for two-column grid
   const { width: screenWidth } = Dimensions.get('window');
@@ -152,12 +160,7 @@ export default function DiscoverScreen() {
     updateSavedStores(newSavedStores);
 
     try {
-      if (isCurrentlySaved) {
-        await apiClient.delete(`/auth/users/me/favorites/?store_id=${storeId}`);
-      } else {
-        await apiClient.post('/auth/users/me/favorites/', { store_id: storeId });
-      }
-      // Verified with backend
+      await apiClient.patch('/auth/users/me/', { favorite_stores: newSavedStores });
     } catch (err) {
       console.warn('[Discover] Favorite sync failed, reverting...', err);
       // Revert on failure
@@ -175,7 +178,7 @@ export default function DiscoverScreen() {
   };
 
   const renderHeader = () => (
-    <View style={styles.headerBlock}>
+    <View style={[styles.headerBlock, { backgroundColor: activeColors.headerBg, borderColor: activeColors.border }]}>
       <View style={styles.headerTextContainer}>
         <Text style={styles.title}>
           {isAuthenticated ? "What are you craving?" : "Discover & Order."}
@@ -197,44 +200,59 @@ export default function DiscoverScreen() {
 
       <View style={styles.searchContainer}>
         <ScalePressable 
-          style={styles.searchInputWrapper} 
+          style={[styles.searchInputWrapper, { backgroundColor: activeColors.inputBg, borderColor: activeColors.border }]} 
           onPress={() => { router.push('/search'); }}
         >
           <Search size={18} color={colors.text.tertiary} style={styles.searchIcon} />
-          <Text style={styles.searchPlaceholder}>Search meals, spots, categories...</Text>
+          <Text style={styles.searchPlaceholder} numberOfLines={1} ellipsizeMode="tail">Search meals, spots, categories...</Text>
         </ScalePressable>
         <ScaleIconButton 
-          style={[styles.filterButton, !!(filters.sortBy !== 'popular' || filters.openNow || filters.minRating) && styles.filterButtonActive]} 
+          style={[styles.filterButton, { backgroundColor: activeColors.inputBg, borderColor: activeColors.border }]} 
+          onPress={() => { triggerSelectionHaptic(); setIsMapVisible(true); }}
+        >
+          <MapPin size={18} color={colors.primary[400]} />
+        </ScaleIconButton>
+        <ScaleIconButton 
+          style={[styles.filterButton, !!(filters.sortBy !== 'popular' || filters.openNow || filters.minRating) && styles.filterButtonActive, { backgroundColor: activeColors.inputBg, borderColor: activeColors.border }]} 
           onPress={() => { setIsFilterModalVisible(true); }}
         >
           <SlidersHorizontal size={18} color={filters.sortBy !== 'popular' || filters.openNow || filters.minRating ? colors.dark[950] : colors.text.secondary} />
         </ScaleIconButton>
       </View>
       
-      <View style={styles.headerActionsRow}>
-        {/* Category Filters */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterChipsContainer}>
-          {(['ALL', 'RESTAURANT', 'SHOP'] as const).map((type) => (
+      <View style={[styles.segmentedControl, { marginTop: spacing.md }]}>
+        {(['ALL', 'RESTAURANT', 'SHOP'] as const).map((type) => {
+          const isActive = filters.storeType === type;
+          return (
             <ScalePressable 
               key={type} 
-              style={[styles.filterChip, filters.storeType === type && styles.filterChipActive]}
+              style={[
+                styles.segmentButton, 
+                isActive && styles.segmentButtonActive,
+                { backgroundColor: isActive ? colors.primary[500] : 'transparent' }
+              ]}
               onPress={() => { triggerSelectionHaptic(); setFilters({ ...filters, storeType: type }); }}
             >
-              <Text style={[styles.filterChipText, filters.storeType === type && styles.filterChipTextActive]}>
+              <Text style={[styles.segmentButtonText, isActive && styles.segmentButtonTextActive]}>
                 {type === 'ALL' ? 'All' : type === 'RESTAURANT' ? 'Restaurants' : 'Shops'}
               </Text>
             </ScalePressable>
-          ))}
-        </ScrollView>
-
-        <ScalePressable 
-          style={styles.mapToggleButton} 
-          onPress={() => { triggerSelectionHaptic(); setIsMapVisible(true); }}
-        >
-          <MapPin size={16} color={colors.primary[400]} />
-          <Text style={styles.mapToggleText}>Map</Text>
-        </ScalePressable>
+          );
+        })}
       </View>
+
+      {metrics && (
+        <View style={styles.metricsRow}>
+          <View style={[styles.metricCard, { backgroundColor: activeColors.inputBg, borderColor: activeColors.border }]}>
+            <Text style={styles.metricVal}>{metrics.total_stores}</Text>
+            <Text style={styles.metricLabel}>Partners Near You</Text>
+          </View>
+          <View style={[styles.metricCard, { backgroundColor: activeColors.inputBg, borderColor: activeColors.border }]}>
+            <Text style={styles.metricVal}>{metrics.total_meals_served}+</Text>
+            <Text style={styles.metricLabel}>Meals Served</Text>
+          </View>
+        </View>
+      )}
 
       {!userLocation.granted && (
         <View style={styles.locationPrompt}>
@@ -263,14 +281,14 @@ export default function DiscoverScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: activeColors.bg }]} edges={['top']}>
         {renderSkeletons()}
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: activeColors.bg }]} edges={['top']}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -315,7 +333,7 @@ export default function DiscoverScreen() {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
               {trendingItems.slice(0, 4).map((item, index) => (
                 <Animated.View key={item.id} entering={FadeInDown.delay(index * 100).springify()}>
-                <ScalePressable onPress={() => handleStorePress(item.store_id)} style={styles.card}>
+                <ScalePressable onPress={() => handleStorePress(item.store_id)} style={[styles.card, { backgroundColor: activeColors.card, borderColor: activeColors.border }]}>
                   <View style={styles.cardImageContainer}>
                     <OptimizedImage
                       src={item.image_url || ''}
@@ -328,8 +346,9 @@ export default function DiscoverScreen() {
                         <Text style={styles.badgeText}>{item.distance_km < 0.3 ? 'Nearby' : `${item.distance_km} km`}</Text>
                       </BlurView>
                     )}
-                    <BlurView intensity={80} tint="dark" style={styles.badgeBottomLeft}>
-                      <Text style={[styles.badgeText, { color: colors.warning }]}>🔥 TRENDING</Text>
+                    <BlurView intensity={80} tint="dark" style={[styles.badgeBottomLeft, { flexDirection: 'row', alignItems: 'center', gap: 3 }]}>
+                      <TrendingUp size={9} color={colors.warning} />
+                      <Text style={[styles.badgeText, { color: colors.warning }]}>TRENDING</Text>
                     </BlurView>
                   </View>
                   <View style={styles.cardContent}>
@@ -340,7 +359,7 @@ export default function DiscoverScreen() {
                     </View>
                     <View style={styles.cardFooter}>
                       <PriceDisplay amount={item.price} style={styles.price} />
-                      <Text style={styles.trendingCountText}>🔥 {item.times_ordered}x</Text>
+                      <Text style={styles.trendingCountText}>{item.times_ordered} orders</Text>
                     </View>
                   </View>
                 </ScalePressable>
@@ -353,15 +372,17 @@ export default function DiscoverScreen() {
         {/* Directory Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <StoreIcon size={20} color={colors.primary[500]} />
-            <Text style={styles.sectionTitle}>
-              {userLocation.granted ? "Closest spots to you" : "Discover spots"}
-            </Text>
+            <View style={styles.sectionTitleContainer}>
+              <StoreIcon size={20} color={colors.primary[500]} />
+              <Text style={styles.sectionTitle}>
+                {userLocation.granted ? "Closest spots to you" : "Discover spots"}
+              </Text>
+            </View>
           </View>
           <View style={styles.grid}>
             {stores.map((store, index) => (
               <Animated.View key={`store-${store.id}`} entering={FadeInDown.delay(index * 100).springify()} style={{ width: '100%' }}>
-              <ScalePressable onPress={() => handleStorePress(store.id)} style={[styles.card, styles.gridCard]}>
+              <ScalePressable onPress={() => handleStorePress(store.id)} style={[styles.card, styles.gridCard, { backgroundColor: activeColors.card, borderColor: activeColors.border }]}>
                 <ScaleIconButton
                   style={styles.favoriteButton}
                   onPress={() => toggleSavedStore(store.id)}
@@ -416,6 +437,8 @@ export default function DiscoverScreen() {
           </View>
         </View>
       </ScrollView>
+
+
     </SafeAreaView>
   );
 }
@@ -675,8 +698,37 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     paddingHorizontal: spacing.xl,
   },
-  filterChipsContainer: {
-    gap: spacing.sm,
+  segmentedControl: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: borderRadius.lg,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  segmentButton: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  segmentButtonActive: {
+    backgroundColor: colors.primary[500],
+    shadowColor: colors.primary[500],
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  segmentButtonText: {
+    color: colors.text.secondary,
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  segmentButtonTextActive: {
+    color: colors.dark[950],
   },
   mapToggleButton: {
     flexDirection: 'row',
@@ -698,9 +750,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.full,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   filterChipActive: {
     backgroundColor: colors.primary[500],
@@ -764,5 +813,82 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     marginLeft: 2,
     maxWidth: 60,
+  },
+  metricsRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginTop: spacing.md,
+  },
+  metricCard: {
+    flex: 1,
+    padding: spacing.md,
+    borderRadius: borderRadius.xl,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  metricVal: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: colors.primary[400],
+    marginBottom: 2,
+  },
+  metricLabel: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: colors.text.secondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  categorySelectorRow: {
+    flexDirection: 'row',
+    marginTop: spacing.md,
+    borderRadius: borderRadius.xl,
+    overflow: 'hidden',
+    borderWidth: 1,
+    padding: 3,
+    backgroundColor: 'rgba(255,255,255,0.02)',
+  },
+  categorySegment: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  categorySegmentText: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: colors.text.secondary,
+  },
+  floatingMapButtonContainer: {
+    position: 'absolute',
+    bottom: spacing.lg,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 99,
+  },
+  floatingMapButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8,
+  },
+  floatingMapButtonText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: colors.text.primary,
   },
 });

@@ -30,7 +30,8 @@ export function useCheckoutSubmit() {
     scheduledStartTime,
     activeReservation,
     setActiveReservation,
-    selectedTable
+    selectedTable,
+    storeConfig
   }: {
     cart: CartItem[];
     storeId: string;
@@ -50,17 +51,60 @@ export function useCheckoutSubmit() {
     activeReservation: number | null;
     setActiveReservation: (r: number | null) => void;
     selectedTable: string;
+    storeConfig: any;
   }) => {
     if (cart.length === 0) return;
 
-    if (orderMethod === 'DELIVERY' && (!deliveryLocation.trim() || !phoneNumber.trim())) {
-      CustomAlert.alert("Missing Details", "Please provide a delivery location and phone number.");
-      return;
+    if (orderMethod === 'DELIVERY') {
+      if (!deliveryLocation.trim()) {
+        CustomAlert.alert("Missing Details", "Please provide a delivery location.");
+        return;
+      }
+      const digitsPhone = phoneNumber.replace(/\D/g, '');
+      if (digitsPhone.length !== 9) {
+        CustomAlert.alert("Invalid Phone Number", "Please provide a valid 9-digit phone number.");
+        return;
+      }
+    }
+
+    if (orderMethod === 'DINE_IN' && !activeReservation) {
+      const tableRequired = storeConfig?.requires_table_for_dine_in !== false;
+      if (tableRequired && !selectedTable) {
+        CustomAlert.alert("Missing Details", "Please select a table to dine in.");
+        return;
+      }
     }
 
     if (!isInstantPayment && !paymentMessage.trim()) {
       CustomAlert.alert("Missing Details", "Please provide a Transaction ID or Proof of Payment.");
       return;
+    }
+
+    if (isScheduled) {
+      if (!scheduledTime) {
+        CustomAlert.alert("Missing Details", "Please select a target completion time for scheduling.");
+        return;
+      }
+      const targetDate = new Date(scheduledTime);
+      if (targetDate <= new Date()) {
+        CustomAlert.alert("Invalid Schedule Time", "Scheduled time must be in the future.");
+        return;
+      }
+      if (prepTimeOption === 'CUSTOM') {
+        if (!scheduledStartTime) {
+          CustomAlert.alert("Missing Details", "Please select a preparation start time.");
+          return;
+        }
+        const startDate = new Date(scheduledStartTime);
+        if (startDate <= new Date()) {
+          CustomAlert.alert("Invalid Schedule Time", "Preparation start time must be in the future.");
+          return;
+        }
+        if (startDate >= targetDate) {
+          CustomAlert.alert("Invalid Schedule Time", "Preparation start time must be before the target delivery/pickup time.");
+          return;
+        }
+      }
     }
 
     triggerLightHaptic();
@@ -81,7 +125,8 @@ export function useCheckoutSubmit() {
       };
 
       if (orderMethod === 'DELIVERY') {
-        payload.customer_phone = `+255${phoneNumber}`;
+        const digitsPhone = phoneNumber.replace(/\D/g, '');
+        payload.customer_phone = `+255${digitsPhone}`;
         payload.delivery_location = deliveryLocation;
         if (deliveryLatitude) payload.delivery_latitude = parseFloat(deliveryLatitude.toFixed(6));
         if (deliveryLongitude) payload.delivery_longitude = parseFloat(deliveryLongitude.toFixed(6));
@@ -148,7 +193,7 @@ export function useCheckoutSubmit() {
 
     } catch (err: any) {
       console.warn('[Checkout] Submission Failed:', err);
-      const detail = err?.message || 'Failed to place order. Please try again.';
+      const detail = err?.message || err?.response?.data?.detail || 'Failed to place order. Please try again.';
       CustomAlert.alert("Checkout Failed", detail);
     } finally {
       setIsSubmitting(false);

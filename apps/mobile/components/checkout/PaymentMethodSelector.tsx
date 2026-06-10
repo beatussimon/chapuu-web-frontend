@@ -5,6 +5,7 @@ import { Upload, X, CreditCard, Banknote } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { colors, spacing, borderRadius } from '../../theme';
 import { triggerLightHaptic } from '../../hooks/useHaptics';
+import { useUser } from '../../context/UserContext';
 
 interface PaymentMethod {
   id: number;
@@ -40,6 +41,13 @@ export function PaymentMethodSelector({
   onReceiptChange,
   total
 }: PaymentMethodSelectorProps) {
+  const { theme } = useUser();
+  const activeColors = {
+    card: theme === 'legacy' ? colors.surfaceHighlight : '#121212',
+    border: theme === 'legacy' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.16)',
+    inputBg: theme === 'legacy' ? colors.dark[950] : '#000000',
+    inputBorder: theme === 'legacy' ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.16)',
+  };
 
   const pickImage = async () => {
     triggerLightHaptic();
@@ -58,7 +66,7 @@ export function PaymentMethodSelector({
   const canDoInstantPayment = allowedRoles.includes(userRole.toUpperCase());
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: activeColors.card, borderColor: activeColors.border }]}>
       <Text style={styles.sectionTitle}>Payment Details</Text>
       
       {canDoInstantPayment && (
@@ -123,7 +131,7 @@ export function PaymentMethodSelector({
                     )}
                     
                     {pm.account_number && (
-                      <View style={styles.dynamicMethodAccountNumberBox}>
+                      <View style={[styles.dynamicMethodAccountNumberBox, { backgroundColor: activeColors.inputBg, borderColor: activeColors.inputBorder }]}>
                         <Text style={styles.dynamicMethodAccountNumber}>{pm.account_number}</Text>
                         <Text style={styles.dynamicMethodAccountLabel}>Lipa Number</Text>
                       </View>
@@ -146,7 +154,7 @@ export function PaymentMethodSelector({
 
           <Text style={styles.inputLabel}>Transaction ID / Message</Text>
           <TextInput
-            style={styles.textInput}
+            style={[styles.textInput, { backgroundColor: activeColors.inputBg, borderColor: activeColors.inputBorder }]}
             value={paymentMessage}
             onChangeText={onPaymentMessageChange}
             placeholder="e.g. Paid via M-Pesa. Ref: ABCD123456"

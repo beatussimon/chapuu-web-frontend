@@ -7,7 +7,7 @@ import { useWebViewStateUpdate } from '../../hooks/useWebViewStateUpdate';
 import CartScreen from '../../components/CartScreen';
 
 export default function Tab3Screen() {
-  const { userRole } = useUser();
+  const { userRole, theme } = useUser();
   const handleStateUpdate = useWebViewStateUpdate();
 
   const getPath = () => {
@@ -22,7 +22,7 @@ export default function Tab3Screen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme === 'legacy' ? '#020617' : '#000000' }]}>
       {userRole === 'CUSTOMER' ? (
         <CartScreen />
       ) : (

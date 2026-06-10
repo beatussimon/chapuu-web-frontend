@@ -88,7 +88,8 @@ export const useAppStore = create(
                 try {
                     const meRes = await apiClient.get('/auth/users/me/');
                     role = meRes.data.role || 'CUSTOMER';
-                    favorites = meRes.data.favorite_stores || [];
+                    const rawFavorites = meRes.data.favorite_stores || [];
+                    favorites = rawFavorites.map(s => typeof s === 'object' ? s.id : s);
                 } catch (meErr) {
                     console.error("Profile fetch failed, defaulting to CUSTOMER", meErr);
                 }
@@ -112,9 +113,11 @@ export const useAppStore = create(
                     });
                     if (res.ok) {
                         const data = await res.json();
+                        const rawFavorites = data.favorite_stores || [];
+                        const favorites = rawFavorites.map(s => typeof s === 'object' ? s.id : s);
                         set({ 
                             userRole: data.role || 'CUSTOMER',
-                            savedStores: data.favorite_stores || []
+                            savedStores: favorites
                         });
                     }
                 } catch (e) {
@@ -145,10 +148,12 @@ export const useAppStore = create(
             // Favorites Slice
             savedStores: [],
             toggleSaveStore: (storeId) => {
+                let isCurrentlySaved = false;
                 // Optimistic UI update
                 set((state) => {
                     const safeSaved = Array.isArray(state.savedStores) ? state.savedStores : [];
-                    if (safeSaved.includes(storeId)) {
+                    isCurrentlySaved = safeSaved.includes(storeId);
+                    if (isCurrentlySaved) {
                         return { savedStores: safeSaved.filter(id => id !== storeId) };
                     }
                     return { savedStores: [...safeSaved, storeId] };
@@ -157,8 +162,27 @@ export const useAppStore = create(
                 // Background API Sync
                 const token = localStorage.getItem('access_token');
                 if (token) {
-                    apiClient.post(`/stores/${storeId}/toggle_favorite/`).catch(err => {
+                    // Get current state to send full list
+                    const stateObj = get();
+                    const newSavedStores = isCurrentlySaved
+                        ? stateObj.savedStores.filter(id => id !== storeId)
+                        : [...stateObj.savedStores, storeId];
+
+                    const syncPromise = apiClient.patch('/auth/users/me/', { favorite_stores: newSavedStores });
+                    syncPromise.catch(err => {
                         console.error("Failed to sync favorite to backend", err);
+                        // Revert optimistic update on failure
+                        set((state) => {
+                            const safeSaved = Array.isArray(state.savedStores) ? state.savedStores : [];
+                            if (isCurrentlySaved) {
+                                // Put it back if we removed it
+                                const alreadyInList = safeSaved.includes(storeId);
+                                return { savedStores: alreadyInList ? safeSaved : [...safeSaved, storeId] };
+                            } else {
+                                // Remove it if we added it
+                                return { savedStores: safeSaved.filter(id => id !== storeId) };
+                            }
+                        });
                     });
                 }
             }

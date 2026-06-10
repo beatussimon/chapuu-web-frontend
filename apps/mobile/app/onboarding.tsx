@@ -4,6 +4,7 @@ import ScalePressable from '../components/ScalePressable';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Compass, Calendar, ShieldCheck } from 'lucide-react-native';
+import { useUser } from '../context/UserContext';
 
 const { width } = Dimensions.get('window');
 
@@ -36,6 +37,11 @@ const slides: Slide[] = [
 ];
 
 export default function OnboardingScreen() {
+  const { theme } = useUser();
+  const activeColors = {
+    bg: theme === 'legacy' ? '#020617' : '#000000',
+  };
+
   const [activeSlide, setActiveSlide] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
   const scrollX = useRef(new Animated.Value(0)).current;
@@ -85,7 +91,7 @@ export default function OnboardingScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: activeColors.bg }]}>
       <View style={styles.header}>
         <Text style={styles.logoText}>CHAPUU</Text>
         {activeSlide < slides.length - 1 ? (

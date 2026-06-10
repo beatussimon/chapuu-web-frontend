@@ -6,7 +6,6 @@ import * as Linking from 'expo-linking';
 import { 
   View, 
   ActivityIndicator, 
-  StatusBar,
   Modal, 
   Text, 
   StyleSheet, 
@@ -14,7 +13,8 @@ import {
   Image,
   Animated,
   AppState,
-  AppStateStatus
+  AppStateStatus,
+  StatusBar
 } from 'react-native';
 import * as Location from 'expo-location';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
@@ -22,6 +22,7 @@ import { UserContext, UserContextType, UserLocation } from '../context/UserConte
 import { CartItem } from '../types';
 import CustomAlertModal from '../components/CustomAlert';
 import ScalePressable from '../components/ScalePressable';
+import { MapPin } from 'lucide-react-native';
 import { isTokenNearExpiry, silentlyRefreshToken } from '../services/tokenRefresh';
 import apiClient from '../services/api';
 import { authEmitter } from '../services/authEmitter';
@@ -78,6 +79,7 @@ export default function RootLayout() {
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [canAskAgain, setCanAskAgain] = useState(true);
   const [hasLoggedIn, setHasLoggedIn] = useState(false);
+  const [theme, setTheme] = useState<'dark' | 'legacy'>('dark');
 
   const [showSplash, setShowSplash] = useState(true);
   const splashOpacity = useRef(new Animated.Value(1)).current;
@@ -95,6 +97,7 @@ export default function RootLayout() {
         const cachedLoc = await AsyncStorage.getItem('chapuu_location');
         const cachedSaved = await AsyncStorage.getItem('chapuu_saved_stores');
         const cachedHasLoggedIn = await AsyncStorage.getItem('chapuu_has_logged_in');
+        const cachedTheme = await AsyncStorage.getItem('chapuu_theme');
 
         // SECURE STORE MIGRATION: Check if access token is in AsyncStorage
         const oldToken = await AsyncStorage.getItem('chapuu_access_token');
@@ -116,6 +119,13 @@ export default function RootLayout() {
         if (cachedLoc) setUserLocation(JSON.parse(cachedLoc));
         if (cachedSaved) setSavedStores(JSON.parse(cachedSaved));
         if (cachedHasLoggedIn === 'true') setHasLoggedIn(true);
+        if (cachedTheme === 'dark' || cachedTheme === 'legacy') {
+          setTheme(cachedTheme as 'dark' | 'legacy');
+        } else if (cachedTheme === 'default') {
+          setTheme('legacy');
+        } else {
+          setTheme('dark');
+        }
       } catch (e) {
         console.error('[RootLayout] Cache load error:', e);
       } finally {
@@ -355,6 +365,15 @@ export default function RootLayout() {
       if (res.data) {
         setProfileData(res.data);
         setLoyaltyPoints(res.data.loyalty_points || 0);
+        if (res.data.favorite_stores) {
+          const ids = res.data.favorite_stores.map((s: any) => typeof s === 'object' ? s.id : s);
+          setSavedStores(ids);
+          try {
+            await AsyncStorage.setItem('chapuu_saved_stores', JSON.stringify(ids));
+          } catch (storageErr) {
+            console.warn('[_layout.tsx] failed to save favorite stores cache:', storageErr);
+          }
+        }
       }
     } catch (e) {
       console.warn('[RootLayout] Failed to fetch profile:', e);
@@ -438,6 +457,15 @@ export default function RootLayout() {
     setActiveOrderCount(count);
   };
 
+  const updateTheme = async (newTheme: 'dark' | 'legacy') => {
+    setTheme(newTheme);
+    try {
+      await AsyncStorage.setItem('chapuu_theme', newTheme);
+    } catch (e) {
+      console.warn('[_layout.tsx] updateTheme failed:', e);
+    }
+  };
+
   const requestLocationPermission = async () => {
     try {
       const { status: existingStatus } = await Location.getForegroundPermissionsAsync();
@@ -490,31 +518,33 @@ export default function RootLayout() {
     <KeyboardProvider>
       <UserContext.Provider value={{ 
         userRole, 
-      token, 
-      refreshToken,
-      profileData,
-      loyaltyPoints,
-      cart, 
-      userLocation, 
-      savedStores,
-      activeOrderCount, 
-      pendingDeepLinkPath,
-      activeReservation,
-      updateUser, 
-      updateCart, 
-      updateUserLocation, 
-      updateSavedStores,
-      updateActiveOrderCount,
-      setPendingDeepLinkPath,
-      setActiveReservation,
-      requestLocationPermission,
-      fetchUserProfile
-    }}>
-      <StatusBar barStyle="light-content" translucent={true} backgroundColor="transparent" />
+        token, 
+        refreshToken,
+        profileData,
+        loyaltyPoints,
+        cart, 
+        userLocation, 
+        savedStores,
+        activeOrderCount, 
+        pendingDeepLinkPath,
+        activeReservation,
+        theme,
+        updateUser, 
+        updateCart, 
+        updateUserLocation, 
+        updateSavedStores,
+        updateActiveOrderCount,
+        setPendingDeepLinkPath,
+        setActiveReservation,
+        requestLocationPermission,
+        fetchUserProfile,
+        updateTheme
+      }}>
+      <StatusBar barStyle="light-content" backgroundColor={theme === 'legacy' ? '#020617' : '#000000'} translucent={false} />
       <Stack
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: '#020617' },
+          contentStyle: { backgroundColor: theme === 'legacy' ? '#020617' : '#000000' },
         }}
       >
         {token ? <Stack.Screen name="(tabs)" /> : null}
@@ -533,7 +563,7 @@ export default function RootLayout() {
             StyleSheet.absoluteFill, 
             { 
               opacity: splashOpacity, 
-              backgroundColor: '#020617', 
+              backgroundColor: theme === 'legacy' ? '#020617' : '#000000', 
               justifyContent: 'center', 
               alignItems: 'center', 
               gap: 24,
@@ -558,9 +588,12 @@ export default function RootLayout() {
         onRequestClose={() => setShowLocationModal(false)}
       >
         <View style={styles.modalBackdrop}>
-          <View style={styles.modalContainer}>
+          <View style={[styles.modalContainer, { 
+            backgroundColor: theme === 'legacy' ? '#0f172a' : '#121212', 
+            borderColor: theme === 'legacy' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.16)'
+          }]}>
             <View style={styles.iconWrapper}>
-              <Text style={styles.pinIcon}>📍</Text>
+              <MapPin size={32} color="#eab308" />
             </View>
             <Text style={styles.modalTitle}>Enable Geolocation</Text>
             <Text style={styles.modalDescription}>

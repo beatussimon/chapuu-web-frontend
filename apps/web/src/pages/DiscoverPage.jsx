@@ -306,6 +306,11 @@ export default function DiscoverPage() {
                     onClick={(e) => {
                         e.stopPropagation();
                         triggerHaptic(hapticPatterns.light);
+                        if (!token) {
+                            toast.error("Please log in to save favorites.");
+                            navigate('/login');
+                            return;
+                        }
                         toggleSaveStore(store.id);
                         if (isSaved) {
                             toast.success(`Removed ${store.name} from favorites`);

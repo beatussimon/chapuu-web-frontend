@@ -16,7 +16,12 @@ import { SkeletonOrderList } from '../../components/SkeletonCards';
 
 export default function Tab4Screen() {
   const router = useRouter();
-  const { userRole, pendingDeepLinkPath, setPendingDeepLinkPath } = useUser();
+  const { userRole, pendingDeepLinkPath, setPendingDeepLinkPath, theme } = useUser();
+  const activeColors = {
+    bg: theme === 'legacy' ? '#020617' : '#000000',
+    card: theme === 'legacy' ? colors.surfaceHighlight : '#121212',
+    border: theme === 'legacy' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.16)',
+  };
   
   const [activeTab, setActiveTab] = useState<'ORDERS' | 'RESERVATIONS'>('ORDERS');
   const [orders, setOrders] = useState<Order[]>([]);
@@ -83,7 +88,7 @@ export default function Tab4Screen() {
   // Staff Fallback
   if (userRole !== 'CUSTOMER') {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: activeColors.bg }]}>
         <View style={styles.staffFallback}>
           <Text style={styles.emptyTitle}>Staff Area</Text>
           <Text style={styles.emptyDesc}>Use the Dashboard or TV mode to view incoming orders.</Text>
@@ -100,7 +105,7 @@ export default function Tab4Screen() {
     return (
       <Animated.View entering={FadeInDown.delay(index * 100).springify()}>
       <ScalePressable 
-        style={styles.card}
+        style={[styles.card, { backgroundColor: activeColors.card, borderColor: activeColors.border }]}
         onPress={() => {
           triggerLightHaptic();
           router.push(`/order/${item.id}` as any);
@@ -161,7 +166,7 @@ export default function Tab4Screen() {
 
     return (
       <Animated.View entering={FadeInDown.delay(index * 100).springify()}>
-      <View style={styles.card}>
+      <View style={[styles.card, { backgroundColor: activeColors.card, borderColor: activeColors.border }]}>
         <View style={styles.cardHeader}>
           <Text style={styles.orderId}>Booking #{item.id}</Text>
           <View style={[
@@ -217,7 +222,7 @@ export default function Tab4Screen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: activeColors.bg }]} edges={['top']}>
       <View style={styles.header}>
         <View>
           <View style={styles.titleRow}>
@@ -269,7 +274,7 @@ export default function Tab4Screen() {
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchData(true)} tintColor={colors.primary[500]} />}
           ListEmptyComponent={
-            <View style={styles.emptyState}>
+            <View style={[styles.emptyState, { backgroundColor: activeColors.card, borderColor: activeColors.border }]}>
               <ShoppingBag size={48} color={colors.text.tertiary} />
               <Text style={styles.emptyTitle}>No orders yet</Text>
               <Text style={styles.emptyDesc}>Discover great food nearby!</Text>
@@ -288,7 +293,7 @@ export default function Tab4Screen() {
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchData(true)} tintColor={colors.primary[500]} />}
           ListEmptyComponent={
-            <View style={styles.emptyState}>
+            <View style={[styles.emptyState, { backgroundColor: activeColors.card, borderColor: activeColors.border }]}>
               <Calendar size={48} color={colors.text.tertiary} />
               <Text style={styles.emptyTitle}>No reservations</Text>
               <Text style={styles.emptyDesc}>Book a table for dine-in!</Text>
@@ -306,7 +311,7 @@ export default function Tab4Screen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.dark[950],
+    backgroundColor: 'transparent',
   },
   header: {
     paddingHorizontal: spacing.xl,

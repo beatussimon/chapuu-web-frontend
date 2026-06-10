@@ -5,17 +5,23 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
 import WebViewTab from '../components/WebViewTab';
+import { useUser } from '../context/UserContext';
 
 export default function MoreModalScreen() {
   const { path, title } = useLocalSearchParams<{ path: string; title: string }>();
+  const { theme } = useUser();
+  const activeColors = {
+    bg: theme === 'legacy' ? '#020617' : '#000000',
+    border: theme === 'legacy' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.16)',
+  };
 
   const handleClose = () => {
     router.back();
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: activeColors.bg }]} edges={['top', 'left', 'right']}>
+      <View style={[styles.header, { borderColor: activeColors.border }]}>
         <Text style={styles.title} numberOfLines={1}>
           {title || 'Tool'}
         </Text>

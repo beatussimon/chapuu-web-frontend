@@ -33,7 +33,13 @@ import { triggerLightHaptic, triggerSelectionHaptic } from '../../hooks/useHapti
 import { CustomAlert } from '../../components/CustomAlert';
 
 export default function Tab5Screen() {
-  const { userRole, updateUser, token, pendingDeepLinkPath, setPendingDeepLinkPath, profileData, fetchUserProfile } = useUser();
+  const { userRole, updateUser, token, pendingDeepLinkPath, setPendingDeepLinkPath, profileData, fetchUserProfile, theme } = useUser();
+  const activeColors = {
+    bg: theme === 'legacy' ? '#020617' : '#000000',
+    card: theme === 'legacy' ? colors.surfaceHighlight : '#121212',
+    border: theme === 'legacy' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.16)',
+    shortcutCard: theme === 'legacy' ? 'rgba(255, 255, 255, 0.02)' : '#121212',
+  };
   const handleStateUpdate = useWebViewStateUpdate();
   const [currentPath, setCurrentPath] = useState<string>('/reserve');
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -167,9 +173,9 @@ export default function Tab5Screen() {
   // ────────── RENDER LOGGED OUT STATE ──────────
   if (!token) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: activeColors.bg }]} edges={['top']}>
         <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.loggedOutContent}>
-          <View style={styles.welcomeCard}>
+          <View style={[styles.welcomeCard, { backgroundColor: activeColors.card, borderColor: activeColors.border }]}>
             <View style={styles.avatarPlaceholderLarge}>
               <User size={48} color={colors.primary[500]} />
             </View>
@@ -205,10 +211,10 @@ export default function Tab5Screen() {
   const fullName = profileData?.first_name ? `${profileData.first_name} ${profileData.last_name || ''}`.trim() : (profileData?.username || 'Valued Customer');
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: activeColors.bg }]} edges={['top']}>
       {isLoading ? (
         <View style={styles.contentContainer}>
-          <View style={styles.profileCard}>
+          <View style={[styles.profileCard, { backgroundColor: activeColors.card, borderColor: activeColors.border }]}>
             <View style={styles.profileMainRow}>
               <LoadingSkeleton style={{ width: 64, height: 64, borderRadius: 32 }} />
               <View style={[styles.profileMainInfo, { justifyContent: 'center' }]}>
@@ -221,7 +227,7 @@ export default function Tab5Screen() {
             <LoadingSkeleton style={{ width: '100%', height: 16, marginBottom: 16 }} />
             <LoadingSkeleton style={{ width: '60%', height: 16 }} />
           </View>
-          <View style={[styles.profileCard, { marginTop: 16 }]}>
+          <View style={[styles.profileCard, { marginTop: 16, backgroundColor: activeColors.card, borderColor: activeColors.border }]}>
             <LoadingSkeleton style={{ width: '100%', height: 48, marginBottom: 8 }} />
             <LoadingSkeleton style={{ width: '100%', height: 48, marginBottom: 8 }} />
             <LoadingSkeleton style={{ width: '100%', height: 48 }} />
@@ -230,7 +236,7 @@ export default function Tab5Screen() {
       ) : (
         <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
           {/* Premium Profile Details Card */}
-          <View style={styles.profileCard}>
+          <View style={[styles.profileCard, { backgroundColor: activeColors.card, borderColor: activeColors.border }]}>
             <View style={styles.profileMainRow}>
               <View style={styles.avatarLarge}>
                 {profileData?.profile_picture ? (
@@ -290,7 +296,7 @@ export default function Tab5Screen() {
           <View style={styles.shortcutsList}>
             {/* Quick Favorites shortcut */}
             <ScalePressable 
-              style={styles.shortcutCard}
+              style={[styles.shortcutCard, { backgroundColor: activeColors.shortcutCard, borderColor: activeColors.border }]}
               onPress={() => { triggerSelectionHaptic(); router.push('/favorites'); }}
             >
               <View style={[styles.shortcutIconWrapper, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}>
@@ -305,7 +311,7 @@ export default function Tab5Screen() {
 
             {/* Quick Orders shortcut */}
             <ScalePressable 
-              style={styles.shortcutCard}
+              style={[styles.shortcutCard, { backgroundColor: activeColors.shortcutCard, borderColor: activeColors.border }]}
               onPress={() => { triggerSelectionHaptic(); router.replace('/(tabs)/tab4'); }}
             >
               <View style={[styles.shortcutIconWrapper, { backgroundColor: 'rgba(234, 179, 8, 0.1)' }]}>
@@ -320,7 +326,7 @@ export default function Tab5Screen() {
 
             {/* Quick Profile Edit shortcut */}
             <ScalePressable 
-              style={styles.shortcutCard}
+              style={[styles.shortcutCard, { backgroundColor: activeColors.shortcutCard, borderColor: activeColors.border }]}
               onPress={() => { triggerSelectionHaptic(); router.push('/profile'); }}
             >
               <View style={[styles.shortcutIconWrapper, { backgroundColor: 'rgba(96, 165, 250, 0.1)' }]}>
@@ -335,7 +341,7 @@ export default function Tab5Screen() {
 
             {/* Quick Settings shortcut */}
             <ScalePressable 
-              style={styles.shortcutCard}
+              style={[styles.shortcutCard, { backgroundColor: activeColors.shortcutCard, borderColor: activeColors.border }]}
               onPress={() => { triggerSelectionHaptic(); router.push('/settings'); }}
             >
               <View style={[styles.shortcutIconWrapper, { backgroundColor: 'rgba(148, 163, 184, 0.1)' }]}>
@@ -359,7 +365,7 @@ export default function Tab5Screen() {
                 {menuItems.map((item, idx) => (
                   <ScalePressable 
                     key={idx}
-                    style={styles.shortcutCard}
+                    style={[styles.shortcutCard, { backgroundColor: activeColors.shortcutCard, borderColor: activeColors.border }]}
                     onPress={() => handleWebViewPress(item.path, item.title)}
                   >
                     <View style={[styles.shortcutIconWrapper, { backgroundColor: `${item.color}15` }]}>
@@ -401,7 +407,7 @@ export default function Tab5Screen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: colors.dark[950],
+    backgroundColor: 'transparent',
   },
   scrollContainer: {
     flex: 1,

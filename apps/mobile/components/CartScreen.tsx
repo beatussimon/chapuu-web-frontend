@@ -19,7 +19,13 @@ import { normalizeStoreId, normalizeStoreName } from '../utils/cartNormalizer';
 
 export default function CartScreen() {
   const router = useRouter();
-  const { cart, updateCart, updateUser } = useUser();
+  const { cart, updateCart, updateUser, theme } = useUser();
+  const activeColors = {
+    bg: theme === 'legacy' ? '#020617' : '#000000',
+    card: theme === 'legacy' ? colors.surfaceHighlight : '#121212',
+    border: theme === 'legacy' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.16)',
+    cartItemBg: theme === 'legacy' ? 'rgba(255, 255, 255, 0.03)' : '#000000',
+  };
 
   const groupedCart = useMemo(() => {
     return cart.reduce((acc: Record<string, { store: any, items: CartItem[], total: number }>, item) => {
@@ -56,7 +62,7 @@ export default function CartScreen() {
 
   if (cart.length === 0) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: activeColors.bg }]} edges={['top']}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Global Cart</Text>
           <Text style={styles.headerSubtitle}>Review your unpurchased items</Text>
@@ -74,7 +80,7 @@ export default function CartScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: activeColors.bg }]} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Global Cart</Text>
         <Text style={styles.headerSubtitle}>Review your unpurchased items</Text>
@@ -86,7 +92,7 @@ export default function CartScreen() {
           const hasStore = !!store;
 
           return (
-            <View key={storeId} style={styles.storeCard}>
+            <View key={storeId} style={[styles.storeCard, { backgroundColor: activeColors.card, borderColor: activeColors.border }]}>
               {store?.image_url && (
                 <View style={[StyleSheet.absoluteFill, styles.storeImageBg]}>
                   <OptimizedImage src={store.image_url} wrapperStyle={StyleSheet.absoluteFill} style={StyleSheet.absoluteFill} />
@@ -94,7 +100,7 @@ export default function CartScreen() {
                 </View>
               )}
 
-              <View style={styles.storeHeader}>
+              <View style={[styles.storeHeader, { borderBottomColor: activeColors.border }]}>
                 {store?.image_url ? (
                   <OptimizedImage src={store.image_url} wrapperStyle={styles.storeLogo} />
                 ) : (
@@ -110,7 +116,7 @@ export default function CartScreen() {
 
               <View style={styles.itemsList}>
                 {group.items.map((item) => (
-                  <View key={item.id} style={styles.cartItem}>
+                  <View key={item.id} style={[styles.cartItem, { backgroundColor: activeColors.cartItemBg, borderColor: activeColors.border }]}>
                     <View style={styles.itemLeft}>
                       <View style={styles.qtyBadge}>
                         <Text style={styles.qtyBadgeText}>{item.quantity}x</Text>
@@ -158,7 +164,7 @@ export default function CartScreen() {
                 ))}
               </View>
 
-              <View style={styles.checkoutFooter}>
+              <View style={[styles.checkoutFooter, { borderTopColor: activeColors.border }]}>
                 <View style={styles.subtotalRow}>
                   <Text style={styles.subtotalLabel}>Store Subtotal:</Text>
                   <PriceDisplay amount={group.total} style={styles.subtotalValue} />
@@ -183,7 +189,7 @@ export default function CartScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.dark[950],
+    backgroundColor: 'transparent',
   },
   header: {
     paddingHorizontal: spacing.xl,

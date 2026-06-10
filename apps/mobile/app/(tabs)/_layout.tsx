@@ -18,7 +18,7 @@ import {
 } from 'lucide-react-native';
 
 export default function TabLayout() {
-  const { userRole, cart, activeOrderCount } = useUser();
+  const { userRole, cart, activeOrderCount, theme } = useUser();
 
   // Calculate cart items count
   const cartCount = cart.reduce((sum: number, item: CartItem) => sum + (item.quantity || 1), 0);
@@ -80,9 +80,9 @@ export default function TabLayout() {
         tabBarActiveTintColor: '#eab308', // Gold active color
         tabBarInactiveTintColor: '#94a3b8', // Slate-400 inactive color
         tabBarStyle: {
-          backgroundColor: '#020617', // bg-dark-950
+          backgroundColor: theme === 'legacy' ? '#020617' : '#000000', 
           borderTopWidth: 1,
-          borderTopColor: 'rgba(255, 255, 255, 0.08)',
+          borderTopColor: theme === 'legacy' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.16)',
           height: 60,
           paddingBottom: 8,
           paddingTop: 8,

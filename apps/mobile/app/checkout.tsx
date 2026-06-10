@@ -27,7 +27,13 @@ export default function CheckoutScreen() {
   const { store } = useLocalSearchParams();
   const storeIdParam = typeof store === 'string' ? store : (Array.isArray(store) ? store[0] : null);
 
-  const { cart, activeReservation, setActiveReservation, userLocation, userRole } = useUser();
+  const { cart, activeReservation, setActiveReservation, userLocation, userRole, theme } = useUser();
+  const activeColors = {
+    bg: theme === 'legacy' ? '#020617' : '#000000',
+    card: theme === 'legacy' ? colors.surfaceHighlight : '#121212',
+    border: theme === 'legacy' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.16)',
+    inputBg: theme === 'legacy' ? 'rgba(255, 255, 255, 0.05)' : '#000000',
+  };
   const [storeCart, setStoreCart] = useState(cart);
   const [storeConfig, setStoreConfig] = useState<any>(null);
 
@@ -179,15 +185,16 @@ export default function CheckoutScreen() {
       scheduledStartTime,
       activeReservation,
       setActiveReservation,
-      selectedTable
+      selectedTable,
+      storeConfig
     });
   };
 
   if (storeCart.length === 0) {
     return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#020617" translucent={false} />
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, { backgroundColor: activeColors.bg }]}>
+        <StatusBar barStyle="light-content" backgroundColor={activeColors.bg} translucent={false} />
+        <View style={[styles.header, { borderBottomColor: activeColors.border }]}>
           <ScaleIconButton onPress={() => router.back()} style={styles.backButton}>
             <ArrowLeft size={24} color={colors.text.primary} />
           </ScaleIconButton>
@@ -209,13 +216,13 @@ export default function CheckoutScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#020617" translucent={false} />
+    <SafeAreaView style={[styles.container, { backgroundColor: activeColors.bg }]}>
+      <StatusBar barStyle="light-content" backgroundColor={activeColors.bg} translucent={false} />
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
-        <View style={styles.header}>
+        <View style={[styles.header, { borderBottomColor: activeColors.border }]}>
           <ScaleIconButton onPress={() => router.back()} style={styles.backButton}>
             <ArrowLeft size={24} color={colors.text.primary} />
           </ScaleIconButton>
@@ -261,7 +268,7 @@ export default function CheckoutScreen() {
           )}
 
           {orderMethod === 'DINE_IN' && !activeReservation && (
-            <View style={styles.tableSelectorContainer}>
+            <View style={[styles.tableSelectorContainer, { backgroundColor: activeColors.card, borderColor: activeColors.border }]}>
               <Text style={styles.sectionTitle}>Table Selection</Text>
               <View style={styles.pickerContainer}>
                 <Text style={styles.pickerLabel}>
@@ -270,7 +277,7 @@ export default function CheckoutScreen() {
                 <View style={styles.tableGrid}>
                   {storeConfig?.requires_table_for_dine_in === false && (
                     <ScalePressable 
-                      style={[styles.tableBtn, selectedTable === '' && styles.tableBtnActive]}
+                      style={[styles.tableBtn, selectedTable === '' && styles.tableBtnActive, { backgroundColor: activeColors.inputBg, borderColor: activeColors.border }]}
                       onPress={() => setSelectedTable('')}
                     >
                       <Text style={[styles.tableBtnText, selectedTable === '' && styles.tableBtnTextActive]}>
@@ -281,7 +288,7 @@ export default function CheckoutScreen() {
                   {tables.map(t => (
                     <ScalePressable
                       key={t.id}
-                      style={[styles.tableBtn, selectedTable === String(t.id) && styles.tableBtnActive]}
+                      style={[styles.tableBtn, selectedTable === String(t.id) && styles.tableBtnActive, { backgroundColor: activeColors.inputBg, borderColor: activeColors.border }]}
                       onPress={() => setSelectedTable(String(t.id))}
                     >
                       <Text style={[styles.tableBtnText, selectedTable === String(t.id) && styles.tableBtnTextActive]}>
@@ -294,7 +301,7 @@ export default function CheckoutScreen() {
             </View>
           )}
 
-          <View style={styles.scheduleContainer}>
+          <View style={[styles.scheduleContainer, { backgroundColor: activeColors.card, borderColor: activeColors.border }]}>
             <View style={styles.scheduleHeader}>
               <View style={styles.scheduleTitleRow}>
                 <Clock size={20} color={colors.text.primary} />
@@ -312,14 +319,14 @@ export default function CheckoutScreen() {
             </View>
             
             {isScheduled && (
-              <View style={styles.timeSelectorGroup}>
+              <View style={[styles.timeSelectorGroup, { borderTopColor: activeColors.border }]}>
                 <Text style={styles.inputLabel}>Target Delivery/Pickup Time</Text>
                 <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-                  <ScalePressable style={styles.timeBtn} onPress={() => setShowDatePicker(true)}>
+                  <ScalePressable style={[styles.timeBtn, { backgroundColor: activeColors.inputBg, borderColor: activeColors.border }]} onPress={() => setShowDatePicker(true)}>
                     <Text style={styles.timeBtnLabel}>Date</Text>
                     <Text style={styles.timeBtnValue}>{scheduledTime.toLocaleDateString()}</Text>
                   </ScalePressable>
-                  <ScalePressable style={styles.timeBtn} onPress={() => setShowTimePicker(true)}>
+                  <ScalePressable style={[styles.timeBtn, { backgroundColor: activeColors.inputBg, borderColor: activeColors.border }]} onPress={() => setShowTimePicker(true)}>
                     <Text style={styles.timeBtnLabel}>Time</Text>
                     <Text style={styles.timeBtnValue}>
                       {scheduledTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -330,13 +337,13 @@ export default function CheckoutScreen() {
                 <Text style={[styles.inputLabel, { marginTop: spacing.lg }]}>Preparation Strategy</Text>
                 <View style={styles.prepStrategyRow}>
                   <ScalePressable 
-                    style={[styles.prepStrategyBtn, prepTimeOption === 'DYNAMIC' && styles.prepStrategyBtnActive]}
+                    style={[styles.prepStrategyBtn, prepTimeOption === 'DYNAMIC' && styles.prepStrategyBtnActive, { backgroundColor: activeColors.inputBg, borderColor: activeColors.border }]}
                     onPress={() => setPrepTimeOption('DYNAMIC')}
                   >
                     <Text style={[styles.prepStrategyText, prepTimeOption === 'DYNAMIC' && styles.prepStrategyTextActive]}>Dynamic</Text>
                   </ScalePressable>
                   <ScalePressable 
-                    style={[styles.prepStrategyBtn, prepTimeOption === 'CUSTOM' && styles.prepStrategyBtnActive]}
+                    style={[styles.prepStrategyBtn, prepTimeOption === 'CUSTOM' && styles.prepStrategyBtnActive, { backgroundColor: activeColors.inputBg, borderColor: activeColors.border }]}
                     onPress={() => setPrepTimeOption('CUSTOM')}
                   >
                     <Text style={[styles.prepStrategyText, prepTimeOption === 'CUSTOM' && styles.prepStrategyTextActive]}>Custom Start</Text>
@@ -346,7 +353,7 @@ export default function CheckoutScreen() {
                 {prepTimeOption === 'CUSTOM' && (
                   <View style={{ marginTop: spacing.md }}>
                     <Text style={styles.inputLabel}>Start Prep Time</Text>
-                    <ScalePressable style={styles.timeBtn} onPress={() => setShowStartTimePicker(true)}>
+                    <ScalePressable style={[styles.timeBtn, { backgroundColor: activeColors.inputBg, borderColor: activeColors.border }]} onPress={() => setShowStartTimePicker(true)}>
                       <Text style={styles.timeBtnValue}>
                         {scheduledStartTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </Text>
@@ -361,8 +368,9 @@ export default function CheckoutScreen() {
                     minimumDate={new Date()}
                     onChange={(event, date) => {
                       setShowDatePicker(Platform.OS === 'ios');
-                      if (date) setScheduledTime(date);
+                      if (event.type !== 'dismissed' && date) setScheduledTime(date);
                     }}
+                    textColor={colors.text.primary}
                   />
                 )}
                 
@@ -372,8 +380,9 @@ export default function CheckoutScreen() {
                     mode="time"
                     onChange={(event, date) => {
                       setShowTimePicker(Platform.OS === 'ios');
-                      if (date) setScheduledTime(date);
+                      if (event.type !== 'dismissed' && date) setScheduledTime(date);
                     }}
+                    textColor={colors.text.primary}
                   />
                 )}
 
@@ -383,8 +392,9 @@ export default function CheckoutScreen() {
                     mode="time"
                     onChange={(event, date) => {
                       setShowStartTimePicker(Platform.OS === 'ios');
-                      if (date) setScheduledStartTime(date);
+                      if (event.type !== 'dismissed' && date) setScheduledStartTime(date);
                     }}
+                    textColor={colors.text.primary}
                   />
                 )}
               </View>
@@ -406,7 +416,7 @@ export default function CheckoutScreen() {
           <View style={styles.bottomPadding} />
         </KeyboardAwareScrollView>
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, { backgroundColor: activeColors.card, borderTopColor: activeColors.border }]}>
           <View style={styles.totalsRow}>
             <Text style={styles.totalsLabel}>Subtotal</Text>
             <PriceDisplay amount={subtotal.toString()} style={styles.totalsValue} />
@@ -510,7 +520,7 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
   },
   timeSelectorGroup: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     gap: spacing.md,
     marginTop: spacing.md,
     paddingTop: spacing.md,

@@ -8,7 +8,7 @@ import { useUser } from '../../context/UserContext';
 import { useWebViewStateUpdate } from '../../hooks/useWebViewStateUpdate';
 
 export default function Tab2Screen() {
-  const { userRole, pendingDeepLinkPath, setPendingDeepLinkPath } = useUser();
+  const { userRole, pendingDeepLinkPath, setPendingDeepLinkPath, theme } = useUser();
   const handleStateUpdate = useWebViewStateUpdate();
   const { store } = useLocalSearchParams();
   const [currentPath, setCurrentPath] = useState<string>('/stores?type=RESTAURANT');
@@ -44,7 +44,7 @@ export default function Tab2Screen() {
   }, [pendingDeepLinkPath, setPendingDeepLinkPath]);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme === 'legacy' ? '#020617' : '#000000' }]}>
       {userRole === 'CUSTOMER' ? (
         store ? <StoreMenuScreen storeId={store as string} /> : <StoresListScreen />
       ) : (

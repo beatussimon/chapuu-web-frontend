@@ -8,8 +8,10 @@ const workspaceRoot = path.resolve(projectRoot, '../..');
 
 const config = getDefaultConfig(projectRoot);
 
-// 1. Watch all files within the monorepo
-config.watchFolders = [workspaceRoot];
+// 1. Watch only mobile and shared packages (do not watch root node_modules)
+config.watchFolders = [
+  path.resolve(workspaceRoot, 'packages/shared')
+];
 
 // 2. Let Metro know where to resolve packages and in what order
 config.resolver.nodeModulesPaths = [

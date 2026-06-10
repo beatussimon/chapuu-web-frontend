@@ -6,6 +6,7 @@ import Animated, { SlideInDown } from 'react-native-reanimated';
 import apiClient from '../../services/api';
 import { CustomAlert } from '../CustomAlert';
 import { colors, spacing, borderRadius } from '../../theme';
+import { useUser } from '../../context/UserContext';
 import { triggerSelectionHaptic, triggerNotificationHaptic } from '../../hooks/useHaptics';
 import ScalePressable, { ScaleIconButton } from '../../components/ScalePressable';
 
@@ -18,6 +19,14 @@ interface ReviewModalProps {
 }
 
 export function ReviewModal({ visible, orderId, storeId, onClose, onSuccess }: ReviewModalProps) {
+  const { theme } = useUser();
+  const activeColors = {
+    overlayBg: theme === 'legacy' ? 'rgba(2, 6, 23, 0.85)' : 'rgba(0, 0, 0, 0.9)',
+    card: theme === 'legacy' ? colors.dark[900] : '#121212',
+    border: theme === 'legacy' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.16)',
+    inputBg: theme === 'legacy' ? 'rgba(255, 255, 255, 0.05)' : '#000000',
+  };
+
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   const [loading, setLoading] = useState(false);
@@ -77,9 +86,9 @@ export function ReviewModal({ visible, orderId, storeId, onClose, onSuccess }: R
           bottomOffset={20}
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end' }}
-          style={styles.overlay}
+          style={[styles.overlay, { backgroundColor: activeColors.overlayBg }]}
         >
-          <Animated.View entering={SlideInDown.duration(250).springify()} style={styles.container}>
+          <Animated.View entering={SlideInDown.duration(250).springify()} style={[styles.container, { backgroundColor: activeColors.card, borderColor: activeColors.border, borderTopColor: activeColors.border }]}>
             <View style={styles.header}>
               <Text style={styles.title}>Rate Your Experience</Text>
               <ScaleIconButton onPress={onClose} style={styles.closeBtn}>
@@ -92,7 +101,7 @@ export function ReviewModal({ visible, orderId, storeId, onClose, onSuccess }: R
             {renderStars()}
 
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: activeColors.inputBg, borderColor: activeColors.border }]}
               placeholder="Leave a comment (optional)..."
               placeholderTextColor={colors.text.tertiary}
               value={comment}

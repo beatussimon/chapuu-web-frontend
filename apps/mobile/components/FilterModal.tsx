@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, typography, borderRadius } from '../theme';
 import ScalePressable, { ScaleIconButton } from './ScalePressable';
 import { triggerLightHaptic, triggerSelectionHaptic } from '../hooks/useHaptics';
+import { useUser } from '../context/UserContext';
 
 export type SortOption = 'distance' | 'rating' | 'price_asc' | 'price_desc' | 'popular';
 
@@ -26,6 +27,15 @@ interface FilterModalProps {
 }
 
 export default function FilterModal({ isVisible, onClose, onApply, initialFilters }: FilterModalProps) {
+  const { theme } = useUser();
+  const activeColors = {
+    bg: theme === 'legacy' ? '#020617' : '#000000',
+    card: theme === 'legacy' ? colors.dark[900] : '#121212',
+    border: theme === 'legacy' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.16)',
+    inputBg: theme === 'legacy' ? 'rgba(255, 255, 255, 0.03)' : '#000000',
+    optionActiveBg: theme === 'legacy' ? 'rgba(234, 179, 8, 0.05)' : 'rgba(234, 179, 8, 0.08)',
+  };
+
   const [filters, setFilters] = useState<FilterState>(initialFilters);
 
   const handleApply = () => {
@@ -49,7 +59,11 @@ export default function FilterModal({ isVisible, onClose, onApply, initialFilter
     const isSelected = filters.sortBy === value;
     return (
       <ScalePressable 
-        style={[styles.optionRow, isSelected && styles.optionRowActive]} 
+        style={[
+          styles.optionRow, 
+          isSelected && { backgroundColor: activeColors.optionActiveBg }, 
+          { borderBottomColor: activeColors.border }
+        ]} 
         onPress={() => { triggerLightHaptic(); setFilters({ ...filters, sortBy: value }); }}
       >
         <View style={styles.optionLabelGroup}>
@@ -63,10 +77,10 @@ export default function FilterModal({ isVisible, onClose, onApply, initialFilter
 
   return (
     <Modal visible={isVisible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.modalOverlay}>
+      <View style={[styles.modalOverlay, { backgroundColor: activeColors.bg }]}>
         <SafeAreaView style={styles.safeArea}>
-          <Animated.View entering={SlideInDown.duration(250).springify()} style={styles.modalContent}>
-            <View style={styles.header}>
+          <Animated.View entering={SlideInDown.duration(250).springify()} style={[styles.modalContent, { backgroundColor: activeColors.card }]}>
+            <View style={[styles.header, { borderBottomColor: activeColors.border }]}>
               <ScaleIconButton onPress={onClose} style={styles.closeBtn}>
                 <X size={24} color={colors.text.primary} />
               </ScaleIconButton>
@@ -80,7 +94,7 @@ export default function FilterModal({ isVisible, onClose, onApply, initialFilter
               {/* Sort By Section */}
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Sort By</Text>
-                <View style={styles.optionsContainer}>
+                <View style={[styles.optionsContainer, { backgroundColor: activeColors.inputBg, borderColor: activeColors.border }]}>
                   {renderSortOption('Most Popular', 'popular', Star)}
                   {renderSortOption('Nearest to Me', 'distance', MapPin)}
                   {renderSortOption('Highest Rated', 'rating', Star)}
@@ -93,14 +107,18 @@ export default function FilterModal({ isVisible, onClose, onApply, initialFilter
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Preferences</Text>
                 <ScalePressable 
-                  style={[styles.checkboxRow, filters.openNow && styles.optionRowActive]}
+                  style={[
+                    styles.checkboxRow, 
+                    filters.openNow && { backgroundColor: activeColors.optionActiveBg },
+                    { backgroundColor: activeColors.inputBg, borderColor: activeColors.border }
+                  ]}
                   onPress={() => { triggerLightHaptic(); setFilters({ ...filters, openNow: !filters.openNow }); }}
                 >
                   <View style={styles.optionLabelGroup}>
                     <Clock size={18} color={filters.openNow ? colors.primary[400] : colors.text.tertiary} />
                     <Text style={[styles.optionText, filters.openNow && styles.optionTextActive]}>Open Now Only</Text>
                   </View>
-                  <View style={[styles.checkbox, filters.openNow && styles.checkboxChecked]}>
+                  <View style={[styles.checkbox, { borderColor: activeColors.border }, filters.openNow && styles.checkboxChecked]}>
                     {filters.openNow && <Check size={14} color={colors.dark[950]} />}
                   </View>
                 </ScalePressable>
@@ -113,7 +131,11 @@ export default function FilterModal({ isVisible, onClose, onApply, initialFilter
                   {[null, 3, 4, 4.5].map((rating) => (
                     <ScalePressable
                       key={String(rating)}
-                      style={[styles.ratingChip, filters.minRating === rating && styles.ratingChipActive]}
+                      style={[
+                        styles.ratingChip, 
+                        { backgroundColor: activeColors.inputBg, borderColor: activeColors.border },
+                        filters.minRating === rating && styles.ratingChipActive
+                      ]}
                       onPress={() => { triggerLightHaptic(); setFilters({ ...filters, minRating: rating }); }}
                     >
                       <Text style={[styles.ratingChipText, filters.minRating === rating && styles.ratingChipTextActive]}>
@@ -126,7 +148,7 @@ export default function FilterModal({ isVisible, onClose, onApply, initialFilter
               </View>
             </ScrollView>
 
-            <View style={styles.footer}>
+            <View style={[styles.footer, { borderTopColor: activeColors.border }]}>
               <ScalePressable style={styles.applyBtn} onPress={handleApply}>
                 <Text style={styles.applyBtnText}>Apply Filters</Text>
               </ScalePressable>

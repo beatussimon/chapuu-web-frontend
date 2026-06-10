@@ -51,7 +51,14 @@ const RECENT_SEARCHES_KEY = 'chapuu_recent_searches';
 
 export default function SearchScreen() {
   const router = useRouter();
-  const { userLocation } = useUser();
+  const { userLocation, theme } = useUser();
+  const activeColors = {
+    bg: theme === 'legacy' ? '#020617' : '#000000',
+    card: theme === 'legacy' ? colors.surfaceHighlight : '#121212',
+    border: theme === 'legacy' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.16)',
+    inputBg: theme === 'legacy' ? colors.dark[900] : '#000000',
+    chipBg: theme === 'legacy' ? 'rgba(255,255,255,0.05)' : '#121212',
+  };
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResults>({ stores: [], products: [], categories: [] });
   const [loading, setLoading] = useState(false);
@@ -134,12 +141,12 @@ export default function SearchScreen() {
   const isSearching = query.trim().length > 0;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: activeColors.bg }]} edges={['top']}>
+      <View style={[styles.header, { borderBottomColor: activeColors.border }]}>
         <ScaleIconButton onPress={() => router.back()} style={styles.backBtn}>
           <ArrowLeft size={24} color={colors.text.primary} />
         </ScaleIconButton>
-        <View style={styles.searchBar}>
+        <View style={[styles.searchBar, { backgroundColor: activeColors.inputBg, borderColor: activeColors.border }]}>
           <Search size={18} color={colors.text.tertiary} style={styles.searchIcon} />
           <TextInput
             style={styles.input}
@@ -183,7 +190,7 @@ export default function SearchScreen() {
               </View>
               <View style={styles.chips}>
                 {results.categories.map(cat => (
-                  <ScalePressable key={cat.id} style={styles.chip} onPress={() => performSearch(cat.name)}>
+                  <ScalePressable key={cat.id} style={[styles.chip, { backgroundColor: activeColors.chipBg, borderColor: activeColors.border }]} onPress={() => performSearch(cat.name)}>
                     <Text style={styles.chipText}>{cat.name}</Text>
                     <Text style={styles.chipCount}>{cat.product_count}</Text>
                   </ScalePressable>
@@ -199,7 +206,7 @@ export default function SearchScreen() {
                 <Text style={styles.sectionTitle}>Stores & Spots</Text>
               </View>
               {results.stores.map(store => (
-                <ScalePressable key={`store-${store.id}`} style={styles.resultCard} onPress={() => handleStorePress(store.id)}>
+                <ScalePressable key={`store-${store.id}`} style={[styles.resultCard, { backgroundColor: activeColors.card, borderColor: activeColors.border }]} onPress={() => handleStorePress(store.id)}>
                   <OptimizedImage src={store.image_url || undefined} wrapperStyle={styles.resultImage} placeholderType="store" storeType={store.store_type} />
                   <View style={styles.resultInfo}>
                     <Text style={styles.resultName}>{store.name}</Text>
@@ -230,7 +237,7 @@ export default function SearchScreen() {
                 <Text style={styles.sectionTitle}>Items & Meals</Text>
               </View>
               {results.products.map(product => (
-                <ScalePressable key={`prod-${product.id}`} style={styles.resultCard} onPress={() => handleProductPress(product.store_id, product.id)}>
+                <ScalePressable key={`prod-${product.id}`} style={[styles.resultCard, { backgroundColor: activeColors.card, borderColor: activeColors.border }]} onPress={() => handleProductPress(product.store_id, product.id)}>
                   <OptimizedImage src={product.image_url || undefined} wrapperStyle={styles.resultImage} placeholderType="product" />
                   <View style={styles.resultInfo}>
                     <Text style={styles.resultName}>{product.name}</Text>
@@ -261,7 +268,7 @@ export default function SearchScreen() {
               </View>
               <View style={styles.chips}>
                 {recentSearches.map((s, i) => (
-                  <ScalePressable key={i} style={styles.chip} onPress={() => performSearch(s)}>
+                  <ScalePressable key={i} style={[styles.chip, { backgroundColor: activeColors.chipBg, borderColor: activeColors.border }]} onPress={() => performSearch(s)}>
                     <Text style={styles.chipText}>{s}</Text>
                   </ScalePressable>
                 ))}
@@ -276,7 +283,7 @@ export default function SearchScreen() {
             </View>
             <View style={styles.chips}>
               {trendingSearches.map((s, i) => (
-                <ScalePressable key={i} style={[styles.chip, styles.trendingChip]} onPress={() => performSearch(s)}>
+                <ScalePressable key={i} style={[styles.chip, styles.trendingChip, { backgroundColor: activeColors.chipBg }]} onPress={() => performSearch(s)}>
                   <Text style={styles.chipText}>{s}</Text>
                 </ScalePressable>
               ))}
@@ -291,7 +298,7 @@ export default function SearchScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.dark[950],
+    backgroundColor: 'transparent',
   },
   header: {
     flexDirection: 'row',

@@ -20,6 +20,7 @@ export interface UserContextType {
   activeOrderCount: number;
   pendingDeepLinkPath: string | null;
   activeReservation: number | null;
+  theme: 'dark' | 'legacy';
   updateUser: (role: string | null, token: string | null, refreshToken?: string | null) => void;
   updateCart: (cart: CartItem[]) => void;
   updateUserLocation: (loc: UserLocation) => void;
@@ -29,6 +30,7 @@ export interface UserContextType {
   setActiveReservation: (reservationId: number | null) => void;
   requestLocationPermission: () => Promise<void>;
   fetchUserProfile: () => Promise<void>;
+  updateTheme: (theme: 'dark' | 'legacy') => void;
 }
 
 export const UserContext = createContext<UserContextType>({
@@ -43,6 +45,7 @@ export const UserContext = createContext<UserContextType>({
   activeOrderCount: 0,
   pendingDeepLinkPath: null,
   activeReservation: null,
+  theme: 'dark',
   updateUser: () => {},
   updateCart: () => {},
   updateUserLocation: () => {},
@@ -52,6 +55,7 @@ export const UserContext = createContext<UserContextType>({
   setActiveReservation: () => {},
   requestLocationPermission: async () => {},
   fetchUserProfile: async () => {},
+  updateTheme: () => {},
 });
 
 export const useUser = () => useContext(UserContext);

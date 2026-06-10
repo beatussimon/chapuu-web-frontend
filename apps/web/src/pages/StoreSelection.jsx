@@ -16,7 +16,7 @@ export default function StoreSelection() {
     const typeParam = searchParams.get('type');
     const [filter, setFilter] = useState(typeParam === 'RESTAURANT' || typeParam === 'SHOP' ? typeParam : 'ALL');
     const [showOpenOnly, setShowOpenOnly] = useState(false);
-    const { setSelectedStore, savedStores, toggleSaveStore } = useAppStore();
+    const { setSelectedStore, savedStores, toggleSaveStore, token } = useAppStore();
     const { location, hasLocation, requestLocation } = useLocation();
     const navigate = useNavigate();
 
@@ -172,6 +172,11 @@ export default function StoreSelection() {
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             triggerHaptic(hapticPatterns.light);
+                                            if (!token) {
+                                                toast.error("Please log in to save favorites.");
+                                                navigate('/login');
+                                                return;
+                                            }
                                             toggleSaveStore(store.id);
                                             const isSaved = safeSavedStores.includes(store.id);
                                             if (isSaved) {

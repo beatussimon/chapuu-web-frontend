@@ -116,6 +116,7 @@ export interface Order {
   reschedule_requests?: any[];
   has_review?: boolean;
   review_details?: any;
+  pos_custom_items?: any[];
 }
 
 export interface Reservation {

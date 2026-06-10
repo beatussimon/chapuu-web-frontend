@@ -30,7 +30,7 @@ export default function CustomerDashboard() {
     const [reviewsCount, setReviewsCount] = useState(0);
     const [reviewsAvgRating, setReviewsAvgRating] = useState('New');
     const [starCountsState, setStarCountsState] = useState({ 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 });
-    const { cart, addToCart, updateQuantity, removeFromCart, selectedStore, savedStores, toggleSaveStore } = useAppStore();
+    const { cart, addToCart, updateQuantity, removeFromCart, selectedStore, savedStores, toggleSaveStore, token } = useAppStore();
     const navigate = useNavigate();
     const location = useLocation();
     const { formatPrice } = useCurrency();
@@ -296,6 +296,11 @@ export default function CustomerDashboard() {
                                 <button
                                     onClick={() => {
                                         triggerHaptic(hapticPatterns.light);
+                                        if (!token) {
+                                            toast.error("Please log in to save favorites.");
+                                            navigate('/login');
+                                            return;
+                                        }
                                         toggleSaveStore(selectedStore.id);
                                         const isSaved = Array.isArray(savedStores) && savedStores.includes(selectedStore.id);
                                         if (isSaved) {

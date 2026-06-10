@@ -15,7 +15,13 @@ import { useUser } from '../../../context/UserContext';
 export default function OrderConfirmationScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
-  const { setPendingDeepLinkPath } = useUser();
+  const { theme, setPendingDeepLinkPath } = useUser();
+  const activeColors = {
+    bg: theme === 'legacy' ? '#020617' : '#000000',
+    card: theme === 'legacy' ? colors.surfaceHighlight : '#121212',
+    border: theme === 'legacy' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.16)',
+    cardBg: theme === 'legacy' ? 'rgba(255,255,255,0.03)' : '#121212',
+  };
   
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -91,7 +97,7 @@ export default function OrderConfirmationScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: activeColors.bg }]} edges={['top']}>
         <View style={styles.content}>
           <LoadingSkeleton style={{ width: 80, height: 80, borderRadius: 40, alignSelf: 'center', marginBottom: 20 }} />
           <LoadingSkeleton style={{ width: '60%', height: 30, alignSelf: 'center', marginBottom: 10 }} />
@@ -103,7 +109,7 @@ export default function OrderConfirmationScreen() {
 
   if (!order) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: activeColors.bg }]} edges={['top']}>
         <View style={styles.content}>
           <Text style={styles.errorText}>Order not found.</Text>
           <ScalePressable onPress={keepBrowsing} style={styles.outlineBtn}>
@@ -115,7 +121,7 @@ export default function OrderConfirmationScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: activeColors.bg }]} edges={['top', 'bottom']}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.successIconWrapper}>
           <CheckCircle size={64} color={colors.success} />
@@ -123,13 +129,13 @@ export default function OrderConfirmationScreen() {
         <Text style={styles.title}>Order Received!</Text>
         <Text style={styles.subtitle}>Order #{order.id}</Text>
 
-        <View style={styles.card}>
+        <View style={[styles.card, { backgroundColor: activeColors.cardBg, borderColor: activeColors.border }]}>
           <Text style={styles.cardTitle}>Payment Confirmation</Text>
           <Text style={styles.cardDesc}>
             Your order has been placed. You can send a confirmation SMS to the store.
           </Text>
           
-          <View style={styles.messagePreviewBox}>
+          <View style={[styles.messagePreviewBox, { borderColor: activeColors.border }]}>
             <Text style={styles.messagePreviewText}>{composeMessage()}</Text>
           </View>
           
@@ -140,7 +146,7 @@ export default function OrderConfirmationScreen() {
         </View>
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { backgroundColor: activeColors.card, borderTopColor: activeColors.border }]}>
         <ScalePressable onPress={navigateToTrack} style={styles.trackBtn}>
           <MapPin size={20} color={colors.dark[950]} />
           <Text style={styles.trackBtnText}>Track Order</Text>
@@ -157,7 +163,7 @@ export default function OrderConfirmationScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.dark[950],
+    backgroundColor: 'transparent',
   },
   content: {
     flex: 1,

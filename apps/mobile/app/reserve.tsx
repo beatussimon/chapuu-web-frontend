@@ -12,9 +12,18 @@ import { colors, spacing, borderRadius } from '../theme';
 import ScalePressable from '../components/ScalePressable';
 import { triggerLightHaptic, triggerNotificationHaptic } from '../hooks/useHaptics';
 import { CustomAlert } from '../components/CustomAlert';
+import { useUser } from '../context/UserContext';
 
 export default function ReservationScreen() {
   const router = useRouter();
+  const { theme } = useUser();
+  const activeColors = {
+    bg: theme === 'legacy' ? '#020617' : '#000000',
+    card: theme === 'legacy' ? colors.surfaceHighlight : '#121212',
+    border: theme === 'legacy' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.16)',
+    inputBg: theme === 'legacy' ? colors.dark[900] : '#121212',
+  };
+
   const [stores, setStores] = useState<any[]>([]);
   const [selectedStore, setSelectedStore] = useState<any>(null);
   
@@ -82,7 +91,7 @@ export default function ReservationScreen() {
 
   if (confirmedRes) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: activeColors.bg }]} edges={['top']}>
         <View style={styles.centerBox}>
           <View style={styles.successIconWrapper}>
             <CheckCircle2 size={64} color={colors.primary[500]} />
@@ -90,16 +99,16 @@ export default function ReservationScreen() {
           <Text style={styles.successTitle}>Reservation Submitted!</Text>
           <Text style={styles.successDesc}>Your table request has been sent to the restaurant for confirmation.</Text>
           
-          <View style={styles.detailsCard}>
-            <View style={styles.detailRow}>
+          <View style={[styles.detailsCard, { backgroundColor: activeColors.card, borderColor: activeColors.border }]}>
+            <View style={[styles.detailRow, { borderBottomColor: activeColors.border }]}>
               <Text style={styles.detailLabel}>Date & Time</Text>
               <Text style={styles.detailValue}>{new Date(confirmedRes.reservation_time).toLocaleString()}</Text>
             </View>
-            <View style={styles.detailRow}>
+            <View style={[styles.detailRow, { borderBottomColor: activeColors.border }]}>
               <Text style={styles.detailLabel}>Guests</Text>
               <Text style={styles.detailValue}>{confirmedRes.guest_count} People</Text>
             </View>
-            <View style={styles.detailRow}>
+            <View style={[styles.detailRow, { borderBottomColor: activeColors.border }]}>
               <Text style={styles.detailLabel}>Status</Text>
               <Text style={[styles.detailValue, { color: colors.primary[400] }]}>Pending Approval</Text>
             </View>
@@ -108,7 +117,7 @@ export default function ReservationScreen() {
           <ScalePressable style={styles.primaryBtn} onPress={() => router.replace('/(tabs)/tab4')}>
             <Text style={styles.primaryBtnText}>Track Status in Orders</Text>
           </ScalePressable>
-          <ScalePressable style={[styles.primaryBtn, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', marginTop: spacing.md }]} onPress={() => router.back()}>
+          <ScalePressable style={[styles.primaryBtn, { backgroundColor: 'transparent', borderWidth: 1, borderColor: activeColors.border, marginTop: spacing.md }]} onPress={() => router.back()}>
             <Text style={[styles.primaryBtnText, { color: colors.text.primary }]}>Go Back</Text>
           </ScalePressable>
         </View>
@@ -117,9 +126,9 @@ export default function ReservationScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <ScalePressable style={styles.headerIconBtn} onPress={() => { triggerLightHaptic(); router.back(); }}>
+    <SafeAreaView style={[styles.container, { backgroundColor: activeColors.bg }]} edges={['top']}>
+      <View style={[styles.header, { borderBottomColor: activeColors.border }]}>
+        <ScalePressable style={[styles.headerIconBtn, { backgroundColor: activeColors.border }]} onPress={() => { triggerLightHaptic(); router.back(); }}>
           <ArrowLeft size={20} color={colors.text.secondary} />
         </ScalePressable>
         <Text style={styles.headerTitle}>Reserve a Table</Text>
@@ -129,7 +138,7 @@ export default function ReservationScreen() {
       <View style={{ flex: 1 }}>
         {loading ? (
           <View style={styles.scrollArea}>
-            <View style={[styles.formSection, { margin: spacing.xl }]}>
+            <View style={[styles.formSection, { margin: spacing.xl, backgroundColor: activeColors.card, borderColor: activeColors.border }]}>
               <LoadingSkeleton style={{ width: '100%', height: 60, marginBottom: spacing.lg }} />
               <LoadingSkeleton style={{ width: '100%', height: 48, marginBottom: spacing.lg }} />
               <LoadingSkeleton style={{ width: '100%', height: 48, marginBottom: spacing.lg }} />
@@ -139,14 +148,14 @@ export default function ReservationScreen() {
         ) : (
           <KeyboardAwareScrollView bottomOffset={20} keyboardDismissMode="on-drag" style={styles.scrollArea} contentContainerStyle={styles.scrollContent}>
             
-            <View style={styles.formSection}>
+            <View style={[styles.formSection, { backgroundColor: activeColors.card, borderColor: activeColors.border }]}>
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Select Restaurant</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.storeScroll}>
                   {stores.map(store => (
                     <ScalePressable 
                       key={store.id} 
-                      style={[styles.storeChip, selectedStore === store.id && styles.storeChipActive]}
+                      style={[styles.storeChip, { backgroundColor: activeColors.inputBg, borderColor: activeColors.border }, selectedStore === store.id && styles.storeChipActive]}
                       onPress={() => { triggerLightHaptic(); setSelectedStore(store.id); }}
                     >
                       <MapPin size={14} color={selectedStore === store.id ? colors.dark[950] : colors.text.secondary} />
@@ -159,7 +168,7 @@ export default function ReservationScreen() {
               <View style={styles.rowGroup}>
                 <View style={[styles.inputGroup, { flex: 1 }]}>
                   <Text style={styles.label}>Date</Text>
-                  <ScalePressable style={styles.inputBtn} onPress={() => setShowDatePicker(true)}>
+                  <ScalePressable style={[styles.inputBtn, { backgroundColor: activeColors.inputBg, borderColor: activeColors.border }]} onPress={() => setShowDatePicker(true)}>
                     <CalendarIcon size={18} color={colors.text.tertiary} />
                     <Text style={styles.inputText}>{date.toLocaleDateString()}</Text>
                   </ScalePressable>
@@ -167,7 +176,7 @@ export default function ReservationScreen() {
 
                 <View style={[styles.inputGroup, { flex: 1 }]}>
                   <Text style={styles.label}>Time</Text>
-                  <ScalePressable style={styles.inputBtn} onPress={() => setShowTimePicker(true)}>
+                  <ScalePressable style={[styles.inputBtn, { backgroundColor: activeColors.inputBg, borderColor: activeColors.border }]} onPress={() => setShowTimePicker(true)}>
                     <Clock size={18} color={colors.text.tertiary} />
                     <Text style={styles.inputText}>{time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
                   </ScalePressable>
@@ -201,7 +210,7 @@ export default function ReservationScreen() {
 
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Number of Guests</Text>
-                <View style={styles.stepperContainer}>
+                <View style={[styles.stepperContainer, { backgroundColor: activeColors.inputBg, borderColor: activeColors.border }]}>
                   <ScalePressable style={styles.stepperBtn} onPress={() => { triggerLightHaptic(); setGuests(Math.max(1, guests - 1)); }}>
                     <Text style={styles.stepperBtnText}>-</Text>
                   </ScalePressable>
@@ -219,7 +228,7 @@ export default function ReservationScreen() {
           </KeyboardAwareScrollView>
         )}
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, { borderTopColor: activeColors.border }]}>
           <ScalePressable style={[styles.primaryBtn, submitting && { opacity: 0.7 }]} onPress={handleReserve} disabled={submitting || loading}>
             {submitting ? <ActivityIndicator color={colors.dark[950]} /> : (
               <Text style={styles.primaryBtnText}>Confirm Reservation</Text>
@@ -232,7 +241,7 @@ export default function ReservationScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.dark[950] },
+  container: { flex: 1, backgroundColor: 'transparent' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.xl, paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
   headerIconBtn: { padding: spacing.sm, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: borderRadius.xl },
   headerTitle: { fontSize: 18, fontWeight: '900', color: colors.text.primary },

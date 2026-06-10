@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing, borderRadius } from '../theme';
 import { triggerLightHaptic } from '../hooks/useHaptics';
 import ScalePressable, { ScaleIconButton } from './ScalePressable';
+import { useUser } from '../context/UserContext';
 
 interface MapModalProps {
   isOpen: boolean;
@@ -20,6 +21,13 @@ interface MapModalProps {
 
 export default function MapModal({ isOpen, onClose, userLocation, stores = [], onSelectStore }: MapModalProps) {
   const webViewRef = useRef<WebView>(null);
+  const { theme } = useUser();
+
+  const activeColors = {
+    bg: theme === 'legacy' ? '#020617' : '#000000',
+    card: theme === 'legacy' ? colors.surfaceHighlight : '#121212',
+    border: theme === 'legacy' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.16)',
+  };
 
   // Generate HTML with Leaflet
   const generateMapHtml = () => {
@@ -47,8 +55,8 @@ export default function MapModal({ isOpen, onClose, userLocation, stores = [], o
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
         <style>
-          body { margin: 0; padding: 0; background: #020617; }
-          #map { height: 100vh; width: 100vw; background: #020617; }
+          body { margin: 0; padding: 0; background: ${activeColors.bg}; }
+          #map { height: 100vh; width: 100vw; background: ${activeColors.bg}; }
           .leaflet-tile { filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%); }
           .custom-user-marker {
             background: #3b82f6;
@@ -63,7 +71,7 @@ export default function MapModal({ isOpen, onClose, userLocation, stores = [], o
             width: 32px;
             height: 32px;
             background: #eab308;
-            border: 2px solid #020617;
+            border: 2px solid ${activeColors.bg};
             border-radius: 50%;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
           }
@@ -116,9 +124,9 @@ export default function MapModal({ isOpen, onClose, userLocation, stores = [], o
 
   return (
     <Modal visible={isOpen} animationType="fade" transparent onRequestClose={onClose}>
-        <Animated.View entering={SlideInDown.duration(250).springify()} style={styles.modalContainer}>
+        <Animated.View entering={SlideInDown.duration(250).springify()} style={[styles.modalContainer, { backgroundColor: activeColors.bg }]}>
           <SafeAreaView style={styles.safeArea}>
-          <View style={styles.header}>
+          <View style={[styles.header, { borderBottomColor: activeColors.border }]}>
             <ScaleIconButton onPress={onClose} style={styles.closeBtn}>
               <X size={24} color={colors.text.primary} />
             </ScaleIconButton>
@@ -129,11 +137,11 @@ export default function MapModal({ isOpen, onClose, userLocation, stores = [], o
             <View style={{ width: 40 }} />
           </View>
           
-          <View style={styles.mapWrapper}>
+          <View style={[styles.mapWrapper, { backgroundColor: activeColors.bg }]}>
             <WebView
               ref={webViewRef}
               source={{ html: generateMapHtml() }}
-              style={styles.webview}
+              style={[styles.webview, { backgroundColor: activeColors.bg }]}
               onMessage={handleMessage}
               scrollEnabled={false}
             />

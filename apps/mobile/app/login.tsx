@@ -21,7 +21,12 @@ const DEFAULT_URL = 'https://chapuu.com';
 const BASE_URL = process.env.EXPO_PUBLIC_WEB_URL || DEFAULT_URL;
 
 export default function LoginScreen() {
-  const { updateUser } = useUser();
+  const { updateUser, theme } = useUser();
+  const activeColors = {
+    bg: theme === 'legacy' ? '#020617' : '#000000',
+    inputBg: theme === 'legacy' ? 'rgba(255, 255, 255, 0.02)' : '#121212',
+    border: theme === 'legacy' ? 'rgba(255, 255, 255, 0.06)' : 'rgba(255, 255, 255, 0.16)',
+  };
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -173,7 +178,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: activeColors.bg }]}>
       <KeyboardAwareScrollView 
         bottomOffset={20}
         contentContainerStyle={styles.scrollContainer}
@@ -196,7 +201,7 @@ export default function LoginScreen() {
 
             <View style={styles.form}>
               {/* Username Input */}
-              <View style={styles.inputWrapper}>
+              <View style={[styles.inputWrapper, { backgroundColor: activeColors.inputBg, borderColor: activeColors.border }]}>
                 <View style={styles.iconContainer}>
                   <User size={20} color="#94a3b8" />
                 </View>
@@ -212,7 +217,7 @@ export default function LoginScreen() {
               </View>
 
               {/* Password Input */}
-              <View style={styles.inputWrapper}>
+              <View style={[styles.inputWrapper, { backgroundColor: activeColors.inputBg, borderColor: activeColors.border }]}>
                 <View style={styles.iconContainer}>
                   <Lock size={20} color="#94a3b8" />
                 </View>

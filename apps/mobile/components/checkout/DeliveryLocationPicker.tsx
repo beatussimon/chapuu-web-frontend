@@ -5,6 +5,7 @@ import { MapPin } from 'lucide-react-native';
 import * as Location from 'expo-location';
 import { colors, spacing, borderRadius } from '../../theme';
 import { triggerLightHaptic, triggerSelectionHaptic } from '../../hooks/useHaptics';
+import { useUser } from '../../context/UserContext';
 
 interface DeliveryLocationPickerProps {
   initialLocation: string;
@@ -31,6 +32,14 @@ export function DeliveryLocationPicker({
   isLocating: propsIsLocating,
   onGetLocation
 }: DeliveryLocationPickerProps) {
+  const { theme } = useUser();
+  const activeColors = {
+    card: theme === 'legacy' ? colors.surfaceHighlight : '#121212',
+    border: theme === 'legacy' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.16)',
+    inputBg: theme === 'legacy' ? colors.dark[950] : '#000000',
+    inputBorder: theme === 'legacy' ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.16)',
+  };
+
   const [deliveryLocation, setDeliveryLocation] = useState(initialLocation);
   const [phoneNumber, setPhoneNumber] = useState(initialPhone);
   const [directions, setDirections] = useState(initialDirections);
@@ -119,17 +128,17 @@ export function DeliveryLocationPicker({
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: activeColors.card, borderColor: activeColors.border }]}>
       <Text style={styles.sectionTitle}>Delivery Details</Text>
 
       <View style={styles.inputGroup}>
         <Text style={styles.label}>Phone Number</Text>
         <View style={styles.phoneInputRow}>
-          <View style={styles.phonePrefixBox}>
+          <View style={[styles.phonePrefixBox, { backgroundColor: activeColors.inputBg, borderColor: activeColors.inputBorder }]}>
             <Text style={styles.phonePrefixText}>+255</Text>
           </View>
           <TextInput
-            style={[styles.input, styles.phoneInput]}
+            style={[styles.input, styles.phoneInput, { backgroundColor: activeColors.inputBg, borderColor: activeColors.inputBorder }]}
             placeholder="e.g. 712345678"
             placeholderTextColor={colors.text.tertiary}
             keyboardType="phone-pad"
@@ -145,7 +154,7 @@ export function DeliveryLocationPicker({
         </View>
         <View style={styles.locationInputWrapper}>
           <TextInput
-            style={[styles.input, { flex: 1, marginBottom: 0, paddingRight: 50 }]}
+            style={[styles.input, { flex: 1, marginBottom: 0, paddingRight: 50, backgroundColor: activeColors.inputBg, borderColor: activeColors.inputBorder }]}
             placeholder={activeIsLocating ? "Locating..." : "GPS coordinates required..."}
             placeholderTextColor={colors.text.tertiary}
             value={deliveryLocation}
@@ -169,7 +178,7 @@ export function DeliveryLocationPicker({
       <View style={styles.inputGroup}>
         <Text style={styles.label}>Delivery Directions & Landmarks</Text>
         <TextInput
-          style={[styles.input, styles.textArea]}
+          style={[styles.input, styles.textArea, { backgroundColor: activeColors.inputBg, borderColor: activeColors.inputBorder }]}
           placeholder="e.g. Opposite the main market, green gate, 2nd floor"
           placeholderTextColor={colors.text.tertiary}
           value={directions}

@@ -13,10 +13,10 @@
   --color-primary-900: #713f12;
   --color-primary-950: #422006;
 
-  --color-dark-50: #f8fafc;
-  --color-dark-800: #1e293b;
-  --color-dark-900: #0f172a;
-  --color-dark-950: #020617;
+  --color-dark-50: #FFFFFF;
+  --color-dark-800: #1C1C1E;
+  --color-dark-900: #121212;
+  --color-dark-950: #000000;
 
   --color-accent-500: #ef4444;
   --color-accent-600: #dc2626;
@@ -33,19 +33,13 @@
 }
 
 @utility glass-dark {
-  background: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #121212;
+  border: 1px solid rgba(255, 255, 255, 0.16);
 }
 
 body {
   @apply bg-dark-950 text-slate-100 antialiased font-sans flex flex-col min-h-screen selection:bg-primary-500 selection:text-dark-950;
-  background-image:
-    radial-gradient(at 0% 0%, hsla(253, 16%, 7%, 1) 0, transparent 50%),
-    radial-gradient(at 50% 0%, hsla(225, 39%, 30%, 0.2) 0, transparent 50%),
-    radial-gradient(at 100% 0%, hsla(339, 49%, 30%, 0.2) 0, transparent 50%);
-  background-attachment: fixed;
+  background-color: #000000;
 }
 
 /* Hide scrollbars for slick UI but keep functionality */
@@ -204,4 +198,57 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 }
 [data-theme="dark"] .border-white\/20 {
   border-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+/* Legacy theme (Slate Gray) overrides */
+[data-theme="legacy"] {
+  --color-dark-950: #020617 !important;
+  --color-dark-900: #0f172a !important;
+  --color-dark-800: #1e293b !important;
+  --color-dark-50: #f8fafc !important;
+
+  /* Restore original primary colors settings if customized in dark mode */
+  --color-primary-50: #fefce8 !important;
+  --color-primary-100: #fef9c3 !important;
+  --color-primary-200: #fef08a !important;
+  --color-primary-300: #fde047 !important;
+  --color-primary-400: #facc15 !important;
+  --color-primary-500: #eab308 !important;
+  --color-primary-600: #ca8a04 !important;
+  --color-primary-700: #a16207 !important;
+  --color-primary-800: #854d0e !important;
+  --color-primary-900: #713f12 !important;
+  --color-primary-950: #422006 !important;
+}
+
+[data-theme="legacy"],
+[data-theme="legacy"] body,
+[data-theme="legacy"] #root {
+  background-color: #020617 !important;
+  background-image:
+    radial-gradient(at 0% 0%, hsla(253, 16%, 7%, 1) 0, transparent 50%),
+    radial-gradient(at 50% 0%, hsla(225, 39%, 30%, 0.2) 0, transparent 50%),
+    radial-gradient(at 100% 0%, hsla(339, 49%, 30%, 0.2) 0, transparent 50%) !important;
+  background-attachment: fixed !important;
+}
+
+[data-theme="legacy"] .glass-dark,
+[data-theme="legacy"] [class*="glass-dark"] {
+  background: rgba(15, 23, 42, 0.6) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+[data-theme="legacy"] nav {
+  border-color: rgba(255, 255, 255, 0.05) !important;
+}
+[data-theme="legacy"] .border-white\/5 {
+  border-color: rgba(255, 255, 255, 0.05) !important;
+}
+[data-theme="legacy"] .border-white\/10 {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+[data-theme="legacy"] .border-white\/20 {
+  border-color: rgba(255, 255, 255, 0.2) !important;
 }

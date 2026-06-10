@@ -10,9 +10,10 @@ import {
   TextStyle,
   TouchableWithoutFeedback
 } from 'react-native';
-import { X } from 'lucide-react-native';
+import { X, AlertTriangle, FileText, CheckCircle2, LogOut, Bell } from 'lucide-react-native';
 import ScalePressable, { ScaleIconButton } from './ScalePressable';
 import { triggerLightHaptic, triggerSuccessHaptic, triggerErrorHaptic } from '../hooks/useHaptics';
+import { useUser } from '../context/UserContext';
 
 export type AlertButton = {
   text: string;
@@ -41,6 +42,12 @@ export const CustomAlert = {
 };
 
 export default function CustomAlertModal() {
+  const { theme } = useUser();
+  const activeColors = {
+    card: theme === 'legacy' ? '#0f172a' : '#121212',
+    border: theme === 'legacy' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.16)',
+  };
+
   const [visible, setVisible] = useState(false);
   const [config, setConfig] = useState<AlertConfig>({
     title: '',
@@ -92,17 +99,28 @@ export default function CustomAlertModal() {
     ? config.buttons 
     : [{ text: 'OK' }];
 
-  // Helper to determine contextual emoji/icon based on words
+  // Helper to determine contextual icon component based on words
   const getIcon = () => {
     const titleLower = config.title.toLowerCase();
     const messageLower = config.message.toLowerCase();
     
-    if (titleLower.includes('error') || titleLower.includes('fail')) return '⚠️';
-    if (titleLower.includes('agreement') || titleLower.includes('required') || titleLower.includes('policy')) return '✍️';
-    if (titleLower.includes('success') || messageLower.includes('created')) return '✅';
-    if (titleLower.includes('logout') || titleLower.includes('confirm')) return '🚪';
-    return '🔔';
+    if (titleLower.includes('error') || titleLower.includes('fail')) return AlertTriangle;
+    if (titleLower.includes('agreement') || titleLower.includes('required') || titleLower.includes('policy')) return FileText;
+    if (titleLower.includes('success') || messageLower.includes('created')) return CheckCircle2;
+    if (titleLower.includes('logout') || titleLower.includes('confirm')) return LogOut;
+    return Bell;
   };
+
+  const getIconColor = () => {
+    const titleLower = config.title.toLowerCase();
+    const messageLower = config.message.toLowerCase();
+    
+    if (titleLower.includes('error') || titleLower.includes('fail')) return '#ef4444'; // red
+    if (titleLower.includes('success') || messageLower.includes('created')) return '#22c55e'; // green
+    return '#eab308'; // gold/yellow
+  };
+
+  const IconComponent = getIcon();
 
   return (
     <Modal
@@ -114,7 +132,7 @@ export default function CustomAlertModal() {
       <TouchableWithoutFeedback onPress={() => setVisible(false)}>
         <View style={styles.backdrop}>
           <TouchableWithoutFeedback onPress={(e) => {}}>
-            <View style={styles.container}>
+            <View style={[styles.container, { backgroundColor: activeColors.card, borderColor: activeColors.border }]}>
               <View style={styles.closeIconBtn}>
                 <ScaleIconButton onPress={() => setVisible(false)}>
                   <X size={18} color="rgba(255,255,255,0.4)" />
@@ -129,7 +147,7 @@ export default function CustomAlertModal() {
                   ? styles.iconWrapperSuccess
                   : styles.iconWrapperDefault
               ]}>
-                <Text style={styles.icon}>{getIcon()}</Text>
+                <IconComponent size={24} color={getIconColor()} />
               </View>
 
               <Text style={styles.title}>{config.title}</Text>
