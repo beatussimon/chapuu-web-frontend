@@ -170,7 +170,14 @@ export default function StoreMenuScreen({ storeId }: StoreMenuScreenProps) {
   const handleToggleSaved = async () => {
     if (!store) return;
     if (!token) {
-      CustomAlert.alert("Authentication Required", "Please sign in to save your favorite spots.");
+      CustomAlert.alert(
+        "Authentication Required",
+        "Please sign in to save your favorite spots.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Sign In", onPress: () => router.push('/login') }
+        ]
+      );
       return;
     }
     triggerSelectionHaptic();
@@ -183,7 +190,11 @@ export default function StoreMenuScreen({ storeId }: StoreMenuScreenProps) {
     updateSavedStores(newStores);
 
     try {
-      await apiClient.patch('/auth/users/me/', { favorite_stores: newStores });
+      if (isSaved) {
+        await apiClient.delete(`/auth/users/me/favorites/?store_id=${store.id}`);
+      } else {
+        await apiClient.post('/auth/users/me/favorites/', { store_id: store.id });
+      }
     } catch (err) {
       console.warn('[StoreMenu] Favorite sync failed, reverting...', err);
       updateSavedStores(savedStores);

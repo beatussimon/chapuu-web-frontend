@@ -47,25 +47,14 @@ export default function FavoritesScreen() {
         params.lng = userLocation.lng;
       }
       
-      // Hit the user profile endpoint since favorite_stores is attached to the user model
-      const res = await apiClient.get('/auth/users/me/');
-      const rawFavorites = res.data?.favorite_stores || [];
+      // Hit the dedicated favorites endpoint for active favorited stores
+      const res = await apiClient.get('/auth/users/me/favorites/', { params });
+      const data = res.data?.results || res.data || [];
+      setStores(data);
       
       // Keep local IDs in sync
-      const ids = rawFavorites.map((s: any) => typeof s === 'object' ? s.id : s);
+      const ids = data.map((s: any) => s.id);
       updateSavedStores(ids);
-      
-      if (ids.length === 0) {
-        setStores([]);
-        return;
-      }
-      
-      // Fetch all stores and filter locally
-      const storesRes = await apiClient.get('/stores/', { params });
-      const allStores = storesRes.data?.results || storesRes.data || [];
-      
-      const favoriteStoresData = allStores.filter((store: any) => ids.includes(store.id));
-      setStores(favoriteStoresData);
     } catch (err) {
       console.warn("[Favorites] Failed to fetch:", err);
     } finally {
@@ -111,10 +100,11 @@ export default function FavoritesScreen() {
     }
 
     try {
-      // We update favorites by patching the user's favorite_stores array
-      await apiClient.patch('/auth/users/me/', { favorite_stores: newSavedStores });
-      if (!isCurrentlySaved) {
-        fetchFavorites(); // Refresh to get full store object if added from elsewhere
+      if (isCurrentlySaved) {
+        await apiClient.delete(`/auth/users/me/favorites/?store_id=${storeId}`);
+      } else {
+        await apiClient.post('/auth/users/me/favorites/', { store_id: storeId });
+        fetchFavorites(); // Refresh to get full store object
       }
     } catch (err) {
       updateSavedStores(savedStores);
@@ -182,7 +172,16 @@ export default function FavoritesScreen() {
         <View style={{ width: 40 }} />
       </View>
 
-      {loading && !refreshing ? (
+      {!token ? (
+        <View style={styles.emptyState}>
+          <Heart size={64} color="rgba(239, 68, 68, 0.2)" />
+          <Text style={styles.emptyTitle}>Sign In to Save Favorites</Text>
+          <Text style={styles.emptyDesc}>Create an account or sign in to save your favorite spots and view them here!</Text>
+          <ScalePressable style={styles.browseBtn} onPress={() => router.push('/login')}>
+            <Text style={styles.browseBtnText}>Sign In</Text>
+          </ScalePressable>
+        </View>
+      ) : loading && !refreshing ? (
         <View style={styles.listContent}>
           <SkeletonFavoriteList count={4} />
         </View>

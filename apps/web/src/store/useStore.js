@@ -148,6 +148,9 @@ export const useAppStore = create(
             // Favorites Slice
             savedStores: [],
             toggleSaveStore: (storeId) => {
+                const token = localStorage.getItem('access_token');
+                if (!token) return;
+
                 let isCurrentlySaved = false;
                 // Optimistic UI update
                 set((state) => {
@@ -160,31 +163,27 @@ export const useAppStore = create(
                 });
                 
                 // Background API Sync
-                const token = localStorage.getItem('access_token');
-                if (token) {
-                    // Get current state to send full list
-                    const stateObj = get();
-                    const newSavedStores = isCurrentlySaved
-                        ? stateObj.savedStores.filter(id => id !== storeId)
-                        : [...stateObj.savedStores, storeId];
-
-                    const syncPromise = apiClient.patch('/auth/users/me/', { favorite_stores: newSavedStores });
-                    syncPromise.catch(err => {
-                        console.error("Failed to sync favorite to backend", err);
-                        // Revert optimistic update on failure
-                        set((state) => {
-                            const safeSaved = Array.isArray(state.savedStores) ? state.savedStores : [];
-                            if (isCurrentlySaved) {
-                                // Put it back if we removed it
-                                const alreadyInList = safeSaved.includes(storeId);
-                                return { savedStores: alreadyInList ? safeSaved : [...safeSaved, storeId] };
-                            } else {
-                                // Remove it if we added it
-                                return { savedStores: safeSaved.filter(id => id !== storeId) };
-                            }
-                        });
-                    });
+                let syncPromise;
+                if (isCurrentlySaved) {
+                    syncPromise = apiClient.delete(`/auth/users/me/favorites/?store_id=${storeId}`);
+                } else {
+                    syncPromise = apiClient.post('/auth/users/me/favorites/', { store_id: storeId });
                 }
+                syncPromise.catch(err => {
+                    console.error("Failed to sync favorite to backend", err);
+                    // Revert optimistic update on failure
+                    set((state) => {
+                        const safeSaved = Array.isArray(state.savedStores) ? state.savedStores : [];
+                        if (isCurrentlySaved) {
+                            // Put it back if we removed it
+                            const alreadyInList = safeSaved.includes(storeId);
+                            return { savedStores: alreadyInList ? safeSaved : [...safeSaved, storeId] };
+                        } else {
+                            // Remove it if we added it
+                            return { savedStores: safeSaved.filter(id => id !== storeId) };
+                        }
+                    });
+                });
             }
         }),
         {

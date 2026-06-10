@@ -110,7 +110,14 @@ export default function StoresListScreen() {
 
   const toggleSavedStore = async (storeId: number) => {
     if (!token) {
-      CustomAlert.alert("Authentication Required", "Please sign in to save your favorite spots.");
+      CustomAlert.alert(
+        "Authentication Required",
+        "Please sign in to save your favorite spots.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Sign In", onPress: () => router.push('/login') }
+        ]
+      );
       return;
     }
     
@@ -123,7 +130,11 @@ export default function StoresListScreen() {
     updateSavedStores(newSavedStores);
 
     try {
-      await apiClient.patch('/auth/users/me/', { favorite_stores: newSavedStores });
+      if (isCurrentlySaved) {
+        await apiClient.delete(`/auth/users/me/favorites/?store_id=${storeId}`);
+      } else {
+        await apiClient.post('/auth/users/me/favorites/', { store_id: storeId });
+      }
     } catch (err) {
       updateSavedStores(savedStores);
       CustomAlert.alert("Sync Error", "Could not update favorites.");
