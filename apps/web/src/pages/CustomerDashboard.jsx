@@ -782,10 +782,11 @@ export default function CustomerDashboard() {
                     const images = [previewImageProduct.image_url, previewImageProduct.image2_url].filter(Boolean);
                     return (
                         <motion.div 
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="fixed inset-0 z-[100] bg-dark-950/95 backdrop-blur-md flex flex-col"
+                            initial={{ opacity: 0, y: "100%" }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: "100%" }}
+                            transition={{ type: "tween", duration: 0.2, ease: "easeOut" }}
+                            className="fixed inset-x-0 bottom-0 top-16 z-[40] bg-dark-950/95 backdrop-blur-md flex flex-col rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.5)] border-t border-white/10"
                             onClick={() => setPreviewImageProduct(null)}
                         >
                             {/* Top bar */}
@@ -861,7 +862,7 @@ export default function CustomerDashboard() {
                                         initial={{ opacity: 0, x: 20 }}
                                         animate={{ opacity: 1, x: 0 }}
                                         exit={{ opacity: 0, x: -20 }}
-                                        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                                        transition={{ type: "tween", duration: 0.12, ease: "easeOut" }}
                                         className="w-full h-full flex items-center justify-center touch-none cursor-grab active:cursor-grabbing"
                                     >
                                         {images[previewImageIndex] && (

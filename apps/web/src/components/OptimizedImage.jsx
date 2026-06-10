@@ -66,6 +66,14 @@ export default function OptimizedImage({
     setHasError(false);
   }, [src, version]);
 
+  // Handle case where image enters view but has no valid src
+  useEffect(() => {
+    if (isInView && !resolvedSrc) {
+      setHasError(true);
+      setIsLoaded(true); // Stop skeleton animation
+    }
+  }, [isInView, resolvedSrc]);
+
   const handleLoad = () => {
     setIsLoaded(true);
   };

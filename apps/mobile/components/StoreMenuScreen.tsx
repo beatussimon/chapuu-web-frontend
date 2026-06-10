@@ -5,7 +5,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, MapPin, ChefHat, Store as StoreIcon, Heart, Phone, Mail, Clock, Star, Plus, Minus, X, UtensilsCrossed, ArrowLeft, Share2 } from 'lucide-react-native';
+import { Search, MapPin, ChefHat, Store as StoreIcon, Heart, Phone, Mail, Clock, Star, Plus, Minus, X, UtensilsCrossed, ArrowLeft, Share2, ShoppingCart } from 'lucide-react-native';
 import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
 
@@ -607,7 +607,7 @@ export default function StoreMenuScreen({ storeId }: StoreMenuScreenProps) {
       {/* Lightbox Modal */}
       <Modal visible={!!lightboxProduct} transparent animationType="fade" onRequestClose={() => setLightboxProduct(null)}>
         <BlurView intensity={90} tint="dark" style={StyleSheet.absoluteFill}>
-          <SafeAreaView style={{ flex: 1 }}>
+          <SafeAreaView style={{ flex: 1, paddingBottom: spacing.xl }}>
             <ScaleIconButton style={styles.closeModalBtn} onPress={() => setLightboxProduct(null)}>
               <X size={24} color={colors.text.primary} />
             </ScaleIconButton>
@@ -618,7 +618,73 @@ export default function StoreMenuScreen({ storeId }: StoreMenuScreenProps) {
               <Text style={styles.lightboxTitle}>{lightboxProduct?.name}</Text>
               <Text style={styles.lightboxDesc}>{lightboxProduct?.description}</Text>
               <PriceDisplay amount={lightboxProduct?.price || 0} style={styles.lightboxPrice} />
+              
+              <View style={{ marginTop: spacing.xl, width: '100%', alignItems: 'center' }}>
+                {(() => {
+                  if (!lightboxProduct) return null;
+                  const isAvailable = lightboxProduct.computed_is_available !== undefined ? lightboxProduct.computed_is_available : lightboxProduct.is_active;
+                  const cartItem = cart.find(i => i.product?.id === lightboxProduct.id);
+                  
+                  if (!isAvailable) {
+                    return <Text style={styles.unavailableText}>Unavailable</Text>;
+                  }
+                  
+                  if (cartItem) {
+                    return (
+                      <View style={[styles.cartControl, { padding: spacing.sm, width: '60%', justifyContent: 'space-between' }]}>
+                        <ScalePressable onPress={() => { triggerMediumHaptic(); LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); updateQuantity(lightboxProduct.id, cartItem.quantity - 1); }} style={[styles.qtyBtn, { padding: spacing.sm }]}>
+                          <Minus size={24} color={colors.text.primary} />
+                        </ScalePressable>
+                        <Text style={[styles.qtyText, { fontSize: 24, width: 40 }]}>{cartItem.quantity}</Text>
+                        <ScalePressable onPress={() => { triggerMediumHaptic(); LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); updateQuantity(lightboxProduct.id, cartItem.quantity + 1); }} style={[styles.qtyBtn, { padding: spacing.sm }]}>
+                          <Plus size={24} color={colors.text.primary} />
+                        </ScalePressable>
+                      </View>
+                    );
+                  }
+                  
+                  return (
+                    <ScalePressable
+                      onPress={() => {
+                        triggerMediumHaptic();
+                        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                        addToCart(lightboxProduct, 1);
+                      }}
+                      style={[styles.addBtn, { width: '80%', padding: spacing.md, backgroundColor: colors.primary[500], alignItems: 'center', borderRadius: borderRadius.xl }]}
+                    >
+                      <Text style={{ color: colors.dark[950], fontWeight: 'bold', fontSize: 18 }}>Add to Cart</Text>
+                    </ScalePressable>
+                  );
+                })()}
+              </View>
             </View>
+            
+            {/* Modal Floating Cart Bar */}
+            {cart.length > 0 && (
+              <ScalePressable 
+                style={styles.modalCartBar}
+                onPress={() => {
+                  setLightboxProduct(null);
+                  router.push('/(tabs)/tab3');
+                }}
+              >
+                <View style={styles.modalCartInfo}>
+                  <View style={styles.modalCartIconBg}>
+                    <ShoppingCart size={16} color={colors.text.primary} />
+                  </View>
+                  <Text style={styles.modalCartItemsText}>
+                    {cart.reduce((s, i) => s + i.quantity, 0)} items
+                  </Text>
+                </View>
+                <View style={styles.modalCartRight}>
+                  <PriceDisplay 
+                    amount={cart.reduce((sum, item) => sum + (parseFloat(item.product.price) * item.quantity), 0)} 
+                    style={styles.modalCartTotalText} 
+                  />
+                  <ArrowLeft size={16} color={colors.dark[950]} style={{ transform: [{ rotate: '180deg' }] }} />
+                </View>
+              </ScalePressable>
+            )}
           </SafeAreaView>
         </BlurView>
       </Modal>
@@ -1172,6 +1238,45 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '900',
     color: colors.primary[400],
+  },
+  modalCartBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.primary[500],
+    padding: spacing.md,
+    borderRadius: borderRadius['2xl'],
+    marginHorizontal: spacing.xl,
+    shadowColor: colors.primary[500],
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  modalCartInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  modalCartIconBg: {
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    padding: spacing.xs,
+    borderRadius: borderRadius.md,
+  },
+  modalCartItemsText: {
+    color: colors.dark[950],
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  modalCartRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  modalCartTotalText: {
+    color: colors.dark[950],
+    fontWeight: '900',
+    fontSize: 18,
   },
   infoCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.03)',
