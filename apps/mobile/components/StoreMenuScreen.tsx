@@ -164,7 +164,7 @@ export default function StoreMenuScreen({ storeId }: StoreMenuScreenProps) {
 
   const onRefresh = () => {
     setRefreshing(true);
-    router.back();
+    fetchData();
   };
 
   const handleToggleSaved = async () => {
@@ -248,7 +248,10 @@ export default function StoreMenuScreen({ storeId }: StoreMenuScreenProps) {
         )}
         
         <View style={styles.headerContent}>
-          <ScaleIconButton onPress={() => router.back()} style={styles.backButton}>
+          <ScaleIconButton onPress={() => {
+            triggerLightHaptic();
+            router.setParams({ store: '' });
+          }} style={styles.backButton}>
             <ArrowLeft size={20} color={colors.text.secondary} />
           </ScaleIconButton>
 

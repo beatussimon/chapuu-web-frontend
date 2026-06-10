@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Store as StoreIcon, Star, ShoppingBag, Utensils, Tag, MapPin, Sparkles, Navigation } from 'lucide-react';
+import { Store as StoreIcon, Star, ShoppingBag, Utensils, Tag, MapPin, Sparkles, Navigation, Search } from 'lucide-react';
 import OptimizedImage from './OptimizedImage';
 import { useCurrency } from '../utils/useCurrency';
 
@@ -49,9 +49,10 @@ export default function SearchResults({
                 <div className="flex justify-center gap-3">
                     <button
                         onClick={onIncreaseRadius}
-                        className="bg-primary-500 text-dark-900 font-bold px-5 py-2.5 rounded-xl text-xs transition-transform hover:-translate-y-0.5 cursor-pointer shadow-lg shadow-primary-500/20"
+                        className="flex items-center gap-2 bg-primary-500 text-dark-900 font-bold px-5 py-2.5 rounded-xl text-xs transition-transform hover:-translate-y-0.5 cursor-pointer shadow-lg shadow-primary-500/20"
                     >
-                        🔍 Expand Search Radius
+                        <Search size={14} />
+                        Expand Search Radius
                     </button>
                 </div>
             </div>
