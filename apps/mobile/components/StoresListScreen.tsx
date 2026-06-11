@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TextInput, RefreshControl, ScrollView } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeInDown, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, MapPin, SlidersHorizontal, Store as StoreIcon, Star, Clock, X, Heart } from 'lucide-react-native';
 import { BlurView } from 'expo-blur';
@@ -52,6 +52,13 @@ export default function StoresListScreen() {
     minRating: null,
     storeType: 'RESTAURANT'
   });
+
+  const indicatorStyle = useAnimatedStyle(() => {
+    const tabValue = filters.storeType === 'ALL' ? '0%' : filters.storeType === 'RESTAURANT' ? '100%' : '200%';
+    return {
+      transform: [{ translateX: withSpring(tabValue, { damping: 20, stiffness: 200 }) as any }]
+    };
+  }, [filters.storeType]);
 
   // Debounce search query
   useEffect(() => {
@@ -227,16 +234,30 @@ export default function StoresListScreen() {
         </View>
 
         <View style={styles.segmentedControl}>
+          <Animated.View style={[{
+            position: 'absolute',
+            top: 0,
+            bottom: 0,
+            left: 0,
+            width: '33.333%',
+          }, indicatorStyle]}>
+            <View style={{
+              flex: 1,
+              margin: 4,
+              backgroundColor: colors.primary[500],
+              borderRadius: borderRadius.lg,
+              shadowColor: colors.primary[500],
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.3,
+              shadowRadius: 4,
+            }} />
+          </Animated.View>
           {(['ALL', 'RESTAURANT', 'SHOP'] as const).map(type => {
             const isActive = filters.storeType === type;
             return (
               <ScalePressable
                 key={type}
-                style={[
-                  styles.segmentButton, 
-                  isActive && styles.segmentButtonActive, 
-                  { backgroundColor: isActive ? colors.primary[500] : 'transparent' }
-                ]}
+                style={styles.segmentButton}
                 onPress={() => { triggerLightHaptic(); setFilters({ ...filters, storeType: type }); }}
               >
                 <Text style={[styles.segmentButtonText, isActive && styles.segmentButtonTextActive]}>
@@ -338,25 +359,19 @@ const styles = StyleSheet.create({
   segmentedControl: {
     flexDirection: 'row',
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.xl,
     padding: 4,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
+    position: 'relative',
   },
   segmentButton: {
     flex: 1,
     paddingVertical: 8,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  segmentButtonActive: {
-    backgroundColor: colors.primary[500],
-    shadowColor: colors.primary[500],
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
+    zIndex: 1,
   },
   segmentButtonText: {
     color: colors.text.secondary,

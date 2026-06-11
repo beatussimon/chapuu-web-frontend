@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TextInput, RefreshControl, Modal, Pressable, Dimensions, Linking, Share, LayoutAnimation, UIManager, Platform } from 'react-native';
+import Animated, { useAnimatedStyle, withSpring } from 'react-native-reanimated';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -74,6 +75,31 @@ export default function StoreMenuScreen({ storeId }: StoreMenuScreenProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [lightboxProduct, setLightboxProduct] = useState<Product | null>(null);
+
+  const [tabLayouts, setTabLayouts] = useState<Record<string, { x: number; width: number }>>({});
+
+  const handleTabLayout = (tab: string, x: number, width: number) => {
+    setTabLayouts(prev => {
+      if (prev[tab]?.x === x && prev[tab]?.width === width) return prev;
+      return { ...prev, [tab]: { x, width } };
+    });
+  };
+
+  const indicatorStyle = useAnimatedStyle(() => {
+    const layout = tabLayouts[activeTab];
+    if (!layout) {
+      return {
+        left: 0,
+        width: 0,
+        opacity: 0,
+      };
+    }
+    return {
+      left: withSpring(layout.x, { damping: 20, stiffness: 200 }),
+      width: withSpring(layout.width, { damping: 20, stiffness: 200 }),
+      opacity: 1,
+    };
+  }, [tabLayouts, activeTab]);
 
   const [reviews, setReviews] = useState<any[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
@@ -317,22 +343,26 @@ export default function StoreMenuScreen({ storeId }: StoreMenuScreenProps) {
   };
 
   const renderTabs = () => (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabContainer}>
-      {(['menu', 'reviews', 'info'] as const).map(tab => (
-        <ScalePressable
-          key={tab}
-          style={[styles.tabButton, activeTab === tab && styles.tabButtonActive]}
-          onPress={() => {
-            triggerLightHaptic();
-            setActiveTab(tab);
-          }}
-        >
-          <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-            {tab === 'menu' ? (isShop ? 'Products' : 'Menu') : tab === 'reviews' ? `Reviews ${reviewsCount > 0 ? `(${reviewsCount})` : ''}` : 'Info & Gallery'}
-          </Text>
-        </ScalePressable>
-      ))}
-    </ScrollView>
+    <View style={{ position: 'relative' }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabContainer}>
+        {(['menu', 'reviews', 'info'] as const).map(tab => (
+          <ScalePressable
+            key={tab}
+            style={styles.tabButton}
+            onLayout={e => handleTabLayout(tab, e.nativeEvent.layout.x, e.nativeEvent.layout.width)}
+            onPress={() => {
+              triggerLightHaptic();
+              setActiveTab(tab);
+            }}
+          >
+            <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
+              {tab === 'menu' ? (isShop ? 'Products' : 'Menu') : tab === 'reviews' ? `Reviews ${reviewsCount > 0 ? `(${reviewsCount})` : ''}` : 'Info & Gallery'}
+            </Text>
+          </ScalePressable>
+        ))}
+        <Animated.View style={[styles.tabIndicator, indicatorStyle]} />
+      </ScrollView>
+    </View>
   );
 
   const renderProductItem = (p: Product) => {
@@ -423,20 +453,31 @@ export default function StoreMenuScreen({ storeId }: StoreMenuScreenProps) {
       {categories.length > 1 && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryChips}>
           <ScalePressable
-            style={[styles.chip, !activeCategory && styles.chipActive, { backgroundColor: theme === 'legacy' ? 'rgba(255, 255, 255, 0.05)' : '#121212', borderColor: activeColors.border }]}
+            style={[
+              styles.chip,
+              !activeCategory ? styles.chipActive : { backgroundColor: theme === 'legacy' ? 'rgba(255, 255, 255, 0.05)' : '#121212' },
+              { borderColor: activeColors.border }
+            ]}
             onPress={() => { setActiveCategory(null); }}
           >
             <Text style={[styles.chipText, !activeCategory && styles.chipTextActive]}>All</Text>
           </ScalePressable>
-          {categories.map(cat => (
-            <ScalePressable
-              key={cat}
-              style={[styles.chip, activeCategory === cat && styles.chipActive, { backgroundColor: theme === 'legacy' ? 'rgba(255, 255, 255, 0.05)' : '#121212', borderColor: activeColors.border }]}
-              onPress={() => { triggerLightHaptic(); setActiveCategory(cat); }}
-            >
-              <Text style={[styles.chipText, activeCategory === cat && styles.chipTextActive]}>{cat}</Text>
-            </ScalePressable>
-          ))}
+          {categories.map(cat => {
+            const isActive = activeCategory === cat;
+            return (
+              <ScalePressable
+                key={cat}
+                style={[
+                  styles.chip,
+                  isActive ? styles.chipActive : { backgroundColor: theme === 'legacy' ? 'rgba(255, 255, 255, 0.05)' : '#121212' },
+                  { borderColor: activeColors.border }
+                ]}
+                onPress={() => { triggerLightHaptic(); setActiveCategory(cat); }}
+              >
+                <Text style={[styles.chipText, isActive && styles.chipTextActive]}>{cat}</Text>
+              </ScalePressable>
+            );
+          })}
         </ScrollView>
       )}
 
@@ -904,15 +945,18 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     marginBottom: spacing.md,
+    position: 'relative',
   },
   tabButton: {
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.sm,
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
   },
-  tabButtonActive: {
-    borderBottomColor: colors.primary[500],
+  tabIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    height: 3,
+    backgroundColor: colors.primary[500],
+    borderRadius: 1.5,
   },
   tabText: {
     fontSize: 14,
