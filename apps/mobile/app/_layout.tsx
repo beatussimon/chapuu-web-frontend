@@ -541,7 +541,7 @@ export default function RootLayout() {
         fetchUserProfile,
         updateTheme
       }}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
+      <StatusBar barStyle="light-content" backgroundColor={theme === 'legacy' ? '#020617' : '#000000'} translucent={true} />
       <Stack
         screenOptions={{
           headerShown: false,
