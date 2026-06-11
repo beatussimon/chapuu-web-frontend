@@ -841,12 +841,15 @@ export default function CustomerDashboard() {
                                         </>
                                     )}
 
-                                    <AnimatePresence mode="wait">
+                                    <div className="w-full h-full overflow-hidden relative">
                                         <motion.div
-                                            key={previewImageIndex}
+                                            animate={{ x: `-${previewImageIndex * 100}%` }}
+                                            transition={{ type: "tween", duration: 0.2, ease: "easeOut" }}
+                                            className="w-full h-full flex flex-row touch-none"
                                             drag="x"
                                             dragConstraints={{ left: 0, right: 0 }}
-                                            onDragEnd={(e, { offset, velocity }) => {
+                                            dragElastic={0.2}
+                                            onDragEnd={(e, { offset }) => {
                                                 const swipeThreshold = 50;
                                                 if (images.length > 1) {
                                                     if (offset.x < -swipeThreshold) {
@@ -858,24 +861,21 @@ export default function CustomerDashboard() {
                                                     }
                                                 }
                                             }}
-                                            initial={{ opacity: 0, x: 20 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            exit={{ opacity: 0, x: -20 }}
-                                            transition={{ type: "tween", duration: 0.12, ease: "easeOut" }}
-                                            className="w-full h-full flex items-center justify-center touch-none cursor-grab active:cursor-grabbing"
                                         >
-                                            {images[previewImageIndex] && (
-                                                <OptimizedImage 
-                                                    src={images[previewImageIndex]} 
-                                                    alt={previewImageProduct.name} 
-                                                    className="w-full h-full object-contain pointer-events-none" 
-                                                    wrapperClassName="w-full h-full flex items-center justify-center"
-                                                    placeholderType="product"
-                                                    eager 
-                                                />
-                                            )}
+                                            {images.map((imgSrc, idx) => (
+                                                <div key={idx} className="w-full h-full flex-shrink-0 flex items-center justify-center">
+                                                    <OptimizedImage 
+                                                        src={imgSrc} 
+                                                        alt={previewImageProduct.name} 
+                                                        className="w-full h-full object-contain pointer-events-none" 
+                                                        wrapperClassName="w-full h-full flex items-center justify-center"
+                                                        placeholderType="product"
+                                                        eager 
+                                                    />
+                                                </div>
+                                            ))}
                                         </motion.div>
-                                    </AnimatePresence>
+                                    </div>
                                 </div>
 
                                 {/* Info Container */}

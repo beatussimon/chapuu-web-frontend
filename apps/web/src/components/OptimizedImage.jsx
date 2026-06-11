@@ -2,6 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { Store, ChefHat, Leaf, User, Image } from 'lucide-react';
 import { resolveMediaUrl } from '../utils/imageUtils';
 
+// Global cache for loaded URLs to prevent skeleton flashing on remount
+const loadedImagesCache = new Set();
+
 /**
  * OptimizedImage — High-performance image component with:
  * - IntersectionObserver-based lazy loading (loads when ~200px from viewport)
@@ -30,14 +33,15 @@ export default function OptimizedImage({
   version = null,
   ...rest
 }) {
-  const [isInView, setIsInView] = useState(eager);
-  const [isLoaded, setIsLoaded] = useState(false);
+  // Robustly resolve the source URL
+  const resolvedSrc = resolveMediaUrl(src, version);
+
+  const isInitiallyLoaded = resolvedSrc ? loadedImagesCache.has(resolvedSrc) : false;
+  const [isInView, setIsInView] = useState(eager || isInitiallyLoaded);
+  const [isLoaded, setIsLoaded] = useState(isInitiallyLoaded);
   const [hasError, setHasError] = useState(false);
   const imgRef = useRef(null);
   const wrapperRef = useRef(null);
-
-  // Robustly resolve the source URL
-  const resolvedSrc = resolveMediaUrl(src, version);
 
   // IntersectionObserver for lazy loading
   useEffect(() => {
@@ -62,9 +66,13 @@ export default function OptimizedImage({
 
   // Reset states if src or version changes
   useEffect(() => {
-    setIsLoaded(false);
+    const isCacheLoaded = resolvedSrc ? loadedImagesCache.has(resolvedSrc) : false;
+    setIsLoaded(isCacheLoaded);
     setHasError(false);
-  }, [src, version]);
+    if (isCacheLoaded) {
+      setIsInView(true);
+    }
+  }, [src, version, resolvedSrc]);
 
   // Handle case where image enters view but has no valid src
   useEffect(() => {
@@ -76,6 +84,9 @@ export default function OptimizedImage({
 
   const handleLoad = () => {
     setIsLoaded(true);
+    if (resolvedSrc) {
+      loadedImagesCache.add(resolvedSrc);
+    }
   };
 
   const handleError = () => {
