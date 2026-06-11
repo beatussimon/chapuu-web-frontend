@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, RefreshControl, Modal, Pressable, Dimensions, Linking, Share, LayoutAnimation, UIManager, Platform, ActivityIndicator, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TextInput, RefreshControl, Modal, Pressable, Dimensions, Linking, Share, LayoutAnimation, UIManager, Platform } from 'react-native';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -49,40 +49,6 @@ interface Store {
 
 interface StoreMenuScreenProps {
   storeId: string;
-}
-
-// Full-width hero image for the product lightbox with a loading skeleton
-function LightboxHeroImage({ src }: { src: string }) {
-  const [isLoading, setIsLoading] = React.useState(true);
-  const size = Dimensions.get('window').width;
-
-  const getFullUrl = (url: string) => {
-    if (!url) return '';
-    if (url.startsWith('http')) return url;
-    const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL || 'https://chapuu.com';
-    return `${WEB_URL}${url.startsWith('/') ? '' : '/'}${url}`;
-  };
-
-  return (
-    <View style={{ width: size, height: size, backgroundColor: 'rgba(255,255,255,0.04)' }}>
-      <Image
-        source={{ uri: getFullUrl(src), cache: 'force-cache' }}
-        style={{ width: size, height: size }}
-        resizeMode="cover"
-        fadeDuration={0}
-        onLoadStart={() => setIsLoading(true)}
-        onLoad={() => setIsLoading(false)}
-        onError={() => setIsLoading(false)}
-      />
-      {isLoading && (
-        <View style={StyleSheet.absoluteFill as any} pointerEvents="none">
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.3)' }}>
-            <ActivityIndicator size="large" color={colors.primary[500]} />
-          </View>
-        </View>
-      )}
-    </View>
-  );
 }
 
 export default function StoreMenuScreen({ storeId }: StoreMenuScreenProps) {
@@ -656,9 +622,17 @@ export default function StoreMenuScreen({ storeId }: StoreMenuScreenProps) {
             showsVerticalScrollIndicator={false}
             bounces={false}
           >
-            {/* Full-width hero image */}
+            {/* Full-width hero image via OptimizedImage — showLoader, force-cache, instant display */}
             {lightboxProduct?.image_url ? (
-              <LightboxHeroImage src={lightboxProduct.image_url} />
+              <OptimizedImage
+                src={lightboxProduct.image_url}
+                placeholderType="product"
+                showLoader
+                cache="force-cache"
+                fadeDuration={0}
+                wrapperStyle={styles.lightboxHeroImageWrapper}
+                style={styles.lightboxHeroImage}
+              />
             ) : (
               <View style={styles.lightboxImagePlaceholder}>
                 <UtensilsCrossed size={64} color={colors.border} />
@@ -1295,6 +1269,11 @@ const styles = StyleSheet.create({
     fontSize: 30,
     fontWeight: '900',
     color: colors.primary[400],
+  },
+  lightboxHeroImageWrapper: {
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').width,
+    backgroundColor: 'rgba(255,255,255,0.04)',
   },
   lightboxHeroImage: {
     width: Dimensions.get('window').width,
