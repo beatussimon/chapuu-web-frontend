@@ -193,7 +193,7 @@ export default function CheckoutScreen() {
   if (storeCart.length === 0) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: activeColors.bg }]}>
-        <StatusBar barStyle="light-content" backgroundColor={activeColors.bg} translucent={false} />
+        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
         <View style={[styles.header, { borderBottomColor: activeColors.border }]}>
           <ScaleIconButton onPress={() => router.back()} style={styles.backButton}>
             <ArrowLeft size={24} color={colors.text.primary} />
@@ -217,7 +217,7 @@ export default function CheckoutScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: activeColors.bg }]}>
-      <StatusBar barStyle="light-content" backgroundColor={activeColors.bg} translucent={false} />
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
