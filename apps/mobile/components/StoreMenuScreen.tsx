@@ -649,20 +649,21 @@ export default function StoreMenuScreen({ storeId }: StoreMenuScreenProps) {
       {/* Lightbox Modal */}
       <Modal visible={!!lightboxProduct} transparent animationType="slide" statusBarTranslucent onRequestClose={() => setLightboxProduct(null)}>
         <BlurView intensity={95} tint="dark" style={[StyleSheet.absoluteFill, { backgroundColor: activeColors.bg }]}>
-          {/* Close button — always on top */}
-          <SafeAreaView edges={['top']} style={{ zIndex: 10 }}>
-            <ScaleIconButton style={styles.closeModalBtn} onPress={() => setLightboxProduct(null)}>
-              <X size={24} color={colors.text.primary} />
-            </ScaleIconButton>
-          </SafeAreaView>
+          <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+            {/* Close button — always on top */}
+            <View style={{ zIndex: 10 }}>
+              <ScaleIconButton style={styles.closeModalBtn} onPress={() => setLightboxProduct(null)}>
+                <X size={24} color={colors.text.primary} />
+              </ScaleIconButton>
+            </View>
 
-          {/* Scrollable content */}
-          <ScrollView
-            style={{ flex: 1 }}
-            contentContainerStyle={styles.lightboxScrollContent}
-            showsVerticalScrollIndicator={false}
-            bounces={false}
-          >
+            {/* Scrollable content */}
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={styles.lightboxScrollContent}
+              showsVerticalScrollIndicator={false}
+              bounces={false}
+            >
             {/* Full-width hero image via OptimizedImage — showLoader, force-cache, instant display */}
             {lightboxProduct?.image_url ? (
               <OptimizedImage
@@ -684,45 +685,85 @@ export default function StoreMenuScreen({ storeId }: StoreMenuScreenProps) {
             <View style={styles.lightboxInfoBlock}>
               <Text style={styles.lightboxTitle}>{lightboxProduct?.name}</Text>
               <Text style={styles.lightboxDesc}>{lightboxProduct?.description}</Text>
-              <PriceDisplay amount={lightboxProduct?.price || 0} style={styles.lightboxPrice} />
 
-              <View style={{ marginTop: spacing.xl, width: '100%', alignItems: 'center' }}>
-                {(() => {
-                  if (!lightboxProduct) return null;
-                  const isAvailable = lightboxProduct.computed_is_available !== undefined ? lightboxProduct.computed_is_available : lightboxProduct.is_active;
-                  const cartItem = cart.find(i => i.product?.id === lightboxProduct.id);
+              {/* Price & Action Row */}
+              <View style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginTop: spacing.lg,
+                paddingTop: spacing.lg,
+                borderTopWidth: 1,
+                borderTopColor: 'rgba(255,255,255,0.08)',
+                width: '100%',
+              }}>
+                <View>
+                  <Text style={{ fontSize: 10, color: colors.text.tertiary, textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: 0.5, marginBottom: 2 }}>Price</Text>
+                  <PriceDisplay amount={lightboxProduct?.price || 0} style={{ fontSize: 24, fontWeight: '900', color: colors.primary[400] }} />
+                </View>
 
-                  if (!isAvailable) {
-                    return <Text style={styles.unavailableText}>Unavailable</Text>;
-                  }
+                <View>
+                  {(() => {
+                    if (!lightboxProduct) return null;
+                    const isAvailable = lightboxProduct.computed_is_available !== undefined ? lightboxProduct.computed_is_available : lightboxProduct.is_active;
+                    const cartItem = cart.find(i => i.product?.id === lightboxProduct.id);
 
-                  if (cartItem) {
+                    if (!isAvailable) {
+                      return <Text style={styles.unavailableText}>Unavailable</Text>;
+                    }
+
+                    if (cartItem) {
+                      return (
+                        <View style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                          borderRadius: borderRadius.xl,
+                          borderWidth: 1,
+                          borderColor: 'rgba(255, 255, 255, 0.08)',
+                          height: 48,
+                          paddingHorizontal: 8,
+                        }}>
+                          <ScalePressable 
+                            onPress={() => { triggerMediumHaptic(); LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); updateQuantity(lightboxProduct.id, cartItem.quantity - 1); }} 
+                            style={{ padding: 8 }}
+                          >
+                            <Minus size={18} color={colors.text.primary} />
+                          </ScalePressable>
+                          <Text style={{ fontSize: 16, fontWeight: 'bold', color: colors.text.primary, width: 32, textAlign: 'center' }}>
+                            {cartItem.quantity}
+                          </Text>
+                          <ScalePressable 
+                            onPress={() => { triggerMediumHaptic(); LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); updateQuantity(lightboxProduct.id, cartItem.quantity + 1); }} 
+                            style={{ padding: 8 }}
+                          >
+                            <Plus size={18} color={colors.text.primary} />
+                          </ScalePressable>
+                        </View>
+                      );
+                    }
+
                     return (
-                      <View style={[styles.cartControl, { padding: spacing.sm, width: '60%', justifyContent: 'space-between' }]}>
-                        <ScalePressable onPress={() => { triggerMediumHaptic(); LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); updateQuantity(lightboxProduct.id, cartItem.quantity - 1); }} style={[styles.qtyBtn, { padding: spacing.sm }]}>
-                          <Minus size={24} color={colors.text.primary} />
-                        </ScalePressable>
-                        <Text style={[styles.qtyText, { fontSize: 24, width: 40 }]}>{cartItem.quantity}</Text>
-                        <ScalePressable onPress={() => { triggerMediumHaptic(); LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); updateQuantity(lightboxProduct.id, cartItem.quantity + 1); }} style={[styles.qtyBtn, { padding: spacing.sm }]}>
-                          <Plus size={24} color={colors.text.primary} />
-                        </ScalePressable>
-                      </View>
+                      <ScalePressable
+                        onPress={() => {
+                          triggerMediumHaptic();
+                          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                          addToCart(lightboxProduct, 1);
+                        }}
+                        style={{
+                          backgroundColor: colors.primary[500],
+                          height: 48,
+                          paddingHorizontal: 24,
+                          borderRadius: borderRadius.xl,
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                        }}
+                      >
+                        <Text style={{ color: colors.dark[950], fontWeight: 'bold', fontSize: 16 }}>Add to Cart</Text>
+                      </ScalePressable>
                     );
-                  }
-
-                  return (
-                    <ScalePressable
-                      onPress={() => {
-                        triggerMediumHaptic();
-                        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                        addToCart(lightboxProduct, 1);
-                      }}
-                      style={[styles.addBtn, { width: '90%', padding: spacing.md, backgroundColor: colors.primary[500], alignItems: 'center', borderRadius: borderRadius.xl }]}
-                    >
-                      <Text style={{ color: colors.dark[950], fontWeight: 'bold', fontSize: 18 }}>Add to Cart</Text>
-                    </ScalePressable>
-                  );
-                })()}
+                  })()}
+                </View>
               </View>
             </View>
           </ScrollView>
@@ -755,6 +796,7 @@ export default function StoreMenuScreen({ storeId }: StoreMenuScreenProps) {
               </ScalePressable>
             </View>
           )}
+          </SafeAreaView>
         </BlurView>
       </Modal>
 
@@ -1293,26 +1335,20 @@ const styles = StyleSheet.create({
   },
   lightboxInfoBlock: {
     padding: spacing.xl,
-    alignItems: 'center',
+    alignItems: 'stretch',
   },
   lightboxTitle: {
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: '900',
     color: colors.text.primary,
-    marginBottom: spacing.sm,
-    textAlign: 'center',
+    textAlign: 'left',
   },
   lightboxDesc: {
-    fontSize: 15,
+    fontSize: 14,
     color: colors.text.secondary,
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: spacing.lg,
-  },
-  lightboxPrice: {
-    fontSize: 30,
-    fontWeight: '900',
-    color: colors.primary[400],
+    textAlign: 'left',
+    lineHeight: 20,
+    marginTop: spacing.xs,
   },
   lightboxHeroImageWrapper: {
     width: Dimensions.get('window').width,
