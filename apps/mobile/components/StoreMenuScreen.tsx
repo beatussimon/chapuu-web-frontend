@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, RefreshControl, Modal, Pressable, Dimensions, Linking, Share, LayoutAnimation, UIManager, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TextInput, RefreshControl, Modal, Pressable, Dimensions, Linking, Share, LayoutAnimation, UIManager, Platform, ActivityIndicator, Image } from 'react-native';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -51,7 +51,42 @@ interface StoreMenuScreenProps {
   storeId: string;
 }
 
+// Full-width hero image for the product lightbox with a loading skeleton
+function LightboxHeroImage({ src }: { src: string }) {
+  const [isLoading, setIsLoading] = React.useState(true);
+  const size = Dimensions.get('window').width;
+
+  const getFullUrl = (url: string) => {
+    if (!url) return '';
+    if (url.startsWith('http')) return url;
+    const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL || 'https://chapuu.com';
+    return `${WEB_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+  };
+
+  return (
+    <View style={{ width: size, height: size, backgroundColor: 'rgba(255,255,255,0.04)' }}>
+      <Image
+        source={{ uri: getFullUrl(src), cache: 'force-cache' }}
+        style={{ width: size, height: size }}
+        resizeMode="cover"
+        fadeDuration={0}
+        onLoadStart={() => setIsLoading(true)}
+        onLoad={() => setIsLoading(false)}
+        onError={() => setIsLoading(false)}
+      />
+      {isLoading && (
+        <View style={StyleSheet.absoluteFill as any} pointerEvents="none">
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.3)' }}>
+            <ActivityIndicator size="large" color={colors.primary[500]} />
+          </View>
+        </View>
+      )}
+    </View>
+  );
+}
+
 export default function StoreMenuScreen({ storeId }: StoreMenuScreenProps) {
+
   const router = useRouter();
   const { cart, updateCart, savedStores, updateSavedStores, theme, token } = useUser();
   const activeColors = {
@@ -605,30 +640,47 @@ export default function StoreMenuScreen({ storeId }: StoreMenuScreenProps) {
       </ScrollView>
 
       {/* Lightbox Modal */}
-      <Modal visible={!!lightboxProduct} transparent animationType="fade" onRequestClose={() => setLightboxProduct(null)}>
-        <BlurView intensity={90} tint="dark" style={StyleSheet.absoluteFill}>
-          <SafeAreaView style={{ flex: 1, paddingBottom: spacing.xl }}>
+      <Modal visible={!!lightboxProduct} transparent animationType="slide" statusBarTranslucent onRequestClose={() => setLightboxProduct(null)}>
+        <BlurView intensity={95} tint="dark" style={StyleSheet.absoluteFill}>
+          {/* Close button — always on top */}
+          <SafeAreaView edges={['top']} style={{ zIndex: 10 }}>
             <ScaleIconButton style={styles.closeModalBtn} onPress={() => setLightboxProduct(null)}>
               <X size={24} color={colors.text.primary} />
             </ScaleIconButton>
-            <View style={styles.lightboxContent}>
-              {lightboxProduct?.image_url && (
-                <OptimizedImage src={lightboxProduct.image_url} wrapperStyle={styles.lightboxImage} />
-              )}
+          </SafeAreaView>
+
+          {/* Scrollable content */}
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={styles.lightboxScrollContent}
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+          >
+            {/* Full-width hero image */}
+            {lightboxProduct?.image_url ? (
+              <LightboxHeroImage src={lightboxProduct.image_url} />
+            ) : (
+              <View style={styles.lightboxImagePlaceholder}>
+                <UtensilsCrossed size={64} color={colors.border} />
+              </View>
+            )}
+
+            {/* Product info */}
+            <View style={styles.lightboxInfoBlock}>
               <Text style={styles.lightboxTitle}>{lightboxProduct?.name}</Text>
               <Text style={styles.lightboxDesc}>{lightboxProduct?.description}</Text>
               <PriceDisplay amount={lightboxProduct?.price || 0} style={styles.lightboxPrice} />
-              
+
               <View style={{ marginTop: spacing.xl, width: '100%', alignItems: 'center' }}>
                 {(() => {
                   if (!lightboxProduct) return null;
                   const isAvailable = lightboxProduct.computed_is_available !== undefined ? lightboxProduct.computed_is_available : lightboxProduct.is_active;
                   const cartItem = cart.find(i => i.product?.id === lightboxProduct.id);
-                  
+
                   if (!isAvailable) {
                     return <Text style={styles.unavailableText}>Unavailable</Text>;
                   }
-                  
+
                   if (cartItem) {
                     return (
                       <View style={[styles.cartControl, { padding: spacing.sm, width: '60%', justifyContent: 'space-between' }]}>
@@ -642,7 +694,7 @@ export default function StoreMenuScreen({ storeId }: StoreMenuScreenProps) {
                       </View>
                     );
                   }
-                  
+
                   return (
                     <ScalePressable
                       onPress={() => {
@@ -650,7 +702,7 @@ export default function StoreMenuScreen({ storeId }: StoreMenuScreenProps) {
                         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
                         addToCart(lightboxProduct, 1);
                       }}
-                      style={[styles.addBtn, { width: '80%', padding: spacing.md, backgroundColor: colors.primary[500], alignItems: 'center', borderRadius: borderRadius.xl }]}
+                      style={[styles.addBtn, { width: '90%', padding: spacing.md, backgroundColor: colors.primary[500], alignItems: 'center', borderRadius: borderRadius.xl }]}
                     >
                       <Text style={{ color: colors.dark[950], fontWeight: 'bold', fontSize: 18 }}>Add to Cart</Text>
                     </ScalePressable>
@@ -658,10 +710,12 @@ export default function StoreMenuScreen({ storeId }: StoreMenuScreenProps) {
                 })()}
               </View>
             </View>
-            
-            {/* Modal Floating Cart Bar */}
-            {cart.length > 0 && (
-              <ScalePressable 
+          </ScrollView>
+
+          {/* Floating Cart Bar — anchored above tab bar (paddingBottom=80 clears 60px tab bar + breathing room) */}
+          {cart.length > 0 && (
+            <View style={{ paddingHorizontal: spacing.xl, paddingBottom: 80 }}>
+              <ScalePressable
                 style={styles.modalCartBar}
                 onPress={() => {
                   setLightboxProduct(null);
@@ -677,15 +731,15 @@ export default function StoreMenuScreen({ storeId }: StoreMenuScreenProps) {
                   </Text>
                 </View>
                 <View style={styles.modalCartRight}>
-                  <PriceDisplay 
-                    amount={cart.reduce((sum, item) => sum + (parseFloat(item.product.price) * item.quantity), 0)} 
-                    style={styles.modalCartTotalText} 
+                  <PriceDisplay
+                    amount={cart.reduce((sum, item) => sum + (parseFloat(item.product.price) * item.quantity), 0)}
+                    style={styles.modalCartTotalText}
                   />
                   <ArrowLeft size={16} color={colors.dark[950]} style={{ transform: [{ rotate: '180deg' }] }} />
                 </View>
               </ScalePressable>
-            )}
-          </SafeAreaView>
+            </View>
+          )}
         </BlurView>
       </Modal>
 
@@ -1209,35 +1263,42 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: borderRadius.full,
   },
-  lightboxContent: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing.xl,
+  lightboxScrollContent: {
+    paddingBottom: spacing['2xl'],
   },
-  lightboxImage: {
-    width: '100%',
-    aspectRatio: 1,
-    borderRadius: borderRadius['2xl'],
-    marginBottom: spacing.lg,
+  lightboxImagePlaceholder: {
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').width,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lightboxInfoBlock: {
+    padding: spacing.xl,
+    alignItems: 'center',
   },
   lightboxTitle: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: '900',
     color: colors.text.primary,
     marginBottom: spacing.sm,
     textAlign: 'center',
   },
   lightboxDesc: {
-    fontSize: 14,
+    fontSize: 15,
     color: colors.text.secondary,
     textAlign: 'center',
+    lineHeight: 22,
     marginBottom: spacing.lg,
   },
   lightboxPrice: {
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: '900',
     color: colors.primary[400],
+  },
+  lightboxHeroImage: {
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').width,
   },
   modalCartBar: {
     flexDirection: 'row',
@@ -1246,7 +1307,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary[500],
     padding: spacing.md,
     borderRadius: borderRadius['2xl'],
-    marginHorizontal: spacing.xl,
     shadowColor: colors.primary[500],
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,

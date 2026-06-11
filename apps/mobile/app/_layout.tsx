@@ -515,6 +515,7 @@ export default function RootLayout() {
   };
 
   return (
+    <View style={{ flex: 1, backgroundColor: theme === 'legacy' ? '#020617' : '#000000' }}>
     <KeyboardProvider>
       <UserContext.Provider value={{ 
         userRole, 
@@ -544,6 +545,7 @@ export default function RootLayout() {
       <Stack
         screenOptions={{
           headerShown: false,
+          animation: 'none',
           contentStyle: { backgroundColor: theme === 'legacy' ? '#020617' : '#000000' },
         }}
       >
@@ -626,6 +628,7 @@ export default function RootLayout() {
       </Modal>
     </UserContext.Provider>
     </KeyboardProvider>
+    </View>
   );
 }
 
