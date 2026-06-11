@@ -786,11 +786,11 @@ export default function CustomerDashboard() {
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: "100%" }}
                             transition={{ type: "tween", duration: 0.2, ease: "easeOut" }}
-                            className="fixed inset-x-0 bottom-0 top-16 z-[40] bg-dark-950/95 backdrop-blur-md flex flex-col rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.5)] border-t border-white/10"
+                            className="fixed inset-x-0 bottom-0 z-[60] bg-dark-950/95 backdrop-blur-md flex flex-col rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.5)] border-t border-white/10 max-h-[85vh] md:max-w-lg md:mx-auto md:bottom-4 md:rounded-3xl md:border"
                             onClick={() => setPreviewImageProduct(null)}
                         >
                             {/* Top bar */}
-                            <div className="flex items-center justify-between px-4 py-3 safe-area-top shrink-0" onClick={e => e.stopPropagation()}>
+                            <div className="flex items-center justify-between px-4 py-3 safe-area-top shrink-0 border-b border-white/5" onClick={e => e.stopPropagation()}>
                                 <button 
                                     className="text-white bg-white/10 hover:bg-white/20 p-2.5 rounded-full transition-colors"
                                     onClick={() => setPreviewImageProduct(null)}
@@ -811,87 +811,90 @@ export default function CustomerDashboard() {
                                 <div className="w-10" /> {/* spacer for centering dots */}
                             </div>
 
-                            {/* Image area — fills available space */}
-                            <div 
-                                className="flex-1 flex items-center justify-center px-2 pb-2 min-h-0 overflow-hidden relative group"
-                                onClick={e => e.stopPropagation()}
-                            >
-                                {/* Desktop Navigation Arrows */}
-                                {images.length > 1 && (
-                                    <>
-                                        <button 
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                triggerHaptic(hapticPatterns.light);
-                                                setPreviewImageIndex(prev => (prev - 1 + images.length) % images.length);
-                                            }}
-                                            className="absolute left-4 z-20 p-3 rounded-full bg-black/40 text-white hover:bg-black/60 transition-all opacity-0 group-hover:opacity-100 hidden md:block"
-                                        >
-                                            <ChevronLeft size={24} />
-                                        </button>
-                                        <button 
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                triggerHaptic(hapticPatterns.light);
-                                                setPreviewImageIndex(prev => (prev + 1) % images.length);
-                                            }}
-                                            className="absolute right-4 z-20 p-3 rounded-full bg-black/40 text-white hover:bg-black/60 transition-all opacity-0 group-hover:opacity-100 hidden md:block"
-                                        >
-                                            <ChevronRight size={24} />
-                                        </button>
-                                    </>
-                                )}
-
-                                <AnimatePresence mode="wait">
-                                    <motion.div
-                                        key={previewImageIndex}
-                                        drag="x"
-                                        dragConstraints={{ left: 0, right: 0 }}
-                                        onDragEnd={(e, { offset, velocity }) => {
-                                            const swipeThreshold = 50;
-                                            if (images.length > 1) {
-                                                if (offset.x < -swipeThreshold) {
-                                                    triggerHaptic(hapticPatterns.light);
-                                                    setPreviewImageIndex(prev => (prev + 1) % images.length);
-                                                } else if (offset.x > swipeThreshold) {
+                            {/* Scrollable content (Image + Info) */}
+                            <div className="flex-1 overflow-y-auto min-h-0" onClick={e => e.stopPropagation()}>
+                                {/* Image area — aspect-square container */}
+                                <div className="w-full aspect-square relative bg-black/10 flex items-center justify-center overflow-hidden group">
+                                    {/* Desktop Navigation Arrows */}
+                                    {images.length > 1 && (
+                                        <>
+                                            <button 
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
                                                     triggerHaptic(hapticPatterns.light);
                                                     setPreviewImageIndex(prev => (prev - 1 + images.length) % images.length);
-                                                }
-                                            }
-                                        }}
-                                        initial={{ opacity: 0, x: 20 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        exit={{ opacity: 0, x: -20 }}
-                                        transition={{ type: "tween", duration: 0.12, ease: "easeOut" }}
-                                        className="w-full h-full flex items-center justify-center touch-none cursor-grab active:cursor-grabbing"
-                                    >
-                                        {images[previewImageIndex] && (
-                                            <OptimizedImage 
-                                                src={images[previewImageIndex]} 
-                                                alt={previewImageProduct.name} 
-                                                className="max-w-full max-h-full object-contain rounded-2xl pointer-events-none shadow-2xl" 
-                                                wrapperClassName="w-full h-full flex items-center justify-center"
-                                                placeholderType="product"
-                                                eager 
-                                            />
-                                        )}
-                                    </motion.div>
-                                </AnimatePresence>
-                            </div>
+                                                }}
+                                                className="absolute left-4 z-20 p-3 rounded-full bg-black/40 text-white hover:bg-black/60 transition-all opacity-0 group-hover:opacity-100 hidden md:block"
+                                            >
+                                                <ChevronLeft size={24} />
+                                            </button>
+                                            <button 
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    triggerHaptic(hapticPatterns.light);
+                                                    setPreviewImageIndex(prev => (prev + 1) % images.length);
+                                                }}
+                                                className="absolute right-4 z-20 p-3 rounded-full bg-black/40 text-white hover:bg-black/60 transition-all opacity-0 group-hover:opacity-100 hidden md:block"
+                                            >
+                                                <ChevronRight size={24} />
+                                            </button>
+                                        </>
+                                    )}
 
-                            {/* Product info overlay at bottom */}
-                            <div 
-                                className="shrink-0 px-5 pb-6 pt-3 bg-gradient-to-t from-dark-950 via-dark-950/80 to-transparent"
-                                onClick={e => e.stopPropagation()}
-                            >
-                                <h3 className="text-xl font-bold text-white mb-1 line-clamp-1">{previewImageProduct.name}</h3>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-lg font-bold text-primary-400">{formatPrice(previewImageProduct.price)}</span>
+                                    <AnimatePresence mode="wait">
+                                        <motion.div
+                                            key={previewImageIndex}
+                                            drag="x"
+                                            dragConstraints={{ left: 0, right: 0 }}
+                                            onDragEnd={(e, { offset, velocity }) => {
+                                                const swipeThreshold = 50;
+                                                if (images.length > 1) {
+                                                    if (offset.x < -swipeThreshold) {
+                                                        triggerHaptic(hapticPatterns.light);
+                                                        setPreviewImageIndex(prev => (prev + 1) % images.length);
+                                                    } else if (offset.x > swipeThreshold) {
+                                                        triggerHaptic(hapticPatterns.light);
+                                                        setPreviewImageIndex(prev => (prev - 1 + images.length) % images.length);
+                                                    }
+                                                }
+                                            }}
+                                            initial={{ opacity: 0, x: 20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            exit={{ opacity: 0, x: -20 }}
+                                            transition={{ type: "tween", duration: 0.12, ease: "easeOut" }}
+                                            className="w-full h-full flex items-center justify-center touch-none cursor-grab active:cursor-grabbing"
+                                        >
+                                            {images[previewImageIndex] && (
+                                                <OptimizedImage 
+                                                    src={images[previewImageIndex]} 
+                                                    alt={previewImageProduct.name} 
+                                                    className="w-full h-full object-contain pointer-events-none" 
+                                                    wrapperClassName="w-full h-full flex items-center justify-center"
+                                                    placeholderType="product"
+                                                    eager 
+                                                />
+                                            )}
+                                        </motion.div>
+                                    </AnimatePresence>
+                                </div>
+
+                                {/* Info Container */}
+                                <div className="px-5 pt-4 pb-4">
+                                    <h3 className="text-xl font-bold text-white mb-1">{previewImageProduct.name}</h3>
+                                    <div className="flex items-center justify-between mb-3">
+                                        <span className="text-lg font-bold text-primary-400">{formatPrice(previewImageProduct.price)}</span>
+                                    </div>
                                     {previewImageProduct.description && (
-                                        <p className="text-xs text-slate-400 ml-4 line-clamp-1 flex-1 text-right">{previewImageProduct.description}</p>
+                                        <p className="text-sm text-slate-400 leading-relaxed break-words">{previewImageProduct.description}</p>
                                     )}
                                 </div>
-                                {/* Quick add to cart from preview */}
+                            </div>
+
+                            {/* Fixed Footer */}
+                            <div 
+                                className="shrink-0 px-5 pb-6 pt-3 bg-dark-950 border-t border-white/5 safe-area-pb"
+                                onClick={e => e.stopPropagation()}
+                            >
                                 {(() => {
                                     const isAvailable = previewImageProduct.computed_is_available !== undefined ? previewImageProduct.computed_is_available : previewImageProduct.is_active;
                                     const cartArray = Array.isArray(cart) ? cart : [];
@@ -908,7 +911,7 @@ export default function CustomerDashboard() {
                                                 }
                                                 toast.success(`Added ${previewImageProduct.name}`, { position: 'bottom-center', duration: 1500 });
                                             }}
-                                            className="mt-3 w-full bg-primary-500 text-dark-950 font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-primary-500/20"
+                                            className="w-full bg-primary-500 text-dark-950 font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-primary-500/20"
                                         >
                                             <Plus size={18} />
                                             {cartItem ? `Add Another (${cartItem.quantity} in cart)` : 'Add to Cart'}
