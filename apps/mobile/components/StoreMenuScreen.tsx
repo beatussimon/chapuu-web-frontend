@@ -648,7 +648,7 @@ export default function StoreMenuScreen({ storeId }: StoreMenuScreenProps) {
 
       {/* Lightbox Modal */}
       <Modal visible={!!lightboxProduct} transparent animationType="slide" statusBarTranslucent onRequestClose={() => setLightboxProduct(null)}>
-        <BlurView intensity={95} tint="dark" style={StyleSheet.absoluteFill}>
+        <BlurView intensity={95} tint="dark" style={[StyleSheet.absoluteFill, { backgroundColor: activeColors.bg }]}>
           {/* Close button — always on top */}
           <SafeAreaView edges={['top']} style={{ zIndex: 10 }}>
             <ScaleIconButton style={styles.closeModalBtn} onPress={() => setLightboxProduct(null)}>
@@ -760,7 +760,7 @@ export default function StoreMenuScreen({ storeId }: StoreMenuScreenProps) {
 
       {/* Gallery Lightbox */}
       <Modal visible={isGalleryOpen} transparent animationType="fade" onRequestClose={() => setIsGalleryOpen(false)}>
-        <BlurView intensity={100} tint="dark" style={StyleSheet.absoluteFill}>
+        <BlurView intensity={100} tint="dark" style={[StyleSheet.absoluteFill, { backgroundColor: '#000000' }]}>
           <SafeAreaView style={{ flex: 1 }}>
             
             <View style={styles.lightboxHeader}>
