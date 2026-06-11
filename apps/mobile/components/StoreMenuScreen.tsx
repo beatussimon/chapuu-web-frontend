@@ -1328,7 +1328,7 @@ const styles = StyleSheet.create({
   },
   lightboxImagePlaceholder: {
     width: Dimensions.get('window').width,
-    height: Dimensions.get('window').width,
+    height: Dimensions.get('window').height * 0.68,
     backgroundColor: 'rgba(255,255,255,0.04)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1352,12 +1352,12 @@ const styles = StyleSheet.create({
   },
   lightboxHeroImageWrapper: {
     width: Dimensions.get('window').width,
-    height: Dimensions.get('window').width,
+    height: Dimensions.get('window').height * 0.68,
     backgroundColor: 'rgba(255,255,255,0.04)',
   },
   lightboxHeroImage: {
     width: Dimensions.get('window').width,
-    height: Dimensions.get('window').width,
+    height: Dimensions.get('window').height * 0.68,
   },
   modalCartBar: {
     flexDirection: 'row',
