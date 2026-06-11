@@ -350,7 +350,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.lg,
     zIndex: 1,
-    elevation: 1,
   },
   tabBtnActive: {
     backgroundColor: colors.primary[500],
